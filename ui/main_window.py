@@ -45,7 +45,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v2.4")
+        self.setWindowTitle("哔哩哔哩视频下载器 v2.5")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -152,14 +152,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v2.4"
+        version = "v2.5"
         updates = (
-            "1. 全局UI字体增大：所有界面字体增加8px，提升阅读体验\n"
-            "2. 登录界面优化：移除遮挡二维码的文字，调整布局\n"
-            "3. 界面美化：增强B站风格，优化过渡动画，圆角设计\n"
-            "4. 项目结构优化：清理冗余代码，提升运行效率\n"
-            "5. 修复打包Bug：解决了打包过程中找不到文件的问题\n"
-            "6. 稳定性提升：修复已知问题，优化用户体验"
+            "1. 登录弹窗优化：简化提示信息，仅保留核心操作指引，界面更清爽。\n"
+            "2. 修复Bug：修复了文件已存在时重复下载可能导致的报错问题。\n"
+            "3. 界面美化：重写警告弹窗，采用圆角和主题色，统一B站风格。\n"
+            "4. 体验提升：增大常用按钮字号，操作更便捷。\n"
+            "5. 功能增强：优化去水印算法，自动适配更多分辨率，效果更自然。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

@@ -298,6 +298,10 @@ class WorkerThread(QThread):
                             result_data["audio_file"] = download_result["audio_path"]
                             message = f"视频 '{title}' 下载完成，根据设置未合并"
                         
+                        # 特殊处理：如果是"已存在"的情况
+                        if "视频已存在" in download_result.get("message", ""):
+                             message = f"视频 '{title}' 已存在，跳过下载"
+
                         return {
                             "status": "success", 
                             "data": result_data, 

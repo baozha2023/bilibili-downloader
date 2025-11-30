@@ -385,13 +385,9 @@ class BilibiliLoginWindow(QMainWindow):
         main_layout.addWidget(qr_card)
         
         # 操作说明
-        self.info_text = QLabel(
-            "1. 打开哔哩哔哩APP\n"
-            "2. 扫描上方二维码\n"
-            "3. 在手机上确认登录"
-        )
+        self.info_text = QLabel("请使用哔哩哔哩APP扫码")
         self.info_text.setAlignment(Qt.AlignCenter)
-        self.info_text.setStyleSheet("color: #999999; font-size: 22px; line-height: 1.6;")
+        self.info_text.setStyleSheet("color: #333333; font-size: 22px; line-height: 1.6; font-weight: bold;")
         main_layout.addWidget(self.info_text)
         
         # 按钮区域

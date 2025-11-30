@@ -1,9 +1,10 @@
 import time
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-                             QLineEdit, QGroupBox, QProgressBar, QMessageBox)
+                             QLineEdit, QGroupBox, QProgressBar, QMessageBox, QDialog)
 from PyQt5.QtCore import Qt
 from ui.workers import WorkerThread
+from ui.message_box import BilibiliMessageBox
 
 class DownloadTab(QWidget):
     def __init__(self, main_window):
@@ -138,10 +139,12 @@ class DownloadTab(QWidget):
         
         history_btn = QPushButton("查看下载历史")
         history_btn.clicked.connect(self.main_window.show_download_history)
+        history_btn.setStyleSheet("font-size: 20px;")
         history_layout.addWidget(history_btn)
         
         open_dir_btn = QPushButton("打开下载目录")
         open_dir_btn.clicked.connect(lambda: self.main_window.open_download_dir())
+        open_dir_btn.setStyleSheet("font-size: 20px;")
         history_layout.addWidget(open_dir_btn)
         
         layout.addLayout(history_layout)
@@ -180,17 +183,16 @@ class DownloadTab(QWidget):
         """下载视频"""
         bvid = self.bvid_input.text().strip()
         if not bvid:
-            QMessageBox.warning(self, "警告", "请输入视频BV号")
+            BilibiliMessageBox.warning(self, "警告", "请输入视频BV号")
             return
         
         # 检查BV号格式
         if not bvid.startswith("BV") or len(bvid) < 10:
-            reply = QMessageBox.question(
+            reply = BilibiliMessageBox.question(
                 self, "BV号格式可能不正确", 
-                f"输入的BV号 '{bvid}' 格式可能不正确，是否继续？",
-                QMessageBox.Yes | QMessageBox.No
+                f"输入的BV号 '{bvid}' 格式可能不正确，是否继续？"
             )
-            if reply == QMessageBox.No:
+            if reply == QDialog.Rejected:
                 return
         
         # 禁用下载按钮，启用取消按钮
