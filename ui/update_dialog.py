@@ -44,7 +44,7 @@ class UpdateDialog(QDialog):
         # 更新内容
         content = QLabel(updates)
         content.setWordWrap(True)
-        content.setStyleSheet("font-size: 14px; line-height: 1.5; margin-top: 10px;")
+        content.setStyleSheet("font-size: 16px; line-height: 1.6; margin-top: 15px; color: #333;")
         content.setAlignment(Qt.AlignTop | Qt.AlignLeft)
         layout.addWidget(content)
         

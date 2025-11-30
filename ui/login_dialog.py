@@ -210,6 +210,11 @@ class QRCodeLoginThread(QThread):
                 return None
                 
             # 缩放以适应控件大小，保持清晰度
+            # 确保图片是正方形，如果不是，进行裁剪或填充
+            if pixmap.width() != pixmap.height():
+                size = min(pixmap.width(), pixmap.height())
+                pixmap = pixmap.copy(0, 0, size, size)
+            
             if pixmap.width() > 350:
                 pixmap = pixmap.scaled(350, 350, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 
@@ -317,7 +322,7 @@ class BilibiliLoginWindow(QMainWindow):
         self.qr_label.setScaledContents(True)
         self.qr_label.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ddd; margin: 0 auto;")
         
-        # 居中显示二维码
+        # 居中显示二维码，并确保容器布局不会导致拉伸
         qr_container = QHBoxLayout()
         qr_container.addStretch()
         qr_container.addWidget(self.qr_label)
@@ -347,10 +352,6 @@ class BilibiliLoginWindow(QMainWindow):
         
         # 按钮区域
         button_layout = QHBoxLayout()
-        
-        self.save_config_check = QCheckBox("保存登录状态")
-        self.save_config_check.setChecked(True)
-        button_layout.addWidget(self.save_config_check)
         
         button_layout.addStretch()
         
@@ -417,8 +418,8 @@ class BilibiliLoginWindow(QMainWindow):
             self.cookies = data.get("data", {}).get("cookies", {})
             
             # 保存配置
-            if self.save_config_check.isChecked():
-                self.save_config()
+            # 默认保存配置，因为移除了复选框
+            self.save_config()
                 
             # 通知主窗口登录状态变化
             if self.finished_signal:

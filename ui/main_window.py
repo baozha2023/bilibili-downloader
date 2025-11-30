@@ -61,7 +61,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v1.9")
+        self.setWindowTitle("哔哩哔哩视频下载器 v1.10")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -424,20 +424,26 @@ class BilibiliDesktop(QMainWindow):
         settings_tab = QWidget()
         self.tabs.addTab(settings_tab, "设置")
         
-        layout = QVBoxLayout(settings_tab)
-        layout.setSpacing(20)
-        layout.setContentsMargins(20, 20, 20, 20)
+        # 使用主垂直布局，增加边距和间距
+        main_layout = QVBoxLayout(settings_tab)
+        main_layout.setSpacing(25)
+        main_layout.setContentsMargins(30, 30, 30, 30)
         
-        # 创建分组：基本设置
+        # --- 1. 基本设置分组 ---
         basic_group = QGroupBox("基本设置")
+        basic_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }")
         basic_layout = QGridLayout(basic_group)
-        basic_layout.setSpacing(15)
+        basic_layout.setVerticalSpacing(15)
+        basic_layout.setHorizontalSpacing(15)
+        basic_layout.setContentsMargins(20, 25, 20, 20)
         
-        # 数据存储目录设置
+        # 数据存储目录
         basic_layout.addWidget(QLabel("数据存储目录:"), 0, 0)
         self.data_dir_input = QLineEdit(os.path.abspath(self.crawler.data_dir))
+        self.data_dir_input.setMinimumWidth(400)
         basic_layout.addWidget(self.data_dir_input, 0, 1)
         browse_btn = QPushButton("浏览...")
+        browse_btn.setCursor(Qt.PointingHandCursor)
         browse_btn.clicked.connect(self.browse_data_dir)
         basic_layout.addWidget(browse_btn, 0, 2)
 
@@ -445,94 +451,108 @@ class BilibiliDesktop(QMainWindow):
         basic_layout.addWidget(QLabel("最大重试次数:"), 1, 0)
         self.retry_count = QSpinBox()
         self.retry_count.setRange(1, 10)
-        self.retry_count.setValue(3)  # 默认3次
+        self.retry_count.setValue(3)
+        self.retry_count.setFixedWidth(100)
         basic_layout.addWidget(self.retry_count, 1, 1)
         
-        # 添加到主布局
-        layout.addWidget(basic_group)
+        main_layout.addWidget(basic_group)
         
-        # 创建分组：下载设置
+        # --- 2. 下载设置分组 ---
         download_group = QGroupBox("下载设置")
+        download_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }")
         download_layout = QGridLayout(download_group)
-        download_layout.setSpacing(15)
+        download_layout.setVerticalSpacing(15)
+        download_layout.setHorizontalSpacing(15)
+        download_layout.setContentsMargins(20, 25, 20, 20)
         
         # 画质选择
         download_layout.addWidget(QLabel("首选画质:"), 0, 0)
         self.quality_combo = QComboBox()
-        # 初始默认选项 (未登录状态)
         self.quality_combo.addItems(["720p", "480p", "360p"])
         self.quality_combo.setCurrentText("720p")
-        self.quality_combo.setToolTip("登录后可解锁更高画质")
+        self.quality_combo.setFixedWidth(200)
         download_layout.addWidget(self.quality_combo, 0, 1)
-        download_layout.addWidget(QLabel("（登录解锁1080P/4K）"), 0, 2)
+        tips_label = QLabel("（登录解锁1080P/4K）")
+        tips_label.setStyleSheet("color: #888;")
+        download_layout.addWidget(tips_label, 0, 2)
 
-        # 合并视频选项
-        self.merge_check = QCheckBox("合并视频和音频 (推荐)")
+        # 复选框选项 - 使用网格布局排列
+        # 第一行复选框
+        self.merge_check = QCheckBox("合并视频和音频")
         self.merge_check.setChecked(True)
-        self.merge_check.setToolTip("取消勾选将保留原始视频和音频文件，不进行合并")
+        self.merge_check.setToolTip("推荐勾选，否则视频和音频将分离开")
         download_layout.addWidget(self.merge_check, 1, 0, 1, 3)
         
-        # 添加自动删除原始文件选项
         self.delete_original_check = QCheckBox("合并后删除原始文件")
         self.delete_original_check.setChecked(True)
-        self.delete_original_check.setToolTip("合并成功后自动删除原始的视频和音频文件，节省存储空间")
         download_layout.addWidget(self.delete_original_check, 2, 0, 1, 3)
 
-        # 添加去水印选项
+        # 第二行复选框
         self.remove_watermark_check = QCheckBox("尝试去除水印 (实验性)")
         self.remove_watermark_check.setChecked(False)
-        self.remove_watermark_check.setToolTip("尝试去除视频右上角的平台水印 (需要重新编码，速度较慢)")
         download_layout.addWidget(self.remove_watermark_check, 3, 0, 1, 3)
         
-        # 添加弹幕/评论下载选项
-        extra_layout = QHBoxLayout()
+        # 额外下载选项
+        extra_container = QHBoxLayout()
         self.download_danmaku_check = QCheckBox("下载弹幕")
-        self.download_danmaku_check.setChecked(False)
-        extra_layout.addWidget(self.download_danmaku_check)
+        extra_container.addWidget(self.download_danmaku_check)
         
         self.download_comments_check = QCheckBox("下载评论")
-        self.download_comments_check.setChecked(False)
-        extra_layout.addWidget(self.download_comments_check)
-        extra_layout.addStretch()
+        extra_container.addWidget(self.download_comments_check)
+        extra_container.addStretch()
         
-        download_layout.addLayout(extra_layout, 4, 0, 1, 3)
+        download_layout.addLayout(extra_container, 4, 0, 1, 3)
         
-        # 添加下载完成后操作选项
+        # 下载完成后操作
         download_layout.addWidget(QLabel("下载完成后:"), 5, 0)
         self.complete_action = QComboBox()
         self.complete_action.addItems(["无操作", "打开文件夹", "播放视频", "关闭程序"])
-        self.complete_action.setCurrentIndex(1)  # 默认打开文件夹
-        download_layout.addWidget(self.complete_action, 5, 1, 1, 2)
+        self.complete_action.setCurrentIndex(1)
+        self.complete_action.setFixedWidth(200)
+        download_layout.addWidget(self.complete_action, 5, 1)
         
-        # 添加到主布局
-        layout.addWidget(download_group)
+        main_layout.addWidget(download_group)
         
-        # 保存设置按钮
+        # 底部保存按钮
+        main_layout.addStretch()
         save_btn = QPushButton("保存设置")
-        save_btn.setMinimumHeight(40)
-        save_btn.setStyleSheet("font-weight: bold; font-size: 14px; background-color: #fb7299; color: white; border-radius: 4px;")
+        save_btn.setMinimumHeight(45)
+        save_btn.setCursor(Qt.PointingHandCursor)
+        save_btn.setStyleSheet("""
+            QPushButton {
+                font-weight: bold; 
+                font-size: 16px; 
+                background-color: #fb7299; 
+                color: white; 
+                border-radius: 6px;
+                padding: 0 30px;
+            }
+            QPushButton:hover {
+                background-color: #fc8bab;
+            }
+            QPushButton:pressed {
+                background-color: #e45c84;
+            }
+        """)
         save_btn.clicked.connect(self.save_settings)
-        layout.addWidget(save_btn)
         
-        # 关于信息 - 已移除
-        # layout.addStretch()
-        # about_layout = QVBoxLayout()
-        # about_layout.addWidget(QLabel("哔哩哔哩视频下载器 v1.8"))
-        # about_layout.addWidget(QLabel("基于Python开发"))
+        btn_container = QHBoxLayout()
+        btn_container.addStretch()
+        btn_container.addWidget(save_btn)
+        btn_container.addStretch()
         
-        # 添加更新日志 - 已移除
-        # layout.addLayout(about_layout)
-        layout.addStretch()
+        main_layout.addLayout(btn_container)
+        main_layout.addSpacing(20)
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v1.9"
+        version = "v1.10"
         updates = (
-            "1. 优化登录弹窗二维码显示，防止变形\n"
-            "2. 优化视频下载取消逻辑，自动清理残留文件\n"
-            "3. 界面布局优化，移除设置界面冗余信息\n"
-            "4. 新增历史记录查看功能，支持双击下载\n"
-            "5. 修复已知BUG，提升稳定性"
+            "1. 优化登录弹窗二维码显示，修复变形问题\n"
+            "2. 移除登录界面冗余选项，简化登录流程\n"
+            "3. 全新设计的设置界面，布局更清晰美观\n"
+            "4. 优化视频下载取消逻辑，自动清理残留文件\n"
+            "5. 代码结构重构与优化，提升软件稳定性"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
