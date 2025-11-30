@@ -84,16 +84,19 @@ class AccountTab(QWidget):
         user_details_layout = QVBoxLayout()
         
         self.account_name = QLabel("用户名")
-        self.account_name.setStyleSheet("font-size: 24px; font-weight: bold;")
+        self.account_name.setStyleSheet("font-size: 28px; font-weight: bold;")
         user_details_layout.addWidget(self.account_name)
         
         self.account_uid = QLabel("UID: --")
+        self.account_uid.setStyleSheet("font-size: 22px; color: #666;")
         user_details_layout.addWidget(self.account_uid)
         
         self.account_level = QLabel("等级: --")
+        self.account_level.setStyleSheet("font-size: 22px; color: #666;")
         user_details_layout.addWidget(self.account_level)
         
         self.account_vip = QLabel("会员状态: 非会员")
+        self.account_vip.setStyleSheet("font-size: 22px; color: #666;")
         user_details_layout.addWidget(self.account_vip)
         
         user_info_layout.addLayout(user_details_layout)
@@ -122,9 +125,14 @@ class AccountTab(QWidget):
         
         # 收藏夹列表
         self.favorites_list = QTableWidget(0, 3)
-        self.favorites_list.setHorizontalHeaderLabels(["标题", "创建时间", "视频数量"])
+        self.favorites_list.setHorizontalHeaderLabels(["标题", "状态", "视频数量"])
         self.favorites_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.favorites_list.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.favorites_list.setStyleSheet("""
+            QTableWidget { font-size: 18px; }
+            QHeaderView::section { font-size: 18px; padding: 4px; }
+            QTableWidget::item { padding: 2px; }
+        """)
         self.content_tabs.addTab(self.favorites_list, "收藏夹")
         
         # 历史记录列表
@@ -133,6 +141,11 @@ class AccountTab(QWidget):
         self.history_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.history_list.setEditTriggers(QTableWidget.NoEditTriggers)
         self.history_list.cellDoubleClicked.connect(self.on_history_video_clicked)
+        self.history_list.setStyleSheet("""
+            QTableWidget { font-size: 18px; }
+            QHeaderView::section { font-size: 18px; padding: 4px; }
+            QTableWidget::item { padding: 2px; }
+        """)
         self.content_tabs.addTab(self.history_list, "历史记录")
         
         tabs_layout.addWidget(self.content_tabs)
@@ -203,12 +216,13 @@ class AccountTab(QWidget):
             # status 1 为有效，0 为过期/无效
             if vip_type == 0 or vip_status != 1:
                 self.account_vip.setText("会员状态: 非会员")
+                self.account_vip.setStyleSheet("font-size: 22px; color: #666;")
             elif vip_type == 1:
                 self.account_vip.setText("会员状态: 大会员")
-                self.account_vip.setStyleSheet("color: #FB7299;")
+                self.account_vip.setStyleSheet("font-size: 22px; color: #FB7299;")
             elif vip_type == 2:
                 self.account_vip.setText("会员状态: 年度大会员")
-                self.account_vip.setStyleSheet("color: #FB7299; font-weight: bold;")
+                self.account_vip.setStyleSheet("font-size: 22px; color: #FB7299; font-weight: bold;")
             
             face_url = user_info.get("face", "")
             if face_url:
@@ -280,18 +294,22 @@ class AccountTab(QWidget):
         for i, fav in enumerate(favorites):
             title = fav.get("title", "")
             media_count = fav.get("media_count", 0)
-            ctime = fav.get("ctime", 0)
-            if not ctime:
-                 ctime = fav.get("mtime", 0)
             
-            if ctime:
-                create_time = time.strftime("%Y-%m-%d", time.localtime(ctime))
+            # 尝试获取隐私状态
+            # attr lowest bit: 0 public, 1 private
+            attr = fav.get("attr", 0)
+            if attr & 1:
+                status_text = "私密"
             else:
-                fid = fav.get("id", 0)
-                create_time = f"ID: {fid}"
+                status_text = "公开"
+            
+            # 如果没有 attr 信息，尝试显示 ID
+            if "attr" not in fav:
+                 fid = fav.get("id", 0)
+                 status_text = f"ID: {fid}"
             
             self.favorites_list.setItem(i, 0, QTableWidgetItem(title))
-            self.favorites_list.setItem(i, 1, QTableWidgetItem(create_time))
+            self.favorites_list.setItem(i, 1, QTableWidgetItem(status_text))
             self.favorites_list.setItem(i, 2, QTableWidgetItem(str(media_count)))
 
     def update_history_list(self, history):

@@ -94,7 +94,7 @@ class MediaProcessor:
                 
                 # 针对竖屏视频调整
                 if h > w:
-                    wm_w = int(w * 0.3) # 稍微增加宽度
+                    wm_w = int(w * 0.35) # 再次增加宽度
                     wm_h = int(wm_w * 0.35)
                     margin_x = int(w * 0.05)
                     margin_y = int(h * 0.02)
@@ -113,12 +113,12 @@ class MediaProcessor:
                     logger.warning("水印区域计算无效，跳过去水印")
                     cmd_video = ['-c:v', 'copy']
                 else:
-                    # 增加band参数使边缘过渡更自然
+                    # 增加band参数使边缘过渡更自然 (16)
                     # 增加 show=0 参数确保不显示边界框 (delogo默认show=0，但显式指定更安全)
-                    filter_str = f"delogo=x={wm_x}:y={wm_y}:w={wm_w}:h={wm_h}:band=8:show=0"
+                    filter_str = f"delogo=x={wm_x}:y={wm_y}:w={wm_w}:h={wm_h}:band=16:show=0"
                     logger.info(f"应用去水印滤镜: {filter_str} (分辨率: {w}x{h})")
-                    # 使用libx264重编码，crf 20提升画质 (原23)，preset medium平衡速度和质量
-                    cmd_video = ['-vf', filter_str, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20']
+                    # 使用libx264重编码，crf 18提升画质 (原20)，preset medium平衡速度和质量
+                    cmd_video = ['-vf', filter_str, '-c:v', 'libx264', '-preset', 'medium', '-crf', '18']
             else:
                 logger.warning("无法获取分辨率，跳过去水印")
                 cmd_video = ['-c:v', 'copy']

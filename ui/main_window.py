@@ -45,7 +45,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v2.5")
+        self.setWindowTitle("哔哩哔哩视频下载器 v2.6")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -115,7 +115,7 @@ class BilibiliDesktop(QMainWindow):
         self.console_log = QTextEdit()
         self.console_log.setReadOnly(True)
         self.console_log.setMaximumHeight(150)
-        self.console_log.setStyleSheet("background-color: #1e1e1e; color: #f0f0f0; font-family: Consolas, Monospace; font-size: 16px;")
+        self.console_log.setStyleSheet("background-color: #1e1e1e; color: #f0f0f0; font-family: Consolas, Monospace; font-size: 20px;")
         log_layout.addWidget(self.console_log)
         
         # 日志控制按钮
@@ -152,13 +152,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v2.5"
+        version = "v2.6"
         updates = (
-            "1. 登录弹窗优化：简化提示信息，仅保留核心操作指引，界面更清爽。\n"
-            "2. 修复Bug：修复了文件已存在时重复下载可能导致的报错问题。\n"
-            "3. 界面美化：重写警告弹窗，采用圆角和主题色，统一B站风格。\n"
-            "4. 体验提升：增大常用按钮字号，操作更便捷。\n"
-            "5. 功能增强：优化去水印算法，自动适配更多分辨率，效果更自然。"
+            "1. 账号界面优化：增大UID、等级等字体，调整收藏夹表格间距，更美观易读。\n"
+            "2. 收藏夹升级：将无用的创建时间列改为状态显示（公开/私密），信息更实用。\n"
+            "3. 弹窗美化：重写下载失败提示弹窗，采用B站风格圆角设计，拒绝突兀。\n"
+            "4. 日志阅读优化：系统日志字体进一步增大，方便查看运行状态。\n"
+            "5. 去水印增强：优化算法参数，边缘过渡更自然，画质进一步提升。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
