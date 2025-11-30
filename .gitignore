@@ -132,7 +132,6 @@ cython_debug/
 
 # Project specific
 bilibili_data/
-ffmpeg/
 *.spec
 *.zip
 *.exe
