@@ -13,7 +13,7 @@ class Downloader:
     def __init__(self, network_manager: NetworkManager):
         self.network = network_manager
 
-    def download_file(self, url, filepath, filename=None, progress_callback=None):
+    def download_file(self, url, filepath, filename=None, progress_callback=None, stop_event=None):
         """下载单个文件"""
         # 断点续传检查
         file_size = 0
@@ -65,6 +65,11 @@ class Downloader:
             mode = 'ab' if file_size > 0 else 'wb'
             with open(filepath, mode) as f:
                 for chunk in response.iter_content(chunk_size=chunk_size):
+                    # 检查是否需要停止
+                    if stop_event and stop_event.is_set():
+                        logger.info("检测到停止信号，中断下载")
+                        return False
+
                     if chunk:
                         f.write(chunk)
                         downloaded_size += len(chunk)
@@ -77,6 +82,12 @@ class Downloader:
                             last_update_time = current_time
                             bytes_since_last_update = 0
                             
+            # 如果被中断，删除未完成的文件（如果是全新的下载）
+            # 这里简化处理：只要stop_event被设置，就认为中断
+            if stop_event and stop_event.is_set():
+                 # 注意：文件句柄已关闭
+                 return False
+
             # 下载完成校验
             if total_size > 0 and downloaded_size != total_size:
                 # 允许极小误差

@@ -148,3 +148,23 @@ class BilibiliAPI:
         if isinstance(response, bytes):
             return response
         return None
+    
+    def get_history(self, page=1):
+        """获取历史记录"""
+        # 游标分页: view_at, max 0, ps 20
+        # 但web接口通常是：https://api.bilibili.com/x/web-interface/history/cursor?ps=20&type=archive
+        # 或者旧接口: https://api.bilibili.com/x/v2/history?pn={page}&ps=20 (可能已废弃)
+        # 使用cursor接口更稳，但分页麻烦。这里尝试简化，只获取最近的
+        # 这里的page参数可能无法直接映射到cursor接口，除非我们保存了cursor
+        # 为了简单，我们只获取第一页，或者如果真的需要分页，需要重构逻辑
+        # 暂时只实现获取最新20条，或者如果传入了view_at参数
+        
+        # 尝试使用cursor接口
+        # max=0 表示获取最新的
+        url = f'https://api.bilibili.com/x/web-interface/history/cursor?ps=20&type=archive'
+        # 如果需要翻页，通常需要传入 view_at (上一页最后一条的时间戳)
+        # 暂时简单实现
+        response = self.network.make_request(url)
+        if isinstance(response, dict):
+            return response.get('data', {}).get('list', [])
+        return []

@@ -61,8 +61,14 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v1.8")
+        self.setWindowTitle("哔哩哔哩视频下载器 v1.9")
         self.setMinimumSize(1000, 700)
+        
+        # 设置应用图标
+        if os.path.exists("resource/icon.ico"):
+            self.setWindowIcon(QIcon("resource/icon.ico"))
+        elif os.path.exists("resource/logo.png"):
+            self.setWindowIcon(QIcon("resource/logo.png"))
         
         # 主布局
         central_widget = QWidget()
@@ -372,16 +378,29 @@ class BilibiliDesktop(QMainWindow):
         logged_layout.addWidget(vip_group)
         
         # 收藏夹和历史记录
-        favorites_group = QGroupBox("我的收藏夹")
-        favorites_layout = QVBoxLayout(favorites_group)
+        tabs_group = QGroupBox("我的内容")
+        tabs_layout = QVBoxLayout(tabs_group)
         
+        self.content_tabs = QTabWidget()
+        
+        # 收藏夹列表
         self.favorites_list = QTableWidget(0, 3)
         self.favorites_list.setHorizontalHeaderLabels(["标题", "创建时间", "视频数量"])
         self.favorites_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.favorites_list.setEditTriggers(QTableWidget.NoEditTriggers)
-        favorites_layout.addWidget(self.favorites_list)
+        self.content_tabs.addTab(self.favorites_list, "收藏夹")
         
-        logged_layout.addWidget(favorites_group)
+        # 历史记录列表
+        self.history_list = QTableWidget(0, 4)
+        self.history_list.setHorizontalHeaderLabels(["标题", "UP主", "观看时间", "BV号"])
+        self.history_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.history_list.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.history_list.cellDoubleClicked.connect(self.on_history_video_clicked)
+        self.content_tabs.addTab(self.history_list, "历史记录")
+        
+        tabs_layout.addWidget(self.content_tabs)
+        
+        logged_layout.addWidget(tabs_group)
         
         self.account_stack.addWidget(logged_widget)
         
@@ -495,25 +514,25 @@ class BilibiliDesktop(QMainWindow):
         save_btn.clicked.connect(self.save_settings)
         layout.addWidget(save_btn)
         
-        # 关于信息
-        layout.addStretch()
-        about_layout = QVBoxLayout()
-        about_layout.addWidget(QLabel("哔哩哔哩视频下载器 v1.8"))
-        about_layout.addWidget(QLabel("基于Python开发"))
+        # 关于信息 - 已移除
+        # layout.addStretch()
+        # about_layout = QVBoxLayout()
+        # about_layout.addWidget(QLabel("哔哩哔哩视频下载器 v1.8"))
+        # about_layout.addWidget(QLabel("基于Python开发"))
         
         # 添加更新日志 - 已移除
-        layout.addLayout(about_layout)
+        # layout.addLayout(about_layout)
+        layout.addStretch()
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v1.8"
+        version = "v1.9"
         updates = (
-            "1. 修复登录后分辨率选项不显示1080p及大会员4K选项的问题\n"
-            "2. 调整登录弹窗大小，解决二维码变形问题\n"
-            "3. 调整启动弹窗大小，优化阅读体验\n"
-            "4. 新增退出软件时自动清除登录信息的功能，提升安全性\n"
-            "5. 优化设置功能，确保所有选项正确生效\n"
-            "6. 界面细节调整与性能优化"
+            "1. 优化登录弹窗二维码显示，防止变形\n"
+            "2. 优化视频下载取消逻辑，自动清理残留文件\n"
+            "3. 界面布局优化，移除设置界面冗余信息\n"
+            "4. 新增历史记录查看功能，支持双击下载\n"
+            "5. 修复已知BUG，提升稳定性"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
@@ -925,6 +944,19 @@ class BilibiliDesktop(QMainWindow):
                 self.bvid_input.setToolTip(title)
             self.download_video(title)
 
+    def on_history_video_clicked(self, row, column):
+        """历史记录视频双击处理"""
+        item_bvid = self.history_list.item(row, 3)
+        item_title = self.history_list.item(row, 0)
+        if item_bvid:
+            bvid = item_bvid.text()
+            title = item_title.text() if item_title else ""
+            self.tabs.setCurrentIndex(0)
+            self.bvid_input.setText(bvid)
+            if title:
+                self.bvid_input.setToolTip(title)
+            self.download_video(title)
+
     def open_login_window(self):
         """打开登录窗口"""
         self.login_window = BilibiliLoginWindow()
@@ -1011,6 +1043,10 @@ class BilibiliDesktop(QMainWindow):
             favorites = user_info.get("favorites", [])
             self.update_favorites_list(favorites)
             
+            # 更新历史记录列表
+            history = user_info.get("history", [])
+            self.update_history_list(history)
+            
             # 更新画质选择选项
             self.update_quality_options(vip_type, vip_status)
             
@@ -1086,6 +1122,32 @@ class BilibiliDesktop(QMainWindow):
             self.favorites_list.setItem(i, 0, QTableWidgetItem(title))
             self.favorites_list.setItem(i, 1, QTableWidgetItem(create_time))
             self.favorites_list.setItem(i, 2, QTableWidgetItem(str(media_count)))
+
+    def update_history_list(self, history):
+        """更新历史记录列表显示"""
+        self.history_list.setRowCount(len(history))
+        for i, item in enumerate(history):
+            title = item.get("title", "")
+            author_name = item.get("author_name", "")
+            if not author_name:
+                author_name = item.get("owner", {}).get("name", "")
+            
+            view_at = item.get("view_at", 0)
+            if view_at:
+                view_time = time.strftime("%Y-%m-%d %H:%M", time.localtime(view_at))
+            else:
+                view_time = "--"
+                
+            # bvid usually in history_business_network -> bvid ? 
+            # structure varies. Check 'bvid' or 'history' -> 'bvid'
+            bvid = item.get("history", {}).get("bvid", "")
+            if not bvid:
+                bvid = item.get("bvid", "")
+                
+            self.history_list.setItem(i, 0, QTableWidgetItem(title))
+            self.history_list.setItem(i, 1, QTableWidgetItem(author_name))
+            self.history_list.setItem(i, 2, QTableWidgetItem(view_time))
+            self.history_list.setItem(i, 3, QTableWidgetItem(bvid))
 
     def load_account_avatar(self, url):
         self.account_avatar.setText("加载中...")

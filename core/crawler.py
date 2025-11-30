@@ -98,6 +98,9 @@ class BilibiliCrawler:
         except Exception as e:
             logger.error(f"解析弹幕失败: {e}")
             return []
+
+    def get_history(self, page=1):
+        return self.api.get_history(page)
             
     def make_request(self, *args, **kwargs):
         return self.network.make_request(*args, **kwargs)
@@ -108,11 +111,16 @@ class BilibiliCrawler:
                       merge_progress_callback=None, danmaku_progress_callback=None, 
                       comments_progress_callback=None, should_merge=True, delete_original=True,
                       remove_watermark=False, download_danmaku=False, download_comments=False,
-                      video_quality='1080p'):
+                      video_quality='1080p', stop_event=None):
         """下载视频主流程"""
         
         # 1. 获取下载链接
         print(f"正在获取视频 {bvid} 的下载链接 (画质偏好: {video_quality})...")
+        
+        # 检查停止信号
+        if stop_event and stop_event.is_set():
+            return {"download_success": False, "message": "下载已取消"}
+            
         download_info = self.api.get_video_download_url(bvid, video_quality)
         if not download_info:
             return {"download_success": False, "message": "无法获取下载地址"}
@@ -140,8 +148,21 @@ class BilibiliCrawler:
         video_url = download_info['video_url']
         video_path = os.path.join(video_dir, f"{safe_title}_video.mp4")
         print("开始下载视频流...")
-        video_success = self.downloader.download_file(video_url, video_path, f"{safe_title} - 视频", video_progress_callback)
         
+        # 检查停止信号
+        if stop_event and stop_event.is_set():
+            return {"download_success": False, "message": "下载已取消"}
+            
+        video_success = self.downloader.download_file(video_url, video_path, f"{safe_title} - 视频", video_progress_callback, stop_event=stop_event)
+        
+        # 如果被中断
+        if not video_success and stop_event and stop_event.is_set():
+            # 清理文件
+            if os.path.exists(video_path):
+                try: os.remove(video_path)
+                except: pass
+            return {"download_success": False, "message": "下载已取消"}
+
         # 4. 下载音频流
         audio_url = download_info.get('audio_url')
         audio_path = None
@@ -149,8 +170,19 @@ class BilibiliCrawler:
         if audio_url:
             audio_path = os.path.join(video_dir, f"{safe_title}_audio.m4a")
             print("开始下载音频流...")
-            audio_success = self.downloader.download_file(audio_url, audio_path, f"{safe_title} - 音频", audio_progress_callback)
+            audio_success = self.downloader.download_file(audio_url, audio_path, f"{safe_title} - 音频", audio_progress_callback, stop_event=stop_event)
             
+            # 如果被中断
+            if not audio_success and stop_event and stop_event.is_set():
+                # 清理文件
+                if os.path.exists(video_path):
+                    try: os.remove(video_path)
+                    except: pass
+                if os.path.exists(audio_path):
+                    try: os.remove(audio_path)
+                    except: pass
+                return {"download_success": False, "message": "下载已取消"}
+
         if not video_success or not audio_success:
             return {"download_success": False, "message": "文件下载失败"}
             
@@ -159,6 +191,10 @@ class BilibiliCrawler:
         aid = download_info['video_info'].get('aid')
         
         if download_danmaku and cid:
+            # 检查停止信号
+            if stop_event and stop_event.is_set():
+                 return {"download_success": False, "message": "下载已取消"}
+
             print("正在获取视频弹幕...")
             if danmaku_progress_callback: danmaku_progress_callback(0, 100)
             danmaku_list = self.get_video_danmaku(cid)
@@ -176,11 +212,19 @@ class BilibiliCrawler:
             if danmaku_progress_callback: danmaku_progress_callback(100, 100)
             
         if download_comments and aid:
+            # 检查停止信号
+            if stop_event and stop_event.is_set():
+                 return {"download_success": False, "message": "下载已取消"}
+
             print("正在获取视频评论...")
             if comments_progress_callback: comments_progress_callback(0, 100)
             # 获取前5页
             all_comments = []
             for page in range(1, 6):
+                # 检查停止信号
+                if stop_event and stop_event.is_set():
+                    return {"download_success": False, "message": "下载已取消"}
+                    
                 comments = self.get_video_comments(aid, page)
                 if comments: all_comments.extend(comments)
                 else: break
@@ -201,6 +245,10 @@ class BilibiliCrawler:
         merge_success = False
         
         if should_merge and audio_path:
+            # 检查停止信号
+            if stop_event and stop_event.is_set():
+                 return {"download_success": False, "message": "下载已取消"}
+
             print("开始合并视频...")
             merge_success = self.processor.merge_video_audio(
                 video_path, audio_path, output_path, 

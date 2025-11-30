@@ -2,6 +2,7 @@ import time
 import logging
 import os
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+from threading import Event
 from core.crawler import BilibiliCrawler
 
 # 配置日志
@@ -25,6 +26,7 @@ class WorkerThread(QThread):
         self.params = params or {}
         self.config = config or {}
         self.is_running = True
+        self.stop_event = Event()
         
         # Initialize crawler with config
         use_proxy = self.config.get('use_proxy', False)
@@ -261,7 +263,8 @@ class WorkerThread(QThread):
                     delete_original=delete_original,
                     remove_watermark=remove_watermark,
                     download_danmaku=download_danmaku,
-                    download_comments=download_comments
+                    download_comments=download_comments,
+                    stop_event=self.stop_event
                 )
                 
                 if download_result["download_success"]:
@@ -384,7 +387,17 @@ class WorkerThread(QThread):
     def stop(self):
         """停止线程"""
         self.is_running = False
+        self.stop_event.set()
         self.update_signal.emit({"status": "warning", "message": "正在取消任务..."})
+        
+        # 尝试清理临时文件
+        if self.task_type == "download_video" and hasattr(self, 'crawler'):
+            try:
+                # 这里需要crawler支持中断下载并清理
+                # 目前只能通过is_running标志通知crawler停止
+                pass
+            except Exception as e:
+                logger.error(f"清理资源失败: {e}")
         
         # 如果线程仍在运行，等待最多3秒
         if self.isRunning():
@@ -490,9 +503,15 @@ class AccountInfoThread(QThread):
                         if fav_response and fav_response.get("code") == 0:
                             fav_list = fav_response.get("data", {}).get("list", [])
                             user_data["favorites"] = fav_list
+                            
+                        # 获取历史记录
+                        self.update_signal.emit({"status": "info", "message": "正在获取历史记录..."})
+                        history_list = self.crawler.get_history(1)
+                        user_data["history"] = history_list
+                        
                 except Exception as e:
-                    logger.error(f"获取收藏夹失败: {e}")
-                    # 收藏夹获取失败不影响主要信息展示
+                    logger.error(f"获取额外信息失败: {e}")
+                    # 不影响主要信息展示
                 
                 # 返回成功结果
                 return {

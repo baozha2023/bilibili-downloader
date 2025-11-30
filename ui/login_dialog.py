@@ -313,8 +313,7 @@ class BilibiliLoginWindow(QMainWindow):
         # 二维码显示
         self.qr_label = QLabel("请点击获取二维码")
         self.qr_label.setAlignment(Qt.AlignCenter)
-        self.qr_label.setMinimumSize(300, 300)
-        self.qr_label.setFixedSize(300, 300)
+        self.qr_label.setFixedSize(300, 300)  # 保持正方形
         self.qr_label.setScaledContents(True)
         self.qr_label.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ddd; margin: 0 auto;")
         
