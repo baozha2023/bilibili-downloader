@@ -45,7 +45,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v2.2")
+        self.setWindowTitle("哔哩哔哩视频下载器 v2.3")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -100,6 +100,11 @@ class BilibiliDesktop(QMainWindow):
         self.tabs.addTab(self.account_tab, "我的账号")
         self.tabs.addTab(self.settings_tab, "设置")
         
+        # 连接设置变更信号
+        self.settings_tab.merge_check.stateChanged.connect(self.download_tab.update_progress_visibility)
+        self.settings_tab.download_danmaku_check.stateChanged.connect(self.download_tab.update_progress_visibility)
+        self.settings_tab.download_comments_check.stateChanged.connect(self.download_tab.update_progress_visibility)
+        
         # 底部状态栏
         self.statusBar().showMessage("就绪")
         
@@ -146,14 +151,14 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v2.2"
+        version = "v2.3"
         updates = (
-            "1. 新增评论和弹幕下载进度显示，下载过程更清晰\n"
-            "2. 登录弹窗新增“保存账号信息”选项，支持自动登录\n"
-            "3. 优化登录按钮交互体验，鼠标悬停样式更自然\n"
-            "4. 升级去水印算法，更智能识别并去除水印\n"
-            "5. UI界面全面美化，增加过渡动画，贴近B站风格\n"
-            "6. 优化项目结构，提升运行稳定性"
+            "1. 优化下载进度条逻辑：不合并时自动隐藏合并进度条\n"
+            "2. 设置变更实时响应：下载选项变更立即反馈到界面\n"
+            "3. 全局UI优化：增大字体尺寸，提升阅读体验\n"
+            "4. 登录弹窗升级：增大窗口尺寸，优化布局\n"
+            "5. 界面细节美化：增强B站风格，优化过渡动画\n"
+            "6. 代码结构重构，提升运行稳定性"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
@@ -179,14 +184,14 @@ class BilibiliDesktop(QMainWindow):
         QTabBar::tab {
             background-color: #f6f7f8;
             color: #61666d;
-            padding: 10px 25px;
+            padding: 12px 30px;
             border: 1px solid #e7e7e7;
             border-bottom: none;
             border-top-left-radius: 6px;
             border-top-right-radius: 6px;
             margin-right: 4px;
-            font-size: 14px;
-            min-width: 80px;
+            font-size: 16px;
+            min-width: 100px;
         }
         QTabBar::tab:selected {
             background-color: #ffffff;
@@ -201,14 +206,15 @@ class BilibiliDesktop(QMainWindow):
         QLabel {
             color: #18191c;
             font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+            font-size: 14px;
         }
         QPushButton {
             background-color: #fb7299;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 4px;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: bold;
         }
         QPushButton:hover {
@@ -223,11 +229,11 @@ class BilibiliDesktop(QMainWindow):
         }
         QLineEdit {
             border: 1px solid #e7e7e7;
-            padding: 8px;
+            padding: 10px;
             border-radius: 4px;
             background-color: #ffffff;
             selection-background-color: #fb7299;
-            font-size: 13px;
+            font-size: 14px;
         }
         QLineEdit:focus {
             border: 1px solid #fb7299;
@@ -237,8 +243,9 @@ class BilibiliDesktop(QMainWindow):
             border-radius: 4px;
             background-color: #e7e7e7;
             text-align: center;
-            font-size: 12px;
+            font-size: 14px;
             color: #333333;
+            min-height: 20px;
         }
         QProgressBar::chunk {
             background-color: #fb7299;
@@ -251,25 +258,28 @@ class BilibiliDesktop(QMainWindow):
             selection-background-color: #fef0f5;
             selection-color: #fb7299;
             gridline-color: #f0f0f0;
+            font-size: 14px;
         }
         QTableWidget::item {
-            padding: 5px;
+            padding: 8px;
         }
         QHeaderView::section {
             background-color: #f6f7f8;
             color: #61666d;
-            padding: 8px;
+            padding: 10px;
             border: none;
             border-bottom: 1px solid #e7e7e7;
             border-right: 1px solid #e7e7e7;
             font-weight: bold;
+            font-size: 14px;
         }
         QGroupBox {
             border: 1px solid #e7e7e7;
             border-radius: 6px;
-            margin-top: 20px;
+            margin-top: 25px;
             font-weight: bold;
-            padding-top: 15px;
+            padding-top: 20px;
+            font-size: 15px;
         }
         QGroupBox::title {
             subcontrol-origin: margin;
@@ -278,12 +288,13 @@ class BilibiliDesktop(QMainWindow):
             color: #333333;
         }
         QCheckBox {
-            spacing: 5px;
+            spacing: 8px;
             color: #61666d;
+            font-size: 14px;
         }
         QCheckBox::indicator {
-            width: 16px;
-            height: 16px;
+            width: 20px;
+            height: 20px;
             border: 1px solid #cccccc;
             border-radius: 3px;
             background-color: white;
@@ -299,8 +310,9 @@ class BilibiliDesktop(QMainWindow):
         QComboBox {
             border: 1px solid #e7e7e7;
             border-radius: 4px;
-            padding: 5px 10px;
+            padding: 8px 12px;
             min-width: 6em;
+            font-size: 14px;
         }
         QComboBox:hover {
             border-color: #c0c0c0;
@@ -308,7 +320,7 @@ class BilibiliDesktop(QMainWindow):
         QComboBox::drop-down {
             subcontrol-origin: padding;
             subcontrol-position: top right;
-            width: 20px;
+            width: 25px;
             border-left-width: 0px;
             border-top-right-radius: 3px;
             border-bottom-right-radius: 3px;
@@ -316,6 +328,7 @@ class BilibiliDesktop(QMainWindow):
         QTextEdit {
             border: 1px solid #e7e7e7;
             border-radius: 4px;
+            font-size: 13px;
         }
         """
         self.setStyleSheet(style)

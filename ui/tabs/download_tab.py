@@ -58,11 +58,13 @@ class DownloadTab(QWidget):
         progress_layout.addLayout(audio_layout)
         
         # 合并进度
-        merge_layout = QHBoxLayout()
+        self.merge_container = QWidget()
+        merge_layout = QHBoxLayout(self.merge_container)
+        merge_layout.setContentsMargins(0, 0, 0, 0)
         merge_layout.addWidget(QLabel("合并:"))
         self.merge_progress = QProgressBar()
         merge_layout.addWidget(self.merge_progress)
-        progress_layout.addLayout(merge_layout)
+        progress_layout.addWidget(self.merge_container)
         
         # 弹幕进度
         self.danmaku_container = QWidget()
@@ -85,6 +87,11 @@ class DownloadTab(QWidget):
         # 默认隐藏弹幕和评论进度条
         self.danmaku_container.hide()
         self.comments_container.hide()
+        
+        # 初始化时更新进度条可见性
+        # 使用QTimer.singleShot在下一轮事件循环更新，确保SettingsTab已初始化
+        import PyQt5.QtCore as QtCore
+        QtCore.QTimer.singleShot(100, self.update_progress_visibility)
         
         # 详细信息
         info_layout = QHBoxLayout()
@@ -124,6 +131,34 @@ class DownloadTab(QWidget):
         layout.addLayout(history_layout)
         
         layout.addStretch()
+
+    def update_progress_visibility(self):
+        """根据设置更新进度条可见性"""
+        if not hasattr(self.main_window, 'settings_tab'):
+            return
+            
+        settings_tab = self.main_window.settings_tab
+        
+        # 合并进度条
+        should_merge = settings_tab.merge_check.isChecked()
+        if should_merge:
+            self.merge_container.show()
+        else:
+            self.merge_container.hide()
+            
+        # 弹幕进度条
+        download_danmaku = settings_tab.download_danmaku_check.isChecked()
+        if download_danmaku:
+            self.danmaku_container.show()
+        else:
+            self.danmaku_container.hide()
+            
+        # 评论进度条
+        download_comments = settings_tab.download_comments_check.isChecked()
+        if download_comments:
+            self.comments_container.show()
+        else:
+            self.comments_container.hide()
 
     def download_video(self, title=None):
         """下载视频"""
@@ -168,25 +203,11 @@ class DownloadTab(QWidget):
         settings_tab = self.main_window.settings_tab
         should_merge = settings_tab.merge_check.isChecked()
         
-        # 控制弹幕和评论进度条的显示
-        download_danmaku = settings_tab.download_danmaku_check.isChecked()
-        download_comments = settings_tab.download_comments_check.isChecked()
-        
-        if download_danmaku:
-            self.danmaku_container.show()
-        else:
-            self.danmaku_container.hide()
-            
-        if download_comments:
-            self.comments_container.show()
-        else:
-            self.comments_container.hide()
+        # 确保UI状态与设置一致
+        self.update_progress_visibility()
         
         if not should_merge:
             self.main_window.log_to_console("已设置不合并视频和音频，将保留原始文件", "info")
-            # 如果不合并，直接将合并进度条设置为100%
-            self.merge_progress.setValue(100)
-            self.set_progress_bar_style(self.merge_progress, "success")
         
         # 创建并启动工作线程
         params = {

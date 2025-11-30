@@ -304,13 +304,14 @@ class BilibiliLoginWindow(QMainWindow):
     def init_ui(self):
         """初始化UI"""
         self.setWindowTitle("哔哩哔哩账号登录")
-        self.setMinimumSize(400, 550)
-        self.setFixedSize(400, 550)
+        self.setMinimumSize(450, 600)
+        self.setFixedSize(450, 600)
         
         # 设置样式
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #ffffff;
+                font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
             }
             QGroupBox {
                 border: none;
@@ -325,13 +326,14 @@ class BilibiliLoginWindow(QMainWindow):
                 padding: 0 5px;
             }
             QPushButton {
-                border-radius: 18px;
+                border-radius: 20px;
                 font-weight: bold;
-                font-size: 14px;
-                padding: 8px 15px;
+                font-size: 15px;
+                padding: 10px 20px;
             }
             QLabel {
                 color: #333333;
+                font-size: 14px;
             }
         """)
         
@@ -339,13 +341,13 @@ class BilibiliLoginWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(30, 30, 30, 30)
-        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(35, 35, 35, 35)
+        main_layout.setSpacing(25)
         
         # 顶部标题
         title_label = QLabel("扫码登录")
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #fb7299;")
+        title_label.setStyleSheet("font-size: 26px; font-weight: bold; color: #fb7299;")
         main_layout.addWidget(title_label)
         
         # 二维码区域容器 (卡片式设计)
@@ -353,19 +355,19 @@ class BilibiliLoginWindow(QMainWindow):
         qr_card.setStyleSheet("""
             QFrame {
                 background-color: #f9f9f9;
-                border-radius: 10px;
+                border-radius: 12px;
                 border: 1px solid #eeeeee;
             }
         """)
         qr_card_layout = QVBoxLayout(qr_card)
-        qr_card_layout.setContentsMargins(20, 20, 20, 20)
+        qr_card_layout.setContentsMargins(25, 25, 25, 25)
         
         # 二维码显示
         self.qr_label = QLabel("请点击获取二维码")
         self.qr_label.setAlignment(Qt.AlignCenter)
-        self.qr_label.setFixedSize(200, 200)  # 保持正方形
+        self.qr_label.setFixedSize(220, 220)  # 保持正方形
         self.qr_label.setScaledContents(True)
-        self.qr_label.setStyleSheet("background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 5px;")
+        self.qr_label.setStyleSheet("background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px;")
         
         # 居中显示二维码
         qr_container = QHBoxLayout()
@@ -376,7 +378,7 @@ class BilibiliLoginWindow(QMainWindow):
         
         self.qr_status_label = QLabel("等待获取二维码...")
         self.qr_status_label.setAlignment(Qt.AlignCenter)
-        self.qr_status_label.setStyleSheet("color: #666666; margin-top: 10px; font-size: 12px; border: none;")
+        self.qr_status_label.setStyleSheet("color: #666666; margin-top: 12px; font-size: 14px; border: none;")
         qr_card_layout.addWidget(self.qr_status_label)
         
         main_layout.addWidget(qr_card)
@@ -388,12 +390,12 @@ class BilibiliLoginWindow(QMainWindow):
             "3. 在手机上确认登录"
         )
         info_text.setAlignment(Qt.AlignCenter)
-        info_text.setStyleSheet("color: #999999; font-size: 13px; line-height: 1.5;")
+        info_text.setStyleSheet("color: #999999; font-size: 14px; line-height: 1.6;")
         main_layout.addWidget(info_text)
         
         # 按钮区域
         button_layout = QVBoxLayout()
-        button_layout.setSpacing(15)
+        button_layout.setSpacing(18)
         
         # 保存账号信息勾选框
         self.save_info_check = QCheckBox("保存账号信息(下次自动登录)")
@@ -402,18 +404,18 @@ class BilibiliLoginWindow(QMainWindow):
         self.save_info_check.setStyleSheet("""
             QCheckBox {
                 color: #666666; 
-                font-size: 13px;
+                font-size: 14px;
             }
             QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
+                width: 20px;
+                height: 20px;
             }
             QCheckBox::indicator:checked {
                 image: url(resource/checkbox_checked.png);
             }
         """)
         # 由于可能没有自定义图标，这里先使用默认样式或者简单的颜色样式
-        self.save_info_check.setStyleSheet("QCheckBox { color: #666666; font-size: 13px; }")
+        self.save_info_check.setStyleSheet("QCheckBox { color: #666666; font-size: 14px; }")
         button_layout.addWidget(self.save_info_check, alignment=Qt.AlignCenter)
         
         self.get_qr_btn = QPushButton("获取二维码")
@@ -434,7 +436,7 @@ class BilibiliLoginWindow(QMainWindow):
                 background-color: #cccccc;
             }
         """)
-        self.get_qr_btn.setFixedHeight(40)
+        self.get_qr_btn.setFixedHeight(45)
         self.get_qr_btn.clicked.connect(self.start_qr_login)
         button_layout.addWidget(self.get_qr_btn)
         
@@ -453,7 +455,7 @@ class BilibiliLoginWindow(QMainWindow):
                 background-color: #d0d0d0;
             }
         """)
-        self.close_btn.setFixedHeight(40)
+        self.close_btn.setFixedHeight(45)
         self.close_btn.clicked.connect(self.close)
         button_layout.addWidget(self.close_btn)
         
