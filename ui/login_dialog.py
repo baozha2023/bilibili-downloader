@@ -317,7 +317,7 @@ class BilibiliLoginWindow(QMainWindow):
                 border: none;
                 font-weight: bold;
                 color: #fb7299;
-                font-size: 16px;
+                font-size: 24px;
                 margin-top: 10px;
             }
             QGroupBox::title {
@@ -328,12 +328,12 @@ class BilibiliLoginWindow(QMainWindow):
             QPushButton {
                 border-radius: 20px;
                 font-weight: bold;
-                font-size: 15px;
+                font-size: 23px;
                 padding: 10px 20px;
             }
             QLabel {
                 color: #333333;
-                font-size: 14px;
+                font-size: 22px;
             }
         """)
         
@@ -347,7 +347,7 @@ class BilibiliLoginWindow(QMainWindow):
         # 顶部标题
         title_label = QLabel("扫码登录")
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 26px; font-weight: bold; color: #fb7299;")
+        title_label.setStyleSheet("font-size: 34px; font-weight: bold; color: #fb7299;")
         main_layout.addWidget(title_label)
         
         # 二维码区域容器 (卡片式设计)
@@ -378,20 +378,21 @@ class BilibiliLoginWindow(QMainWindow):
         
         self.qr_status_label = QLabel("等待获取二维码...")
         self.qr_status_label.setAlignment(Qt.AlignCenter)
-        self.qr_status_label.setStyleSheet("color: #666666; margin-top: 12px; font-size: 14px; border: none;")
-        qr_card_layout.addWidget(self.qr_status_label)
+        self.qr_status_label.setStyleSheet("color: #666666; margin-top: 12px; font-size: 22px; border: none;")
+        # 用户要求移除该组件显示，因为它挡住了二维码
+        # qr_card_layout.addWidget(self.qr_status_label) 
         
         main_layout.addWidget(qr_card)
         
         # 操作说明
-        info_text = QLabel(
+        self.info_text = QLabel(
             "1. 打开哔哩哔哩APP\n"
             "2. 扫描上方二维码\n"
             "3. 在手机上确认登录"
         )
-        info_text.setAlignment(Qt.AlignCenter)
-        info_text.setStyleSheet("color: #999999; font-size: 14px; line-height: 1.6;")
-        main_layout.addWidget(info_text)
+        self.info_text.setAlignment(Qt.AlignCenter)
+        self.info_text.setStyleSheet("color: #999999; font-size: 22px; line-height: 1.6;")
+        main_layout.addWidget(self.info_text)
         
         # 按钮区域
         button_layout = QVBoxLayout()
@@ -404,18 +405,18 @@ class BilibiliLoginWindow(QMainWindow):
         self.save_info_check.setStyleSheet("""
             QCheckBox {
                 color: #666666; 
-                font-size: 14px;
+                font-size: 22px;
             }
             QCheckBox::indicator {
-                width: 20px;
-                height: 20px;
+                width: 24px;
+                height: 24px;
             }
             QCheckBox::indicator:checked {
                 image: url(resource/checkbox_checked.png);
             }
         """)
         # 由于可能没有自定义图标，这里先使用默认样式或者简单的颜色样式
-        self.save_info_check.setStyleSheet("QCheckBox { color: #666666; font-size: 14px; }")
+        self.save_info_check.setStyleSheet("QCheckBox { color: #666666; font-size: 22px; }")
         button_layout.addWidget(self.save_info_check, alignment=Qt.AlignCenter)
         
         self.get_qr_btn = QPushButton("获取二维码")
@@ -488,7 +489,7 @@ class BilibiliLoginWindow(QMainWindow):
         message = data.get("message", "")
         
         # 更新状态文本
-        self.qr_status_label.setText(message)
+        # self.qr_status_label.setText(message)
         
         if status == "qr_ready":
             # 显示二维码
@@ -498,23 +499,25 @@ class BilibiliLoginWindow(QMainWindow):
                 self.qr_label.setPixmap(qr_img)
                 logger.info(f"已显示二维码，尺寸: {qr_img.width()}x{qr_img.height()}")
                 self.get_qr_btn.setText("刷新二维码")
+                self.info_text.setText("请使用哔哩哔哩APP扫码")
+                self.info_text.setStyleSheet("color: #333333; font-size: 22px; line-height: 1.6; font-weight: bold;")
                 
                 # 添加简单的淡入动画效果 (模拟)
                 self.qr_label.setGraphicsEffect(None) # 清除旧效果
             else:
                 logger.error("二维码图像无效，无法显示")
-                self.qr_status_label.setText("获取二维码失败，请重试")
-                self.qr_status_label.setStyleSheet("color: #ff4d4f; border: none; margin-top: 10px; font-size: 12px;")
+                self.info_text.setText("获取二维码失败，请重试")
+                self.info_text.setStyleSheet("color: #ff4d4f; font-size: 22px; line-height: 1.6;")
                 self.get_qr_btn.setEnabled(True)
                 self.get_qr_btn.setText("获取二维码")
         elif status == "scanned":
             # 二维码已扫描
-            self.qr_status_label.setText("已扫描，请在手机上确认登录")
-            self.qr_status_label.setStyleSheet("color: #1890ff; border: none; margin-top: 10px; font-size: 12px;")
+            self.info_text.setText("已扫描，请在手机上确认登录")
+            self.info_text.setStyleSheet("color: #1890ff; font-size: 22px; line-height: 1.6; font-weight: bold;")
         elif status == "success":
             # 登录成功
-            self.qr_status_label.setText("登录成功！")
-            self.qr_status_label.setStyleSheet("color: #52c41a; border: none; margin-top: 10px; font-size: 12px;")
+            self.info_text.setText("登录成功！")
+            self.info_text.setStyleSheet("color: #52c41a; font-size: 24px; line-height: 1.6; font-weight: bold;")
             
             # 保存cookies
             self.cookies = data.get("data", {}).get("cookies", {})
@@ -537,20 +540,20 @@ class BilibiliLoginWindow(QMainWindow):
             QTimer.singleShot(1000, self.close)
         elif status == "expired":
             # 二维码过期
-            self.qr_status_label.setText("二维码已过期，请重新获取")
-            self.qr_status_label.setStyleSheet("color: #ff4d4f; border: none; margin-top: 10px; font-size: 12px;")
+            self.info_text.setText("二维码已过期，请重新获取")
+            self.info_text.setStyleSheet("color: #ff4d4f; font-size: 22px; line-height: 1.6;")
             self.get_qr_btn.setEnabled(True)
             self.get_qr_btn.setText("刷新二维码")
         elif status == "timeout":
             # 登录超时
-            self.qr_status_label.setText("登录超时，请重试")
-            self.qr_status_label.setStyleSheet("color: #ff4d4f; border: none; margin-top: 10px; font-size: 12px;")
+            self.info_text.setText("登录超时，请重试")
+            self.info_text.setStyleSheet("color: #ff4d4f; font-size: 22px; line-height: 1.6;")
             self.get_qr_btn.setEnabled(True)
             self.get_qr_btn.setText("刷新二维码")
         elif status == "error":
             # 登录出错
-            self.qr_status_label.setText(f"登录出错：{message}")
-            self.qr_status_label.setStyleSheet("color: #ff4d4f; border: none; margin-top: 10px; font-size: 12px;")
+            self.info_text.setText(f"登录出错：{message}")
+            self.info_text.setStyleSheet("color: #ff4d4f; font-size: 22px; line-height: 1.6;")
             self.get_qr_btn.setEnabled(True)
             self.get_qr_btn.setText("重试")
     

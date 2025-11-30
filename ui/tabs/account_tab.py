@@ -43,12 +43,12 @@ class AccountTab(QWidget):
         
         not_logged_label = QLabel("您尚未登录B站账号")
         not_logged_label.setAlignment(Qt.AlignCenter)
-        not_logged_label.setStyleSheet("font-size: 14px; margin: 20px;")
+        not_logged_label.setStyleSheet("font-size: 22px; margin: 20px;")
         not_logged_layout.addWidget(not_logged_label)
         
         login_btn = QPushButton("登录账号")
         login_btn.setCursor(Qt.PointingHandCursor)
-        login_btn.setStyleSheet("background-color: #00a1d6; color: white; font-weight: bold; padding: 8px 15px;")
+        login_btn.setStyleSheet("background-color: #00a1d6; color: white; font-weight: bold; padding: 8px 15px; font-size: 22px;")
         login_btn.clicked.connect(self.open_login_window)
         not_logged_layout.addWidget(login_btn, alignment=Qt.AlignCenter)
         
@@ -84,7 +84,7 @@ class AccountTab(QWidget):
         user_details_layout = QVBoxLayout()
         
         self.account_name = QLabel("用户名")
-        self.account_name.setStyleSheet("font-size: 16px; font-weight: bold;")
+        self.account_name.setStyleSheet("font-size: 24px; font-weight: bold;")
         user_details_layout.addWidget(self.account_name)
         
         self.account_uid = QLabel("UID: --")

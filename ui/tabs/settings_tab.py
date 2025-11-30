@@ -24,7 +24,21 @@ class SettingsTab(QWidget):
         
         # --- 1. 基本设置分组 ---
         basic_group = QGroupBox("基本设置")
-        basic_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }")
+        basic_group.setStyleSheet("""
+            QGroupBox { 
+                font-weight: bold; 
+                font-size: 28px; 
+                margin-top: 12px; 
+            } 
+            QGroupBox::title { 
+                subcontrol-origin: margin; 
+                subcontrol-position: top left; 
+                padding: 0 5px; 
+            }
+            QLabel, QLineEdit, QSpinBox, QCheckBox, QComboBox {
+                font-size: 24px;
+            }
+        """)
         basic_layout = QGridLayout(basic_group)
         basic_layout.setVerticalSpacing(15)
         basic_layout.setHorizontalSpacing(15)
@@ -52,7 +66,21 @@ class SettingsTab(QWidget):
         
         # --- 2. 下载设置分组 ---
         download_group = QGroupBox("下载设置")
-        download_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 14px; margin-top: 10px; } QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; padding: 0 5px; }")
+        download_group.setStyleSheet("""
+            QGroupBox { 
+                font-weight: bold; 
+                font-size: 28px; 
+                margin-top: 12px; 
+            } 
+            QGroupBox::title { 
+                subcontrol-origin: margin; 
+                subcontrol-position: top left; 
+                padding: 0 5px; 
+            }
+            QLabel, QCheckBox, QComboBox {
+                font-size: 24px;
+            }
+        """)
         download_layout = QGridLayout(download_group)
         download_layout.setVerticalSpacing(15)
         download_layout.setHorizontalSpacing(15)
@@ -114,7 +142,7 @@ class SettingsTab(QWidget):
         save_btn.setStyleSheet("""
             QPushButton {
                 font-weight: bold; 
-                font-size: 16px; 
+                font-size: 30px; 
                 background-color: #fb7299; 
                 color: white; 
                 border-radius: 6px;

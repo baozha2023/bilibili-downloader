@@ -17,7 +17,15 @@ class DownloadTab(QWidget):
         
         # 输入区域
         input_group = QGroupBox("下载选项")
-        input_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        input_group.setStyleSheet("""
+            QGroupBox { 
+                font-weight: bold; 
+                font-size: 28px; 
+            }
+            QLabel, QLineEdit {
+                font-size: 24px;
+            }
+        """)
         input_layout = QHBoxLayout(input_group)
         
         input_layout.addWidget(QLabel("视频BV号:"))
@@ -27,20 +35,28 @@ class DownloadTab(QWidget):
         
         self.download_btn = QPushButton("开始下载")
         self.download_btn.clicked.connect(lambda: self.download_video())
-        self.download_btn.setStyleSheet("background-color: #fb7299; color: white; font-weight: bold; padding: 5px 15px;")
+        self.download_btn.setStyleSheet("background-color: #fb7299; color: white; font-weight: bold; padding: 5px 15px; font-size: 26px;")
         input_layout.addWidget(self.download_btn)
         
         self.cancel_btn = QPushButton("取消")
         self.cancel_btn.clicked.connect(self.cancel_download)
         self.cancel_btn.setEnabled(False)
-        self.cancel_btn.setStyleSheet("background-color: #999; color: white; padding: 5px 15px;")
+        self.cancel_btn.setStyleSheet("background-color: #999; color: white; padding: 5px 15px; font-size: 26px;")
         input_layout.addWidget(self.cancel_btn)
         
         layout.addWidget(input_group)
         
         # 进度显示区域
         progress_group = QGroupBox("下载进度")
-        progress_group.setStyleSheet("QGroupBox { font-weight: bold; }")
+        progress_group.setStyleSheet("""
+            QGroupBox { 
+                font-weight: bold; 
+                font-size: 28px; 
+            }
+            QLabel, QProgressBar {
+                font-size: 24px;
+            }
+        """)
         progress_layout = QVBoxLayout(progress_group)
         
         # 视频进度

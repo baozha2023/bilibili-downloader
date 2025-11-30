@@ -45,7 +45,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v2.3")
+        self.setWindowTitle("哔哩哔哩视频下载器 v2.4")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -66,15 +66,16 @@ class BilibiliDesktop(QMainWindow):
             QTabWidget::pane {
                 border: 1px solid #cccccc;
                 background-color: #ffffff;
-                border-radius: 4px;
+                border-radius: 8px;
             }
             QTabBar::tab {
                 background-color: #e0e0e0;
                 color: #333333;
-                padding: 10px 20px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-                margin-right: 2px;
+                padding: 12px 25px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                margin-right: 4px;
+                font-size: 24px;
             }
             QTabBar::tab:selected {
                 background-color: #fb7299;
@@ -114,7 +115,7 @@ class BilibiliDesktop(QMainWindow):
         self.console_log = QTextEdit()
         self.console_log.setReadOnly(True)
         self.console_log.setMaximumHeight(150)
-        self.console_log.setStyleSheet("background-color: #1e1e1e; color: #f0f0f0; font-family: Consolas, Monospace;")
+        self.console_log.setStyleSheet("background-color: #1e1e1e; color: #f0f0f0; font-family: Consolas, Monospace; font-size: 16px;")
         log_layout.addWidget(self.console_log)
         
         # 日志控制按钮
@@ -151,14 +152,14 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v2.3"
+        version = "v2.4"
         updates = (
-            "1. 优化下载进度条逻辑：不合并时自动隐藏合并进度条\n"
-            "2. 设置变更实时响应：下载选项变更立即反馈到界面\n"
-            "3. 全局UI优化：增大字体尺寸，提升阅读体验\n"
-            "4. 登录弹窗升级：增大窗口尺寸，优化布局\n"
-            "5. 界面细节美化：增强B站风格，优化过渡动画\n"
-            "6. 代码结构重构，提升运行稳定性"
+            "1. 全局UI字体增大：所有界面字体增加8px，提升阅读体验\n"
+            "2. 登录界面优化：移除遮挡二维码的文字，调整布局\n"
+            "3. 界面美化：增强B站风格，优化过渡动画，圆角设计\n"
+            "4. 项目结构优化：清理冗余代码，提升运行效率\n"
+            "5. 修复打包Bug：解决了打包过程中找不到文件的问题\n"
+            "6. 稳定性提升：修复已知问题，优化用户体验"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
@@ -170,6 +171,7 @@ class BilibiliDesktop(QMainWindow):
         QMainWindow {
             background-color: #f6f7f8;
             font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+            font-size: 22px;
         }
         QTabWidget {
             background-color: #ffffff;
@@ -178,20 +180,20 @@ class BilibiliDesktop(QMainWindow):
         QTabWidget::pane {
             border: 1px solid #e7e7e7;
             background-color: #ffffff;
-            border-radius: 6px;
+            border-radius: 8px;
             top: -1px; 
         }
         QTabBar::tab {
             background-color: #f6f7f8;
             color: #61666d;
-            padding: 12px 30px;
+            padding: 15px 35px;
             border: 1px solid #e7e7e7;
             border-bottom: none;
-            border-top-left-radius: 6px;
-            border-top-right-radius: 6px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
             margin-right: 4px;
-            font-size: 16px;
-            min-width: 100px;
+            font-size: 24px;
+            min-width: 120px;
         }
         QTabBar::tab:selected {
             background-color: #ffffff;

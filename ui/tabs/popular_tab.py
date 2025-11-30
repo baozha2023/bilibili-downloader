@@ -29,6 +29,15 @@ class PopularTab(QWidget):
         # 视频列表
         self.popular_table = QTableWidget(0, 5)
         self.popular_table.setHorizontalHeaderLabels(["标题", "UP主", "播放量", "点赞", "BV号"])
+        self.popular_table.setStyleSheet("""
+            QTableWidget {
+                font-size: 20px;
+            }
+            QHeaderView::section {
+                font-size: 20px;
+                padding: 5px;
+            }
+        """)
         # 设置第一列自动拉伸
         header = self.popular_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
