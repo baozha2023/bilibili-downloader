@@ -113,21 +113,6 @@ class AccountTab(QWidget):
         
         logged_layout.addLayout(user_info_layout)
         
-        # 会员特权信息
-        vip_group = QGroupBox("会员特权")
-        vip_layout = QVBoxLayout(vip_group)
-        
-        self.vip_info = QLabel(
-            "当前权益：\n"
-            "• 支持下载 1080P 及以下清晰度视频\n"
-            "• 支持导出视频弹幕和评论\n\n"
-            "开通大会员可解锁 4K/1080P+ 画质及专属视频下载"
-        )
-        self.vip_info.setWordWrap(True)
-        vip_layout.addWidget(self.vip_info)
-        
-        logged_layout.addWidget(vip_group)
-        
         # 收藏夹和历史记录
         tabs_group = QGroupBox("我的内容")
         tabs_layout = QVBoxLayout(tabs_group)
@@ -217,30 +202,12 @@ class AccountTab(QWidget):
             # status 1 为有效，0 为过期/无效
             if vip_type == 0 or vip_status != 1:
                 self.account_vip.setText("会员状态: 非会员")
-                self.vip_info.setText(
-                    "当前权益：\n"
-                    "• 支持下载 1080P 及以下清晰度视频\n"
-                    "• 支持导出视频弹幕和评论\n\n"
-                    "开通大会员可解锁 4K/1080P+ 画质及专属视频下载"
-                )
             elif vip_type == 1:
                 self.account_vip.setText("会员状态: 大会员")
                 self.account_vip.setStyleSheet("color: #FB7299;")
-                self.vip_info.setText(
-                    "尊贵的大会员权益：\n"
-                    "• 支持下载 4K/1080P+ 及所有清晰度视频\n"
-                    "• 支持下载大会员专属视频\n"
-                    "• 支持导出视频弹幕和评论"
-                )
             elif vip_type == 2:
                 self.account_vip.setText("会员状态: 年度大会员")
                 self.account_vip.setStyleSheet("color: #FB7299; font-weight: bold;")
-                self.vip_info.setText(
-                    "尊贵的年度大会员权益：\n"
-                    "• 支持下载 4K/1080P+ 及所有清晰度视频\n"
-                    "• 支持下载大会员专属视频\n"
-                    "• 支持导出视频弹幕和评论"
-                )
             
             face_url = user_info.get("face", "")
             if face_url:

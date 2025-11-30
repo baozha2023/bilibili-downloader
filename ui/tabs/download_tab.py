@@ -236,7 +236,16 @@ class DownloadTab(QWidget):
             # 计算下载速度
             if elapsed_time > 0 and progress_type != "merge":
                 speed = current / elapsed_time
-                formatted_speed = self.format_size(speed) + "/s"
+                # 确保速度只保留两位小数
+                if speed < 1024:
+                    formatted_speed = f"{speed:.2f} B/s"
+                elif speed < 1024 * 1024:
+                    formatted_speed = f"{speed/1024:.2f} KB/s"
+                elif speed < 1024 * 1024 * 1024:
+                    formatted_speed = f"{speed/(1024*1024):.2f} MB/s"
+                else:
+                    formatted_speed = f"{speed/(1024*1024*1024):.2f} GB/s"
+                
                 self.download_speed_label.setText(f"速度: {formatted_speed}")
                 
                 if speed > 0:

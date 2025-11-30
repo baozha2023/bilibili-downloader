@@ -47,12 +47,10 @@ class BilibiliDesktop(QMainWindow):
             config_dir = os.path.join(self.crawler.data_dir, 'config')
             login_config_path = os.path.join(config_dir, "login_config.json")
             
-            # 注意：通常不应该在关闭时删除登录信息，除非是临时会话
-            # 这里保留原有逻辑，但建议注释掉，以免每次都要登录
-            # if os.path.exists(login_config_path):
-            #     os.remove(login_config_path)
-            #     print("已清除登录信息")
-            pass
+            # 退出时清除登录信息
+            if os.path.exists(login_config_path):
+                os.remove(login_config_path)
+                print("已清除登录信息")
         except Exception as e:
             print(f"清除登录信息失败: {e}")
             
@@ -60,7 +58,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v2.0")
+        self.setWindowTitle("哔哩哔哩视频下载器 v2.1")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -76,6 +74,30 @@ class BilibiliDesktop(QMainWindow):
         
         # 标签页
         self.tabs = QTabWidget()
+        # 添加过渡动画效果
+        self.tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #cccccc;
+                background-color: #ffffff;
+                border-radius: 4px;
+            }
+            QTabBar::tab {
+                background-color: #e0e0e0;
+                color: #333333;
+                padding: 10px 20px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                margin-right: 2px;
+            }
+            QTabBar::tab:selected {
+                background-color: #fb7299;
+                color: white;
+                font-weight: bold;
+            }
+            QTabBar::tab:hover {
+                background-color: #ffb3cf;
+            }
+        """)
         main_layout.addWidget(self.tabs)
         
         # 创建各个标签页
@@ -137,13 +159,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v2.0"
+        version = "v2.1"
         updates = (
-            "1. 重构代码结构，提升运行稳定性\n"
-            "2. 优化登录弹窗，修复二维码显示问题\n"
-            "3. 移除冗余功能描述，界面更简洁\n"
-            "4. 优化下载流程和进度显示\n"
-            "5. 修复已知BUG，提升用户体验"
+            "1. 界面全新升级，更美观、更流畅\n"
+            "2. 登录弹窗重构，完美适配B站风格\n"
+            "3. 优化账号界面，内容展示更直观\n"
+            "4. 退出软件自动清除登录信息，保护隐私\n"
+            "5. 下载速度显示优化，精确到小数点后两位"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
