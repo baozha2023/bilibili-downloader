@@ -210,8 +210,8 @@ class QRCodeLoginThread(QThread):
                 return None
                 
             # 缩放以适应控件大小，保持清晰度
-            if pixmap.width() > 250:
-                pixmap = pixmap.scaled(250, 250, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            if pixmap.width() > 350:
+                pixmap = pixmap.scaled(350, 350, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 
             logger.info(f"二维码生成成功，尺寸: {pixmap.width()}x{pixmap.height()}")
             return pixmap
@@ -299,7 +299,7 @@ class BilibiliLoginWindow(QMainWindow):
     def init_ui(self):
         """初始化UI"""
         self.setWindowTitle("哔哩哔哩账号登录")
-        self.setMinimumSize(400, 500)
+        self.setMinimumSize(500, 600)
         
         # 主布局
         central_widget = QWidget()
@@ -313,8 +313,8 @@ class BilibiliLoginWindow(QMainWindow):
         # 二维码显示
         self.qr_label = QLabel("请点击获取二维码")
         self.qr_label.setAlignment(Qt.AlignCenter)
-        self.qr_label.setMinimumSize(200, 200)
-        self.qr_label.setFixedSize(200, 200)
+        self.qr_label.setMinimumSize(300, 300)
+        self.qr_label.setFixedSize(300, 300)
         self.qr_label.setScaledContents(True)
         self.qr_label.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ddd; margin: 0 auto;")
         

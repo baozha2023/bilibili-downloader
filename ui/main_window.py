@@ -42,10 +42,26 @@ class BilibiliDesktop(QMainWindow):
         
         # 显示更新公告
         QTimer.singleShot(500, self.show_update_dialog)
+
+    def closeEvent(self, event):
+        """关闭窗口事件"""
+        # 清除登录信息
+        try:
+            # 获取配置文件路径
+            config_dir = os.path.join(self.crawler.data_dir, 'config')
+            login_config_path = os.path.join(config_dir, "login_config.json")
+            
+            if os.path.exists(login_config_path):
+                os.remove(login_config_path)
+                print("已清除登录信息")
+        except Exception as e:
+            print(f"清除登录信息失败: {e}")
+            
+        event.accept()
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v1.7")
+        self.setWindowTitle("哔哩哔哩视频下载器 v1.8")
         self.setMinimumSize(1000, 700)
         
         # 主布局
@@ -482,7 +498,7 @@ class BilibiliDesktop(QMainWindow):
         # 关于信息
         layout.addStretch()
         about_layout = QVBoxLayout()
-        about_layout.addWidget(QLabel("哔哩哔哩视频下载器 v1.7"))
+        about_layout.addWidget(QLabel("哔哩哔哩视频下载器 v1.8"))
         about_layout.addWidget(QLabel("基于Python开发"))
         
         # 添加更新日志 - 已移除
@@ -490,13 +506,14 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v1.7"
+        version = "v1.8"
         updates = (
-            "1. 优化设置界面布局，移除冗余选项\n"
-            "2. 新增启动弹窗，显示版本更新内容\n"
-            "3. 修复收藏夹时间显示问题\n"
-            "4. 优化分辨率选择，根据用户权益智能显示\n"
-            "5. 界面细节调整与性能优化"
+            "1. 修复登录后分辨率选项不显示1080p及大会员4K选项的问题\n"
+            "2. 调整登录弹窗大小，解决二维码变形问题\n"
+            "3. 调整启动弹窗大小，优化阅读体验\n"
+            "4. 新增退出软件时自动清除登录信息的功能，提升安全性\n"
+            "5. 优化设置功能，确保所有选项正确生效\n"
+            "6. 界面细节调整与性能优化"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
@@ -1012,17 +1029,31 @@ class BilibiliDesktop(QMainWindow):
         qualities = ["720p", "480p", "360p"]
         
         # 登录用户 (非会员)
+        # 只要有cookies就算登录，不必严格依赖account_status文本
+        is_logged_in = False
+        if hasattr(self, 'crawler') and hasattr(self.crawler, 'cookies') and self.crawler.cookies:
+            if "SESSDATA" in self.crawler.cookies:
+                is_logged_in = True
+        
+        # 也可以检查account_stack的index
+        if self.account_stack.currentIndex() == 1:
+            is_logged_in = True
+
+        # 大会员判断: type > 0 通常表示是会员 (1:月度, 2:年度)
+        # vip_status 1 表示有效
         is_vip = (vip_type > 0 and vip_status == 1)
         
         # 只要登录了就可以尝试1080p (qn=80)
-        # 这里简单判断只要有用户信息就算登录了
-        if self.account_status.text() == "已登录" or self.account_status.text() == "账号信息获取成功":
-             qualities.insert(0, "1080p")
+        if is_logged_in:
+             if "1080p" not in qualities:
+                qualities.insert(0, "1080p")
              
         # 大会员
         if is_vip:
-            qualities.insert(0, "1080p+")
-            qualities.insert(0, "4k")
+            if "1080p+" not in qualities:
+                qualities.insert(0, "1080p+")
+            if "4k" not in qualities:
+                qualities.insert(0, "4k")
             
         self.quality_combo.addItems(qualities)
         

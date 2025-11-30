@@ -6,7 +6,7 @@ class UpdateDialog(QDialog):
     def __init__(self, version, updates, parent=None):
         super().__init__(parent)
         self.setWindowTitle("更新公告")
-        self.setFixedSize(400, 300)
+        self.setFixedSize(500, 400)
         self.setWindowFlags(Qt.Dialog | Qt.FramelessWindowHint)  # 无边框
         
         self.countdown = 5
