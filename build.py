@@ -3,7 +3,7 @@
 
 """
 哔哩哔哩视频下载器打包脚本
-版本: 1.4
+版本: 2.0
 """
 
 import os
@@ -48,6 +48,11 @@ def build_executable():
         '--hidden-import=ui.main_window',
         '--hidden-import=ui.workers',
         '--hidden-import=ui.login_dialog',
+        '--hidden-import=ui.update_dialog',
+        '--hidden-import=ui.tabs.download_tab',
+        '--hidden-import=ui.tabs.popular_tab',
+        '--hidden-import=ui.tabs.account_tab',
+        '--hidden-import=ui.tabs.settings_tab',
         'main.py'
     ]
     
@@ -119,7 +124,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v1.4_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v2.0_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -163,7 +168,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  哔哩哔哩视频下载器打包工具 v1.4")
+    print("  哔哩哔哩视频下载器打包工具 v2.0")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -188,11 +193,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v1.4 更新内容:")
-    print("- 重构代码结构，模块化设计 (Network, API, Downloader, Processor)")
-    print("- 新增实验性去水印功能")
-    print("- 优化UI界面和错误处理")
-    print("- 修复已知问题，提升稳定性")
+    print("\n新版本 v2.0 更新内容:")
+    print("- 重构代码结构，提升运行稳定性")
+    print("- 优化登录弹窗，修复二维码显示问题")
+    print("- 移除冗余功能描述，界面更简洁")
+    print("- 优化下载流程和进度显示")
+    print("- 修复已知BUG，提升用户体验")
 
 if __name__ == "__main__":
     main() 

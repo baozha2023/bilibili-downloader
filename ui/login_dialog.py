@@ -528,7 +528,7 @@ class BilibiliLoginWindow(QMainWindow):
             self.qr_login_thread.wait()
             
         # 保存配置
-        if self.save_config_check.isChecked() and self.cookies:
+        if self.cookies:
             self.save_config()
         
         # 通知主窗口登录状态变化
