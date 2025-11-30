@@ -395,6 +395,27 @@ class BilibiliLoginWindow(QMainWindow):
         button_layout = QVBoxLayout()
         button_layout.setSpacing(15)
         
+        # 保存账号信息勾选框
+        self.save_info_check = QCheckBox("保存账号信息(下次自动登录)")
+        self.save_info_check.setChecked(True)
+        self.save_info_check.setCursor(Qt.PointingHandCursor)
+        self.save_info_check.setStyleSheet("""
+            QCheckBox {
+                color: #666666; 
+                font-size: 13px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QCheckBox::indicator:checked {
+                image: url(resource/checkbox_checked.png);
+            }
+        """)
+        # 由于可能没有自定义图标，这里先使用默认样式或者简单的颜色样式
+        self.save_info_check.setStyleSheet("QCheckBox { color: #666666; font-size: 13px; }")
+        button_layout.addWidget(self.save_info_check, alignment=Qt.AlignCenter)
+        
         self.get_qr_btn = QPushButton("获取二维码")
         self.get_qr_btn.setCursor(Qt.PointingHandCursor)
         self.get_qr_btn.setStyleSheet("""
@@ -498,7 +519,10 @@ class BilibiliLoginWindow(QMainWindow):
             
             # 保存配置
             if self.cookies:
-                self.save_config()
+                if self.save_info_check.isChecked():
+                    self.save_config()
+                else:
+                    self.clear_saved_config()
                 
             # 通知主窗口登录状态变化
             if self.finished_signal:
@@ -568,6 +592,15 @@ class BilibiliLoginWindow(QMainWindow):
             logger.info("配置已保存")
         except Exception as e:
             logger.error(f"保存配置失败: {str(e)}")
+
+    def clear_saved_config(self):
+        """清除保存的配置"""
+        try:
+            if os.path.exists(self.config_file):
+                os.remove(self.config_file)
+                logger.info("已清除保存的配置")
+        except Exception as e:
+            logger.error(f"清除配置失败: {str(e)}")
             
     def load_config(self):
         """加载配置"""

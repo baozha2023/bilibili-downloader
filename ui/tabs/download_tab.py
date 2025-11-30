@@ -64,6 +64,28 @@ class DownloadTab(QWidget):
         merge_layout.addWidget(self.merge_progress)
         progress_layout.addLayout(merge_layout)
         
+        # 弹幕进度
+        self.danmaku_container = QWidget()
+        danmaku_layout = QHBoxLayout(self.danmaku_container)
+        danmaku_layout.setContentsMargins(0, 0, 0, 0)
+        danmaku_layout.addWidget(QLabel("弹幕:"))
+        self.danmaku_progress = QProgressBar()
+        danmaku_layout.addWidget(self.danmaku_progress)
+        progress_layout.addWidget(self.danmaku_container)
+        
+        # 评论进度
+        self.comments_container = QWidget()
+        comments_layout = QHBoxLayout(self.comments_container)
+        comments_layout.setContentsMargins(0, 0, 0, 0)
+        comments_layout.addWidget(QLabel("评论:"))
+        self.comments_progress = QProgressBar()
+        comments_layout.addWidget(self.comments_progress)
+        progress_layout.addWidget(self.comments_container)
+        
+        # 默认隐藏弹幕和评论进度条
+        self.danmaku_container.hide()
+        self.comments_container.hide()
+        
         # 详细信息
         info_layout = QHBoxLayout()
         self.download_status = QLabel("就绪")
@@ -146,6 +168,20 @@ class DownloadTab(QWidget):
         settings_tab = self.main_window.settings_tab
         should_merge = settings_tab.merge_check.isChecked()
         
+        # 控制弹幕和评论进度条的显示
+        download_danmaku = settings_tab.download_danmaku_check.isChecked()
+        download_comments = settings_tab.download_comments_check.isChecked()
+        
+        if download_danmaku:
+            self.danmaku_container.show()
+        else:
+            self.danmaku_container.hide()
+            
+        if download_comments:
+            self.comments_container.show()
+        else:
+            self.comments_container.hide()
+        
         if not should_merge:
             self.main_window.log_to_console("已设置不合并视频和音频，将保留原始文件", "info")
             # 如果不合并，直接将合并进度条设置为100%
@@ -216,6 +252,10 @@ class DownloadTab(QWidget):
                 self.audio_progress.setValue(100)
             elif progress_type == "merge":
                 self.merge_progress.setValue(100)
+            elif progress_type == "danmaku":
+                self.danmaku_progress.setValue(100)
+            elif progress_type == "comments":
+                self.comments_progress.setValue(100)
             return
         
         if total > 0:
@@ -227,6 +267,10 @@ class DownloadTab(QWidget):
                 self.audio_progress.setValue(progress)
             elif progress_type == "merge":
                 self.merge_progress.setValue(progress)
+            elif progress_type == "danmaku":
+                self.danmaku_progress.setValue(progress)
+            elif progress_type == "comments":
+                self.comments_progress.setValue(progress)
             
             # 格式化大小显示
             formatted_current = self.format_size(current)
@@ -270,6 +314,8 @@ class DownloadTab(QWidget):
         self.video_progress.setValue(100)
         self.audio_progress.setValue(100)
         self.merge_progress.setValue(100)
+        self.danmaku_progress.setValue(100)
+        self.comments_progress.setValue(100)
         
         if result["status"] == "success" or result["status"] == "warning":
             success_message = f"下载完成！用时: {formatted_time}"
@@ -325,6 +371,14 @@ class DownloadTab(QWidget):
         self.merge_progress.setMaximum(100)
         self.merge_progress.setValue(0)
         self.set_progress_bar_style(self.merge_progress, "normal")
+        
+        self.danmaku_progress.setMaximum(100)
+        self.danmaku_progress.setValue(0)
+        self.set_progress_bar_style(self.danmaku_progress, "normal")
+        
+        self.comments_progress.setMaximum(100)
+        self.comments_progress.setValue(0)
+        self.set_progress_bar_style(self.comments_progress, "normal")
         
         self.download_status.setText("就绪")
         self.download_speed_label.setText("速度: 0 B/s")

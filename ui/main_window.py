@@ -41,24 +41,11 @@ class BilibiliDesktop(QMainWindow):
 
     def closeEvent(self, event):
         """关闭窗口事件"""
-        # 清除登录信息
-        try:
-            # 获取配置文件路径
-            config_dir = os.path.join(self.crawler.data_dir, 'config')
-            login_config_path = os.path.join(config_dir, "login_config.json")
-            
-            # 退出时清除登录信息
-            if os.path.exists(login_config_path):
-                os.remove(login_config_path)
-                print("已清除登录信息")
-        except Exception as e:
-            print(f"清除登录信息失败: {e}")
-            
         event.accept()
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v2.1")
+        self.setWindowTitle("哔哩哔哩视频下载器 v2.2")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -159,13 +146,14 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v2.1"
+        version = "v2.2"
         updates = (
-            "1. 界面全新升级，更美观、更流畅\n"
-            "2. 登录弹窗重构，完美适配B站风格\n"
-            "3. 优化账号界面，内容展示更直观\n"
-            "4. 退出软件自动清除登录信息，保护隐私\n"
-            "5. 下载速度显示优化，精确到小数点后两位"
+            "1. 新增评论和弹幕下载进度显示，下载过程更清晰\n"
+            "2. 登录弹窗新增“保存账号信息”选项，支持自动登录\n"
+            "3. 优化登录按钮交互体验，鼠标悬停样式更自然\n"
+            "4. 升级去水印算法，更智能识别并去除水印\n"
+            "5. UI界面全面美化，增加过渡动画，贴近B站风格\n"
+            "6. 优化项目结构，提升运行稳定性"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
@@ -175,39 +163,53 @@ class BilibiliDesktop(QMainWindow):
         # 全局样式表
         style = """
         QMainWindow {
-            background-color: #f5f5f5;
+            background-color: #f6f7f8;
+            font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
         }
         QTabWidget {
             background-color: #ffffff;
+            border: none;
         }
         QTabWidget::pane {
-            border: 1px solid #cccccc;
+            border: 1px solid #e7e7e7;
             background-color: #ffffff;
-            border-radius: 4px;
+            border-radius: 6px;
+            top: -1px; 
         }
         QTabBar::tab {
-            background-color: #e0e0e0;
-            color: #333333;
-            padding: 8px 15px;
-            border: 1px solid #cccccc;
+            background-color: #f6f7f8;
+            color: #61666d;
+            padding: 10px 25px;
+            border: 1px solid #e7e7e7;
             border-bottom: none;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+            margin-right: 4px;
+            font-size: 14px;
+            min-width: 80px;
         }
         QTabBar::tab:selected {
-            background-color: #fb7299;
-            color: white;
+            background-color: #ffffff;
+            color: #fb7299;
             font-weight: bold;
+            border-bottom: 1px solid #ffffff;
+        }
+        QTabBar::tab:hover:!selected {
+            background-color: #ffffff;
+            color: #fb7299;
         }
         QLabel {
-            color: #333333;
+            color: #18191c;
+            font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
         }
         QPushButton {
             background-color: #fb7299;
             color: white;
             border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
         }
         QPushButton:hover {
             background-color: #fc8bab;
@@ -216,40 +218,104 @@ class BilibiliDesktop(QMainWindow):
             background-color: #e45c84;
         }
         QPushButton:disabled {
-            background-color: #cccccc;
+            background-color: #e7e7e7;
+            color: #999999;
         }
         QLineEdit {
-            border: 1px solid #cccccc;
-            padding: 5px;
-            border-radius: 3px;
+            border: 1px solid #e7e7e7;
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #ffffff;
+            selection-background-color: #fb7299;
+            font-size: 13px;
+        }
+        QLineEdit:focus {
+            border: 1px solid #fb7299;
         }
         QProgressBar {
-            border: 1px solid #cccccc;
-            border-radius: 3px;
-            background-color: #f0f0f0;
+            border: none;
+            border-radius: 4px;
+            background-color: #e7e7e7;
             text-align: center;
+            font-size: 12px;
+            color: #333333;
         }
         QProgressBar::chunk {
             background-color: #fb7299;
+            border-radius: 4px;
         }
         QTableWidget {
-            border: 1px solid #cccccc;
-            border-radius: 3px;
-            alternate-background-color: #f9f9f9;
+            border: 1px solid #e7e7e7;
+            border-radius: 6px;
+            background-color: #ffffff;
+            selection-background-color: #fef0f5;
+            selection-color: #fb7299;
+            gridline-color: #f0f0f0;
         }
-        QTableWidget::item:selected {
-            background-color: #f1d1dc;
-            color: #333333;
+        QTableWidget::item {
+            padding: 5px;
         }
         QHeaderView::section {
-            background-color: #e0e0e0;
-            color: #333333;
-            padding: 5px;
-            border: 1px solid #cccccc;
+            background-color: #f6f7f8;
+            color: #61666d;
+            padding: 8px;
+            border: none;
+            border-bottom: 1px solid #e7e7e7;
+            border-right: 1px solid #e7e7e7;
+            font-weight: bold;
         }
-        QTextEdit {
+        QGroupBox {
+            border: 1px solid #e7e7e7;
+            border-radius: 6px;
+            margin-top: 20px;
+            font-weight: bold;
+            padding-top: 15px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            subcontrol-position: top left;
+            padding: 0 10px;
+            color: #333333;
+        }
+        QCheckBox {
+            spacing: 5px;
+            color: #61666d;
+        }
+        QCheckBox::indicator {
+            width: 16px;
+            height: 16px;
             border: 1px solid #cccccc;
             border-radius: 3px;
+            background-color: white;
+        }
+        QCheckBox::indicator:unchecked:hover {
+            border-color: #fb7299;
+        }
+        QCheckBox::indicator:checked {
+            background-color: #fb7299;
+            border-color: #fb7299;
+            image: url(resource/checkbox_checked.png); /* 如果没有图片会显示纯色 */
+        }
+        QComboBox {
+            border: 1px solid #e7e7e7;
+            border-radius: 4px;
+            padding: 5px 10px;
+            min-width: 6em;
+        }
+        QComboBox:hover {
+            border-color: #c0c0c0;
+        }
+        QComboBox::drop-down {
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 20px;
+            border-left-width: 0px;
+            border-top-right-radius: 3px;
+            border-bottom-right-radius: 3px;
+        }
+        QTextEdit {
+            border: 1px solid #e7e7e7;
+            border-radius: 4px;
         }
         """
         self.setStyleSheet(style)

@@ -47,6 +47,7 @@ class AccountTab(QWidget):
         not_logged_layout.addWidget(not_logged_label)
         
         login_btn = QPushButton("登录账号")
+        login_btn.setCursor(Qt.PointingHandCursor)
         login_btn.setStyleSheet("background-color: #00a1d6; color: white; font-weight: bold; padding: 8px 15px;")
         login_btn.clicked.connect(self.open_login_window)
         not_logged_layout.addWidget(login_btn, alignment=Qt.AlignCenter)

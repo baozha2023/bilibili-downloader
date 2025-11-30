@@ -62,16 +62,47 @@ class MediaProcessor:
             resolution = self._get_video_resolution(video_path)
             if resolution:
                 w, h = resolution
-                # 估算水印位置 (右上角)
-                # 宽: 12% (至少150px)
-                # 高: 6% (至少50px)
-                # 边距: 3%
-                wm_w = max(int(w * 0.12), 150)
-                wm_h = max(int(h * 0.06), 50)
-                wm_x = int(w - wm_w - w * 0.03)
-                wm_y = int(h * 0.03)
                 
-                # 边界检查
+                # 智能计算水印位置 (针对B站水印优化)
+                # 根据常见分辨率预设水印大小和位置
+                if w >= 3840: # 4K
+                    wm_w = 320
+                    wm_h = 100
+                    margin_x = 55
+                    margin_y = 45
+                elif w >= 2560: # 2K
+                    wm_w = 250
+                    wm_h = 80
+                    margin_x = 45
+                    margin_y = 35
+                elif w >= 1920: # 1080p
+                    wm_w = 200
+                    wm_h = 65
+                    margin_x = 40
+                    margin_y = 30
+                elif w >= 1280: # 720p
+                    wm_w = 150
+                    wm_h = 50
+                    margin_x = 25
+                    margin_y = 20
+                else:
+                    # 其他分辨率使用比例计算
+                    wm_w = max(int(w * 0.12), 100)
+                    wm_h = max(int(h * 0.06), 40)
+                    margin_x = int(w * 0.03)
+                    margin_y = int(h * 0.03)
+                
+                # 针对竖屏视频调整
+                if h > w:
+                    wm_w = int(w * 0.25)
+                    wm_h = int(wm_w * 0.35)
+                    margin_x = int(w * 0.05)
+                    margin_y = int(h * 0.02)
+                
+                wm_x = w - wm_w - margin_x
+                wm_y = margin_y
+                
+                # 边界检查和微调
                 if wm_x < 0: wm_x = 0
                 if wm_y < 0: wm_y = 0
                 if wm_x + wm_w > w: wm_w = max(1, w - wm_x)
@@ -82,10 +113,11 @@ class MediaProcessor:
                     logger.warning("水印区域计算无效，跳过去水印")
                     cmd_video = ['-c:v', 'copy']
                 else:
-                    filter_str = f"delogo=x={wm_x}:y={wm_y}:w={wm_w}:h={wm_h}"
+                    # 增加band参数使边缘过渡更自然
+                    filter_str = f"delogo=x={wm_x}:y={wm_y}:w={wm_w}:h={wm_h}:band=4"
                     logger.info(f"应用去水印滤镜: {filter_str} (分辨率: {w}x{h})")
-                    # 使用libx264重编码，crf 23保持较好画质
-                    cmd_video = ['-vf', filter_str, '-c:v', 'libx264', '-preset', 'fast', '-crf', '23']
+                    # 使用libx264重编码，crf 23保持较好画质，preset medium平衡速度和质量
+                    cmd_video = ['-vf', filter_str, '-c:v', 'libx264', '-preset', 'medium', '-crf', '23']
             else:
                 logger.warning("无法获取分辨率，跳过去水印")
                 cmd_video = ['-c:v', 'copy']
