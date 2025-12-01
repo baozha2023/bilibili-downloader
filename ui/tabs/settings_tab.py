@@ -88,15 +88,18 @@ class SettingsTab(QWidget):
         download_layout.setContentsMargins(20, 25, 20, 20)
         
         # 画质选择
-        download_layout.addWidget(QLabel("首选画质:"), 0, 0)
+        quality_layout = QHBoxLayout()
+        quality_layout.addWidget(QLabel("首选画质:"))
         self.quality_combo = QComboBox()
         self.quality_combo.addItems(["720p", "480p", "360p"])
         self.quality_combo.setCurrentText("720p")
         self.quality_combo.setFixedWidth(200)
-        download_layout.addWidget(self.quality_combo, 0, 1)
+        quality_layout.addWidget(self.quality_combo)
         tips_label = QLabel("（登录解锁1080P/4K）")
         tips_label.setStyleSheet("color: #888;")
-        download_layout.addWidget(tips_label, 0, 2)
+        quality_layout.addWidget(tips_label)
+        quality_layout.addStretch()
+        download_layout.addLayout(quality_layout, 0, 0, 1, 3)
 
         # 复选框选项 - 使用网格布局排列
         # 第一行复选框
@@ -126,12 +129,15 @@ class SettingsTab(QWidget):
         download_layout.addLayout(extra_container, 4, 0, 1, 3)
         
         # 下载完成后操作
-        download_layout.addWidget(QLabel("下载完成后:"), 5, 0)
+        complete_layout = QHBoxLayout()
+        complete_layout.addWidget(QLabel("下载完成后:"))
         self.complete_action = QComboBox()
         self.complete_action.addItems(["无操作", "打开文件夹", "播放视频", "关闭程序"])
         self.complete_action.setCurrentIndex(1)
         self.complete_action.setFixedWidth(200)
-        download_layout.addWidget(self.complete_action, 5, 1)
+        complete_layout.addWidget(self.complete_action)
+        complete_layout.addStretch()
+        download_layout.addLayout(complete_layout, 5, 0, 1, 3)
         
         main_layout.addWidget(download_group)
         

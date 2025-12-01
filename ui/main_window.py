@@ -16,6 +16,7 @@ from ui.tabs.download_tab import DownloadTab
 from ui.tabs.popular_tab import PopularTab
 from ui.tabs.account_tab import AccountTab
 from ui.tabs.settings_tab import SettingsTab
+from ui.tabs.converter_tab import ConverterTab
 
 # 配置日志
 logger = logging.getLogger('bilibili_desktop')
@@ -45,7 +46,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v3.0")
+        self.setWindowTitle("哔哩哔哩视频下载器 v3.1")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -97,10 +98,12 @@ class BilibiliDesktop(QMainWindow):
         self.download_tab = DownloadTab(self)
         self.popular_tab = PopularTab(self)
         self.account_tab = AccountTab(self)
+        self.converter_tab = ConverterTab(self)
         
         self.tabs.addTab(self.download_tab, "视频下载")
         self.tabs.addTab(self.popular_tab, "热门视频")
         self.tabs.addTab(self.account_tab, "我的账号")
+        self.tabs.addTab(self.converter_tab, "格式转换")
         self.tabs.addTab(self.settings_tab, "设置")
         
         # 连接设置变更信号
@@ -143,7 +146,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.0！", "info")
+        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.1！", "info")
         self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
         
         # 检查ffmpeg
@@ -154,13 +157,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v3.0"
+        version = "v3.1"
         updates = (
-            "1. 界面重构：全新设计的'我的账号'页面，去除冗余信息，更加清爽。\n"
-            "2. 体验优化：下载界面去除冗余文本，专注进度展示。\n"
-            "3. 核心升级：优化爬虫算法，增加智能防反爬机制，请求更稳定。\n"
-            "4. 画质增强：优化4K视频下载逻辑，修复降级问题；增强去水印效果。\n"
-            "5. 问题修复：修复LOGO显示异常等已知问题。"
+            "1. 格式转换：新增视频格式转换功能，支持mp4/mp3/gif等多种格式。\n"
+            "2. 设置优化：调整设置界面布局，选项对齐更美观。\n"
+            "3. 账号体验：优化个人中心界面，增加过渡动画，调整信息排版。\n"
+            "4. 系统集成：修复Windows任务栏图标显示问题。\n"
+            "5. 功能增强：支持拖拽文件进行格式转换。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

@@ -4,9 +4,9 @@ import time
 import logging
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QStackedWidget, QGroupBox, QTableWidget, QTableWidgetItem, 
-                             QHeaderView, QTabWidget, QMessageBox)
+                             QHeaderView, QTabWidget, QMessageBox, QGraphicsOpacityEffect)
 from PyQt5.QtGui import QPixmap, QPainter, QBrush
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from ui.workers import AccountInfoThread
@@ -90,20 +90,22 @@ class AccountTab(QWidget):
         self.account_name.setStyleSheet("font-size: 32px; font-weight: bold; margin-bottom: 5px;")
         user_details_layout.addWidget(self.account_name)
         
-        # 第二行：UID 和 等级 (水平排列)
-        info_row1 = QHBoxLayout()
-        info_row1.setSpacing(20)
+        # 第二行：UID 和 等级 (水平排列 -> 垂直排列)
+        info_col1 = QVBoxLayout()
+        info_col1.setSpacing(5)
         
         self.account_uid = QLabel("UID: --")
         self.account_uid.setStyleSheet("font-size: 24px; color: #666;")
-        info_row1.addWidget(self.account_uid)
+        info_col1.addWidget(self.account_uid)
         
         self.account_level = QLabel("等级: --")
         self.account_level.setStyleSheet("font-size: 24px; color: #666;")
-        info_row1.addWidget(self.account_level)
+        info_col1.addWidget(self.account_level)
         
-        info_row1.addStretch()
-        user_details_layout.addLayout(info_row1)
+        user_details_layout.addLayout(info_col1)
+        
+        # info_row1.addStretch()
+        # user_details_layout.addLayout(info_row1)
         
         # 第三行：会员状态
         self.account_vip = QLabel("会员状态: 非会员")
@@ -223,6 +225,24 @@ class AccountTab(QWidget):
         self.login_window.finished_signal = lambda: self.check_login_status()
         # self.account_status.setText("正在登录...")
 
+    def switch_to_logged_view(self):
+        """切换到已登录视图（带动画）"""
+        if self.account_stack.currentIndex() == 1:
+            return
+            
+        # 设置淡入动画
+        effect = QGraphicsOpacityEffect(self.account_stack.widget(1))
+        self.account_stack.widget(1).setGraphicsEffect(effect)
+        
+        self.anim = QPropertyAnimation(effect, b"opacity")
+        self.anim.setDuration(500)
+        self.anim.setStartValue(0)
+        self.anim.setEndValue(1)
+        self.anim.setEasingCurve(QEasingCurve.OutCubic)
+        
+        self.account_stack.setCurrentIndex(1)
+        self.anim.start()
+
     def check_login_status(self):
         """检查登录状态"""
         config_file = os.path.join(self.crawler.data_dir, "config", "login_config.json")
@@ -234,7 +254,7 @@ class AccountTab(QWidget):
                 if cookies and "SESSDATA" in cookies:
                     self.crawler.cookies = cookies
                     self.get_account_info(cookies)
-                    self.account_stack.setCurrentIndex(1)
+                    self.switch_to_logged_view()
                     # self.account_status.setText("已登录")
                     return
             except Exception as e:

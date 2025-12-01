@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 """
 哔哩哔哩视频下载器主程序入口
-v3.0
+v3.1
 """
 
+import ctypes
 import sys
 import os
 import argparse
@@ -22,6 +23,15 @@ from core.crawler import BilibiliCrawler
 
 def start_gui():
     """启动图形用户界面"""
+    try:
+        # 设置AppUserModelID，确保任务栏图标正常显示
+        myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+    except:
+        pass
+        
+    from PyQt5.QtWidgets import QApplication
+    from ui.main_window import BilibiliDesktop
     app = QApplication(sys.argv)
     window = BilibiliDesktop()
     window.show()
@@ -59,7 +69,7 @@ def run_interactive_cli():
     crawler = BilibiliCrawler()
     
     while True:
-        print("\n哔哩哔哩视频下载器 v3.0 - 命令行模式")
+        print("\n哔哩哔哩视频下载器 v3.1 - 命令行模式")
         print("1. 爬取热门视频")
         print("2. 爬取指定视频详情")
         print("3. 下载视频")
@@ -97,7 +107,7 @@ def run_interactive_cli():
 def main():
     """主函数"""
     # 创建命令行参数解析器
-    parser = argparse.ArgumentParser(description='哔哩哔哩视频下载器 v3.0')
+    parser = argparse.ArgumentParser(description='哔哩哔哩视频下载器 v3.1')
     parser.add_argument('-g', '--gui', action='store_true', 
                         help='启动图形用户界面')
     parser.add_argument('-p', '--popular', action='store_true', 
