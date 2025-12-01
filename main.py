@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 哔哩哔哩视频下载器主程序入口
-v3.2
+v3.3
 """
 
 import ctypes
@@ -69,7 +69,7 @@ def run_interactive_cli():
     crawler = BilibiliCrawler()
     
     while True:
-        print("\n哔哩哔哩视频下载器 v3.2 - 命令行模式")
+        print("\n哔哩哔哩视频下载器 v3.3 - 命令行模式")
         print("1. 爬取热门视频")
         print("2. 爬取指定视频详情")
         print("3. 下载视频")

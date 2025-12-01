@@ -1,7 +1,7 @@
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QComboBox, QFileDialog, QProgressBar, QMessageBox, QListWidget, QListWidgetItem,
-                             QGraphicsOpacityEffect)
+                             QGraphicsOpacityEffect, QFrame)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEasingCurve
 from ui.message_box import BilibiliMessageBox
 
@@ -32,22 +32,46 @@ class DragDropListWidget(QListWidget):
         self.setStyleSheet("""
             QListWidget {
                 border: 2px dashed #ccc;
-                border-radius: 10px;
-                font-size: 16px;
-                color: #666;
-                background-color: #f9f9f9;
+                border-radius: 12px;
+                font-size: 18px;
+                color: #555;
+                background-color: #fafafa;
+                outline: none;
             }
             QListWidget::item {
-                padding: 10px;
+                padding: 15px;
                 border-bottom: 1px solid #eee;
+            }
+            QListWidget:focus {
+                border-color: #fb7299;
             }
         """)
         
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.accept()
+            self.setStyleSheet("""
+                QListWidget {
+                    border: 2px dashed #fb7299;
+                    border-radius: 12px;
+                    font-size: 18px;
+                    color: #fb7299;
+                    background-color: #fff0f5;
+                }
+            """)
         else:
             event.ignore()
+
+    def dragLeaveEvent(self, event):
+        self.setStyleSheet("""
+            QListWidget {
+                border: 2px dashed #ccc;
+                border-radius: 12px;
+                font-size: 18px;
+                color: #555;
+                background-color: #fafafa;
+            }
+        """)
 
     def dragMoveEvent(self, event):
         if event.mimeData().hasUrls():
@@ -56,6 +80,15 @@ class DragDropListWidget(QListWidget):
             event.ignore()
 
     def dropEvent(self, event):
+        self.setStyleSheet("""
+            QListWidget {
+                border: 2px dashed #ccc;
+                border-radius: 12px;
+                font-size: 18px;
+                color: #555;
+                background-color: #fafafa;
+            }
+        """)
         if event.mimeData().hasUrls():
             event.setDropAction(Qt.CopyAction)
             event.accept()
@@ -77,14 +110,25 @@ class ConverterTab(QWidget):
         
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(20)
-        layout.setContentsMargins(30, 30, 30, 30)
+        layout.setSpacing(25)
+        layout.setContentsMargins(40, 40, 40, 40)
         
-        # 标题
+        # 标题区域
+        title_container = QWidget()
+        title_layout = QVBoxLayout(title_container)
+        title_layout.setContentsMargins(0, 0, 0, 0)
+        
         title_label = QLabel("视频格式转换")
-        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #333; margin-bottom: 10px;")
+        title_label.setStyleSheet("font-size: 28px; font-weight: bold; color: #333;")
         title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
+        title_layout.addWidget(title_label)
+        
+        subtitle_label = QLabel("支持 mp4, mp3, mkv, avi 等多种格式互转")
+        subtitle_label.setStyleSheet("font-size: 16px; color: #999; margin-top: 5px;")
+        subtitle_label.setAlignment(Qt.AlignCenter)
+        title_layout.addWidget(subtitle_label)
+        
+        layout.addWidget(title_container)
         
         # 拖拽区域 / 文件列表
         self.file_list = DragDropListWidget()
@@ -92,44 +136,70 @@ class ConverterTab(QWidget):
         self.file_list.setSelectionMode(QListWidget.SingleSelection)
         self.file_list.clicked.connect(self.on_file_selected)
         
-        # 添加提示项 - 移动到最后初始化，因为依赖 convert_btn
-        # self.add_placeholder_item()
-        
         layout.addWidget(self.file_list)
         
-        # 操作区域
-        controls_layout = QHBoxLayout()
+        # 操作区域容器
+        controls_frame = QFrame()
+        controls_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f6f7f8;
+                border-radius: 10px;
+                padding: 10px;
+            }
+        """)
+        controls_layout = QHBoxLayout(controls_frame)
+        controls_layout.setContentsMargins(20, 15, 20, 15)
         
         # 选择文件按钮
         select_btn = QPushButton("选择文件")
         select_btn.setCursor(Qt.PointingHandCursor)
         select_btn.setStyleSheet("""
             QPushButton {
-                font-size: 16px;
-                padding: 8px 20px;
-                background-color: #f6f7f8;
+                font-size: 18px;
+                padding: 10px 25px;
+                background-color: white;
                 border: 1px solid #ddd;
-                border-radius: 5px;
+                border-radius: 6px;
+                color: #333;
             }
             QPushButton:hover {
-                background-color: #e0e0e0;
+                background-color: #f0f0f0;
+                border-color: #ccc;
+                color: #fb7299;
             }
         """)
         select_btn.clicked.connect(self.select_file)
         controls_layout.addWidget(select_btn)
         
-        controls_layout.addSpacing(20)
+        controls_layout.addStretch()
         
         # 格式选择
-        controls_layout.addWidget(QLabel("目标格式:"))
+        format_label = QLabel("目标格式:")
+        format_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #555;")
+        controls_layout.addWidget(format_label)
+        
         self.format_combo = QComboBox()
         self.format_combo.addItems(["mp4", "mp3", "mkv", "avi", "mov", "gif"])
         self.format_combo.setCurrentText("mp4")
-        self.format_combo.setFixedWidth(100)
-        self.format_combo.setStyleSheet("font-size: 16px; padding: 5px;")
+        self.format_combo.setFixedWidth(120)
+        self.format_combo.setStyleSheet("""
+            QComboBox {
+                font-size: 18px;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                background-color: white;
+            }
+            QComboBox:hover {
+                border-color: #fb7299;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+        """)
         controls_layout.addWidget(self.format_combo)
         
-        controls_layout.addStretch()
+        controls_layout.addSpacing(30)
         
         # 转换按钮
         self.convert_btn = QPushButton("开始转换")
@@ -137,39 +207,46 @@ class ConverterTab(QWidget):
         self.convert_btn.setEnabled(False)
         self.convert_btn.setStyleSheet("""
             QPushButton {
-                font-size: 18px;
+                font-size: 20px;
                 font-weight: bold;
-                padding: 10px 30px;
+                padding: 12px 40px;
                 background-color: #fb7299;
                 color: white;
                 border: none;
-                border-radius: 5px;
+                border-radius: 6px;
             }
             QPushButton:hover {
                 background-color: #fc8bab;
             }
             QPushButton:disabled {
-                background-color: #cccccc;
+                background-color: #e0e0e0;
+                color: #999;
+            }
+            QPushButton:pressed {
+                background-color: #e45c84;
             }
         """)
         self.convert_btn.clicked.connect(self.start_conversion)
         controls_layout.addWidget(self.convert_btn)
         
-        layout.addLayout(controls_layout)
+        layout.addWidget(controls_frame)
         
         # 进度条
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         self.progress_bar.setStyleSheet("""
             QProgressBar {
-                border: 1px solid #ddd;
-                border-radius: 5px;
+                border: none;
+                border-radius: 8px;
+                background-color: #e0e0e0;
                 text-align: center;
-                height: 25px;
+                height: 30px;
+                font-size: 16px;
+                color: white;
             }
             QProgressBar::chunk {
                 background-color: #fb7299;
-                border-radius: 4px;
+                border-radius: 8px;
             }
         """)
         layout.addWidget(self.progress_bar)
@@ -177,7 +254,7 @@ class ConverterTab(QWidget):
         # 状态标签
         self.status_label = QLabel("")
         self.status_label.setAlignment(Qt.AlignCenter)
-        self.status_label.setStyleSheet("color: #666; font-size: 14px;")
+        self.status_label.setStyleSheet("color: #666; font-size: 16px; margin-top: 10px;")
         layout.addWidget(self.status_label)
         
         layout.addStretch()
@@ -193,15 +270,15 @@ class ConverterTab(QWidget):
         self.setGraphicsEffect(effect)
         
         self.anim = QPropertyAnimation(effect, b"opacity")
-        self.anim.setDuration(800)
+        self.anim.setDuration(600)
         self.anim.setStartValue(0)
         self.anim.setEndValue(1)
-        self.anim.setEasingCurve(QEasingCurve.OutCubic)
+        self.anim.setEasingCurve(QEasingCurve.OutQuad)
         self.anim.start()
 
     def add_placeholder_item(self):
         self.file_list.clear()
-        item = QListWidgetItem("拖拽视频文件到此处，或点击“选择文件”按钮")
+        item = QListWidgetItem("👇 拖拽视频文件到此处，或点击下方“选择文件”按钮")
         item.setTextAlignment(Qt.AlignCenter)
         item.setFlags(Qt.NoItemFlags) # 不可选中
         self.file_list.addItem(item)
@@ -223,14 +300,18 @@ class ConverterTab(QWidget):
         self.current_file = file_path
         self.file_list.clear()
         
-        item = QListWidgetItem(f"已选择: {os.path.basename(file_path)}")
+        item = QListWidgetItem(f"🎞️ 已选择: {os.path.basename(file_path)}")
         item.setToolTip(file_path)
-        item.setTextAlignment(Qt.AlignLeft)
+        item.setTextAlignment(Qt.AlignCenter)
         self.file_list.addItem(item)
         
         self.convert_btn.setEnabled(True)
         self.status_label.setText("准备就绪")
+        self.status_label.setStyleSheet("color: #666; font-size: 16px;")
         self.progress_bar.setVisible(False)
+        
+        # 记录日志
+        self.main_window.log_to_console(f"已选择转换文件: {file_path}", "info")
 
     def on_file_selected(self):
         # 处理点击列表项，实际上我们只允许一个文件，所以不需要复杂逻辑
@@ -248,6 +329,9 @@ class ConverterTab(QWidget):
         self.progress_bar.setVisible(True)
         self.status_label.setText(f"正在转换为 {output_format} ...")
         
+        # 记录日志
+        self.main_window.log_to_console(f"开始转换视频: {os.path.basename(self.current_file)} -> {output_format}", "info")
+        
         self.worker = ConvertWorker(self.processor, self.current_file, output_format)
         self.worker.progress_signal.connect(self.update_progress)
         self.worker.finished_signal.connect(self.on_conversion_finished)
@@ -261,13 +345,15 @@ class ConverterTab(QWidget):
         self.file_list.setEnabled(True)
         
         if success:
-            self.status_label.setText(f"转换成功！输出文件: {os.path.basename(msg)}")
+            self.status_label.setText(f"✅ 转换成功！输出文件: {os.path.basename(msg)}")
             self.progress_bar.setValue(100)
             
             # 添加完成动画或效果
-            self.status_label.setStyleSheet("color: #00a1d6; font-size: 16px; font-weight: bold;")
+            self.status_label.setStyleSheet("color: #67c23a; font-size: 18px; font-weight: bold;")
             
-            # 修复AttributeError，确保调用正确的方法
+            # 记录日志
+            self.main_window.log_to_console(f"视频转换成功: {msg}", "success")
+            
             BilibiliMessageBox.information(self, "转换成功", f"文件已保存至:\n{msg}")
             
             # 询问是否打开文件夹
@@ -278,5 +364,10 @@ class ConverterTab(QWidget):
                 except:
                     pass
         else:
-            self.status_label.setText(f"转换失败: {msg}")
+            self.status_label.setText(f"❌ 转换失败: {msg}")
+            self.status_label.setStyleSheet("color: #f56c6c; font-size: 18px; font-weight: bold;")
+            
+            # 记录日志
+            self.main_window.log_to_console(f"视频转换失败: {msg}", "error")
+            
             BilibiliMessageBox.warning(self, "转换失败", msg)

@@ -212,7 +212,8 @@ class WorkerThread(QThread):
                     
                     title = info.get("data", {}).get("title", "未知视频")
                 
-#                 self.update_signal.emit({"status": "info", "message": f"正在下载: {title}"})
+                # 只记录关键步骤，避免冗余
+                # self.update_signal.emit({"status": "info", "message": f"准备下载: {title}"})
                 
                 # 定义视频下载进度回调函数
                 def video_progress_callback(current, total):
@@ -240,7 +241,7 @@ class WorkerThread(QThread):
                 # 获取是否合并的选项
                 should_merge = self.params.get("should_merge", True)
                 if not should_merge:
-                    self.update_signal.emit({"status": "info", "message": "已设置不合并视频和音频，将保留原始文件"})
+                    self.update_signal.emit({"status": "info", "message": "用户设置不合并，将保留原始音视频文件"})
                 
                 # 获取是否删除原始文件的选项
                 delete_original = self.params.get("delete_original", True)
@@ -252,6 +253,8 @@ class WorkerThread(QThread):
 
                 # 下载视频
                 start_time = time.time()
+                self.update_signal.emit({"status": "download", "message": f"开始下载: {title}"})
+                
                 download_result = self.crawler.download_video(
                     bvid, 
                     video_progress_callback=video_progress_callback, 
@@ -291,16 +294,16 @@ class WorkerThread(QThread):
                         # 如果合并成功，添加合并文件路径
                         if download_result["merge_success"]:
                             result_data["merged_file"] = download_result["output_path"]
-                            message = f"视频 '{title}' 下载完成并已合并"
+                            message = f"视频下载并合并完成: {title}"
                         else:
                             # 用户选择不合并，添加原始文件路径
                             result_data["video_file"] = download_result["video_path"]
                             result_data["audio_file"] = download_result["audio_path"]
-                            message = f"视频 '{title}' 下载完成，根据设置未合并"
+                            message = f"视频下载完成(未合并): {title}"
                         
                         # 特殊处理：如果是"已存在"的情况
                         if "视频已存在" in download_result.get("message", ""):
-                             message = f"视频 '{title}' 已存在，跳过下载"
+                             message = f"视频已存在，跳过下载: {title}"
 
                         return {
                             "status": "success", 
@@ -321,7 +324,7 @@ class WorkerThread(QThread):
                                     "video_file": download_result["video_path"],
                                     "audio_file": download_result["audio_path"]
                                 }, 
-                                "message": f"视频 '{title}' 下载完成，但无法合并（ffmpeg未安装）",
+                                "message": f"下载完成但无法合并(未检测到ffmpeg): {title}",
                                 "execution_time": time.time() - start_time,
                                 "should_merge": should_merge
                             }
@@ -341,7 +344,7 @@ class WorkerThread(QThread):
                                         "download_dir": download_dir,
                                         "merged_file": output_path
                                     }, 
-                                    "message": f"视频 '{title}' 下载完成并已合并",
+                                    "message": f"视频下载并合并完成: {title}",
                                     "execution_time": time.time() - start_time,
                                     "should_merge": should_merge
                                 }
@@ -360,7 +363,7 @@ class WorkerThread(QThread):
                                         "audio_file": download_result["audio_path"],
                                         "merged_file": download_result["output_path"]
                                     }, 
-                                    "message": f"视频 '{title}' 下载完成，但合并结果不明确，请检查输出文件",
+                                    "message": f"下载完成，请检查合并文件: {title}",
                                     "execution_time": time.time() - start_time,
                                     "should_merge": should_merge
                                 }
@@ -375,16 +378,16 @@ class WorkerThread(QThread):
                                     "audio_file": download_result["audio_path"],
                                     "merged_file": download_result["output_path"]
                                 }, 
-                                "message": f"视频 '{title}' 下载完成，但合并失败",
+                                "message": f"下载完成但合并失败: {title}",
                                 "execution_time": time.time() - start_time,
                                 "should_merge": should_merge
                             }
             except Exception as e:
                 if retry < self.max_retries - 1:
-                    self.update_signal.emit({"status": "warning", "message": f"下载过程出错: {str(e)}，正在重试 ({retry+1}/{self.max_retries})..."})
+                    self.update_signal.emit({"status": "warning", "message": f"下载出错: {str(e)}，重试中 ({retry+1}/{self.max_retries})..."})
                     time.sleep(self.retry_delay)
                 else:
-                    return {"status": "error", "message": f"下载过程出错: {str(e)}，已重试{self.max_retries}次"}
+                    return {"status": "error", "message": f"下载失败: {str(e)}"}
         
         return {"status": "error", "message": "下载失败，请稍后重试"}
     

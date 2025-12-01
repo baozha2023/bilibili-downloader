@@ -190,6 +190,7 @@ class SettingsTab(QWidget):
         self.crawler.proxies = {}
         
         self.save_config_to_file()
+        self.main_window.log_to_console("系统设置已保存", "success")
         BilibiliMessageBox.information(self, "设置保存", "设置已保存")
 
     def save_config_to_file(self):
@@ -212,8 +213,10 @@ class SettingsTab(QWidget):
             with open(config_path, 'w', encoding='utf-8') as f:
                 json.dump(config, f, ensure_ascii=False, indent=2)
             logger.info(f"配置已保存到 {config_path}")
+            self.main_window.log_to_console(f"配置文件已更新: {config_path}", "system")
         except Exception as e:
             logger.error(f"保存配置文件时出错: {e}")
+            self.main_window.log_to_console(f"保存配置文件失败: {e}", "error")
 
     def load_config_from_file(self):
         config_path = os.path.join(self.crawler.data_dir, 'config', 'settings.json')

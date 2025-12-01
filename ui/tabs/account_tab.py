@@ -245,6 +245,7 @@ class AccountTab(QWidget):
 
     def check_login_status(self):
         """检查登录状态"""
+        self.main_window.log_to_console("正在检查登录状态...", "info")
         config_file = os.path.join(self.crawler.data_dir, "config", "login_config.json")
         if os.path.exists(config_file):
             try:
@@ -259,8 +260,10 @@ class AccountTab(QWidget):
                     return
             except Exception as e:
                 logger.error(f"读取登录配置失败: {e}")
+                self.main_window.log_to_console(f"读取登录配置失败: {e}", "error")
         
         self.account_stack.setCurrentIndex(0)
+        self.main_window.log_to_console("未检测到登录状态", "info")
         # self.account_status.setText("未登录")
 
     def get_account_info(self, cookies):
@@ -276,9 +279,13 @@ class AccountTab(QWidget):
     def on_account_info_finished(self, result):
         if result["status"] == "success":
             user_info = result.get("data", {})
-            self.account_name.setText(user_info.get("uname", "未知用户"))
+            username = user_info.get("uname", "未知用户")
+            self.account_name.setText(username)
             self.account_uid.setText(f"UID: {user_info.get('mid', '--')}")
             self.account_level.setText(f"等级: Lv{user_info.get('level_info', {}).get('current_level', 0)}")
+            
+            # 记录登录成功日志
+            self.main_window.log_to_console(f"账号登录成功: {username}", "success")
             
             vip_type = user_info.get("vip", {}).get("type", 0)
             vip_status = user_info.get("vip", {}).get("status", 0)
@@ -448,6 +455,7 @@ class AccountTab(QWidget):
     def logout_account(self):
         reply = QMessageBox.question(self, "确认退出", "确定要退出当前账号吗？", QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
+            username = self.account_name.text()
             self.crawler.cookies = None
             config_file = os.path.join(self.crawler.data_dir, "config", "login_config.json")
             if os.path.exists(config_file):
@@ -456,6 +464,8 @@ class AccountTab(QWidget):
                 except:
                     pass
             self.account_stack.setCurrentIndex(0)
+            
+            self.main_window.log_to_console(f"账号已退出登录: {username}", "warning")
             # self.account_status.setText("已退出登录")
             
             # Reset quality options

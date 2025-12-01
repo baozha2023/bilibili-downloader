@@ -46,7 +46,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v3.2")
+        self.setWindowTitle("哔哩哔哩视频下载器 v3.3")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -62,7 +62,41 @@ class BilibiliDesktop(QMainWindow):
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         
-        # 标签页
+        # ---------------------------------------------------------------
+        # 1. 初始化控制台日志
+        # ---------------------------------------------------------------
+        log_group = QGroupBox("系统日志")
+        log_layout = QVBoxLayout(log_group)
+        self.console_log = QTextEdit()
+        self.console_log.setReadOnly(True)
+        self.console_log.setMaximumHeight(150)
+        self.console_log.setStyleSheet("background-color: #1e1e1e; color: #f0f0f0; font-family: Consolas, Monospace; font-size: 20px;")
+        log_layout.addWidget(self.console_log)
+        
+        # 日志控制按钮
+        log_ctrl_layout = QHBoxLayout()
+        
+        self.auto_scroll_check = QCheckBox("自动滚动")
+        self.auto_scroll_check.setChecked(True)
+        log_ctrl_layout.addWidget(self.auto_scroll_check)
+        
+        log_ctrl_layout.addStretch()
+        
+        clear_log_btn = QPushButton("清除日志")
+        clear_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
+        clear_log_btn.clicked.connect(self.clear_console_log)
+        log_ctrl_layout.addWidget(clear_log_btn)
+        
+        save_log_btn = QPushButton("保存日志")
+        save_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
+        save_log_btn.clicked.connect(self.save_console_log)
+        log_ctrl_layout.addWidget(save_log_btn)
+        
+        log_layout.addLayout(log_ctrl_layout)
+        
+        # ---------------------------------------------------------------
+        # 2. 标签页
+        # ---------------------------------------------------------------
         self.tabs = QTabWidget()
         # 添加过渡动画效果
         self.tabs.setStyleSheet("""
@@ -114,39 +148,11 @@ class BilibiliDesktop(QMainWindow):
         # 底部状态栏
         self.statusBar().showMessage("就绪")
         
-        # 控制台日志
-        log_group = QGroupBox("系统日志")
-        log_layout = QVBoxLayout(log_group)
-        self.console_log = QTextEdit()
-        self.console_log.setReadOnly(True)
-        self.console_log.setMaximumHeight(150)
-        self.console_log.setStyleSheet("background-color: #1e1e1e; color: #f0f0f0; font-family: Consolas, Monospace; font-size: 20px;")
-        log_layout.addWidget(self.console_log)
-        
-        # 日志控制按钮
-        log_ctrl_layout = QHBoxLayout()
-        
-        self.auto_scroll_check = QCheckBox("自动滚动")
-        self.auto_scroll_check.setChecked(True)
-        log_ctrl_layout.addWidget(self.auto_scroll_check)
-        
-        log_ctrl_layout.addStretch()
-        
-        clear_log_btn = QPushButton("清除日志")
-        clear_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
-        clear_log_btn.clicked.connect(self.clear_console_log)
-        log_ctrl_layout.addWidget(clear_log_btn)
-        
-        save_log_btn = QPushButton("保存日志")
-        save_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
-        save_log_btn.clicked.connect(self.save_console_log)
-        log_ctrl_layout.addWidget(save_log_btn)
-        
-        log_layout.addLayout(log_ctrl_layout)
+        # 添加日志组件到主布局 (在标签页下方)
         main_layout.addWidget(log_group)
         
         # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.2！", "info")
+        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.3！", "info")
         self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
         
         # 检查ffmpeg
@@ -157,13 +163,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v3.2"
+        version = "v3.3"
         updates = (
-            "1. 体验优化：移除下载进度中冗余的标题显示。\n"
-            "2. 系统日志：全面覆盖所有功能模块的操作日志。\n"
-            "3. 问题修复：修复视频格式转换完成后的报错问题。\n"
-            "4. 界面美化：优化格式转换界面布局，增加过渡动画。\n"
-            "5. 代码重构：优化项目结构，提升代码质量和可维护性。"
+            "1. 体验优化：格式转换界面全新升级，支持更多动画效果。\n"
+            "2. 系统日志：优化日志输出，关键步骤一目了然。\n"
+            "3. 功能增强：视频转换、账号登录、设置保存均已接入日志系统。\n"
+            "4. 界面美化：调整字体大小，优化布局，提升视觉体验。\n"
+            "5. 代码重构：优化核心逻辑，提升程序稳定性。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
