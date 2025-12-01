@@ -17,6 +17,14 @@ class BilibiliAPI:
         if isinstance(response, dict):
             return response.get('data', {}).get('list', [])
         return []
+
+    def get_favorite_resources(self, media_id, page=1):
+        """获取收藏夹内容"""
+        url = f'https://api.bilibili.com/x/v3/fav/resource/list?media_id={media_id}&pn={page}&ps=20'
+        response = self.network.make_request(url)
+        if isinstance(response, dict):
+            return response.get('data', {}).get('medias', [])
+        return []
     
     def get_video_info(self, bvid):
         """获取视频详细信息"""

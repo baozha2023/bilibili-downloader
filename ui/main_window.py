@@ -45,7 +45,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v2.7")
+        self.setWindowTitle("哔哩哔哩视频下载器 v2.8")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -141,7 +141,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v2.0！", "info")
+        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v2.8！", "info")
         self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
         
         # 检查ffmpeg
@@ -152,13 +152,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v2.7"
+        version = "v2.8"
         updates = (
-            "1. 4K下载修复：修正了会员用户选择4K画质时可能降级的问题。\n"
-            "2. 账号界面优化：重构布局，信息展示更紧凑，提升空间利用率。\n"
-            "3. 体验细节提升：增大设置保存提示弹窗，移除部分弹窗文字边框。\n"
-            "4. 去水印增强：进一步调优滤镜参数，画质更细腻，边缘更自然。\n"
-            "5. 资源准备：为生成专属图标准备了提示词文件。"
+            "1. 收藏夹增强：支持查看收藏夹内部视频，双击即可跳转下载。\n"
+            "2. 界面优化：调整下载历史、热门视频等界面的布局和字体大小。\n"
+            "3. 账号页面：优化布局，移除冗余边框，收藏夹列表增加ID显示。\n"
+            "4. 细节调整：优化部分弹窗的显示效果。\n"
+            "5. 版本更新：内核组件升级，提升稳定性。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
@@ -443,35 +443,97 @@ class BilibiliDesktop(QMainWindow):
     def show_download_history(self):
         dialog = QDialog(self)
         dialog.setWindowTitle("下载历史记录")
-        dialog.setMinimumSize(600, 400)
+        dialog.setMinimumSize(900, 600)
         layout = QVBoxLayout(dialog)
+        
         table = QTableWidget(0, 4)
         table.setHorizontalHeaderLabels(["标题", "BV号", "下载时间", "状态"])
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
+        
+        # 优化表格样式
+        table.setStyleSheet("""
+            QTableWidget {
+                font-size: 16px;
+            }
+            QHeaderView::section {
+                font-size: 16px;
+                padding: 8px;
+                font-weight: bold;
+                background-color: #f0f0f0;
+            }
+        """)
+        table.verticalHeader().setDefaultSectionSize(45)
+        
         layout.addWidget(table)
+        
         for i, item in enumerate(self.download_history):
             table.insertRow(i)
-            table.setItem(i, 0, QTableWidgetItem(item.get("title", "")))
+            
+            title_item = QTableWidgetItem(item.get("title", ""))
+            title_item.setToolTip(item.get("title", ""))
+            table.setItem(i, 0, title_item)
+            
             table.setItem(i, 1, QTableWidgetItem(item.get("bvid", "")))
             table.setItem(i, 2, QTableWidgetItem(item.get("time", "")))
+            
             status_item = QTableWidgetItem(item.get("status", ""))
             if item.get("status") == "成功":
                 status_item.setForeground(Qt.green)
             elif item.get("status") == "失败":
                 status_item.setForeground(Qt.red)
+            status_item.setTextAlignment(Qt.AlignCenter)
             table.setItem(i, 3, status_item)
         
         buttons_layout = QHBoxLayout()
+        buttons_layout.setSpacing(20)
+        
+        btn_style = """
+            QPushButton {
+                font-size: 16px; 
+                padding: 10px 25px;
+                background-color: #fb7299;
+                color: white;
+                border-radius: 5px;
+                border: none;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #fc8bab;
+            }
+        """
+        
         redownload_btn = QPushButton("重新下载")
         redownload_btn.clicked.connect(lambda: self.redownload_from_history(table))
+        redownload_btn.setCursor(Qt.PointingHandCursor)
+        redownload_btn.setStyleSheet(btn_style)
         buttons_layout.addWidget(redownload_btn)
+        
         clear_btn = QPushButton("清空历史")
         clear_btn.clicked.connect(lambda: self.clear_download_history(table))
+        clear_btn.setCursor(Qt.PointingHandCursor)
+        clear_btn.setStyleSheet(btn_style)
         buttons_layout.addWidget(clear_btn)
+        
         close_btn = QPushButton("关闭")
         close_btn.clicked.connect(dialog.accept)
+        close_btn.setCursor(Qt.PointingHandCursor)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 16px; 
+                padding: 10px 25px;
+                background-color: #f6f7f8;
+                color: #666;
+                border-radius: 5px;
+                border: 1px solid #ddd;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+            }
+        """)
         buttons_layout.addWidget(close_btn)
+        
         layout.addLayout(buttons_layout)
         dialog.exec_()
 

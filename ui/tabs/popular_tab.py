@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QSpinBox, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox)
+from PyQt5.QtCore import Qt
 from ui.workers import WorkerThread
 
 class PopularTab(QWidget):
@@ -14,15 +15,44 @@ class PopularTab(QWidget):
         
         # 控制区域
         control_layout = QHBoxLayout()
-        control_layout.addWidget(QLabel("页数:"))
+        
+        page_label = QLabel("页数:")
+        page_label.setStyleSheet("font-size: 20px; font-weight: bold;")
+        control_layout.addWidget(page_label)
+        
         self.popular_pages = QSpinBox()
         self.popular_pages.setMinimum(1)
         self.popular_pages.setMaximum(10)
         self.popular_pages.setValue(3)
+        self.popular_pages.setFixedWidth(80)
+        self.popular_pages.setStyleSheet("font-size: 20px; padding: 5px;")
         control_layout.addWidget(self.popular_pages)
+        
         self.popular_btn = QPushButton("获取热门视频")
         self.popular_btn.clicked.connect(self.get_popular_videos)
+        self.popular_btn.setCursor(Qt.PointingHandCursor)
+        self.popular_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fb7299;
+                color: white;
+                border-radius: 5px;
+                font-size: 20px;
+                font-weight: bold;
+                padding: 8px 20px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #fc8bab;
+            }
+            QPushButton:pressed {
+                background-color: #e45c84;
+            }
+            QPushButton:disabled {
+                background-color: #cccccc;
+            }
+        """)
         control_layout.addWidget(self.popular_btn)
+        
         control_layout.addStretch()
         layout.addLayout(control_layout)
         

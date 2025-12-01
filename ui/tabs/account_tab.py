@@ -11,6 +11,7 @@ from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkRepl
 
 from ui.workers import AccountInfoThread
 from ui.login_dialog import BilibiliLoginWindow
+from ui.favorites_window import FavoritesWindow
 
 logger = logging.getLogger('bilibili_desktop')
 
@@ -31,8 +32,8 @@ class AccountTab(QWidget):
         layout = QVBoxLayout(self)
         
         # 账号信息区域
-        account_group = QGroupBox("账号信息")
-        account_layout = QVBoxLayout(account_group)
+        # account_group = QGroupBox("账号信息")
+        # account_layout = QVBoxLayout(account_group)
         
         # 创建两个堆叠的小部件，一个用于显示未登录状态，一个用于显示已登录状态
         self.account_stack = QStackedWidget()
@@ -134,10 +135,11 @@ class AccountTab(QWidget):
         self.content_tabs = QTabWidget()
         
         # 收藏夹列表
-        self.favorites_list = QTableWidget(0, 3)
-        self.favorites_list.setHorizontalHeaderLabels(["标题", "状态", "视频数量"])
+        self.favorites_list = QTableWidget(0, 4)
+        self.favorites_list.setHorizontalHeaderLabels(["标题", "状态", "视频数量", "ID"])
         self.favorites_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.favorites_list.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.favorites_list.cellDoubleClicked.connect(self.on_favorite_double_clicked)
         self.favorites_list.setStyleSheet("""
             QTableWidget { font-size: 18px; }
             QHeaderView::section { font-size: 18px; padding: 4px; }
@@ -167,8 +169,9 @@ class AccountTab(QWidget):
         # 默认显示未登录状态
         self.account_stack.setCurrentIndex(0)
         
-        account_layout.addWidget(self.account_stack)
-        layout.addWidget(account_group)
+        # account_layout.addWidget(self.account_stack)
+        # layout.addWidget(account_group)
+        layout.addWidget(self.account_stack)
         
         # 状态区域
         status_layout = QHBoxLayout()
@@ -313,14 +316,16 @@ class AccountTab(QWidget):
             else:
                 status_text = "公开"
             
+            fid = fav.get("id", 0)
+            
             # 如果没有 attr 信息，尝试显示 ID
             if "attr" not in fav:
-                 fid = fav.get("id", 0)
                  status_text = f"ID: {fid}"
             
             self.favorites_list.setItem(i, 0, QTableWidgetItem(title))
             self.favorites_list.setItem(i, 1, QTableWidgetItem(status_text))
             self.favorites_list.setItem(i, 2, QTableWidgetItem(str(media_count)))
+            self.favorites_list.setItem(i, 3, QTableWidgetItem(str(fid)))
 
     def update_history_list(self, history):
         """更新历史记录列表显示"""
@@ -413,3 +418,15 @@ class AccountTab(QWidget):
             if title:
                 download_tab.bvid_input.setToolTip(title)
             download_tab.download_video(title)
+
+    def on_favorite_double_clicked(self, row, column):
+        """收藏夹双击处理"""
+        item_id = self.favorites_list.item(row, 3)
+        item_title = self.favorites_list.item(row, 0)
+        if item_id:
+            media_id = item_id.text()
+            title = item_title.text() if item_title else ""
+            
+            # 打开收藏夹窗口
+            self.fav_window = FavoritesWindow(self.main_window, media_id, title)
+            self.fav_window.show()

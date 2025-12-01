@@ -101,6 +101,9 @@ class BilibiliCrawler:
 
     def get_history(self, page=1):
         return self.api.get_history(page)
+        
+    def get_favorite_resources(self, media_id, page=1):
+        return self.api.get_favorite_resources(media_id, page)
             
     def make_request(self, *args, **kwargs):
         return self.network.make_request(*args, **kwargs)

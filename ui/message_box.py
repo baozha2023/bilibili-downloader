@@ -47,6 +47,7 @@ class BilibiliMessageBox(QDialog):
             font-weight: bold; 
             color: {title_color}; 
             margin-bottom: 10px;
+            border: none;
         """)
         self.frame_layout.addWidget(self.title_label)
         
