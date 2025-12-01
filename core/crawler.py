@@ -114,17 +114,18 @@ class BilibiliCrawler:
                       merge_progress_callback=None, danmaku_progress_callback=None, 
                       comments_progress_callback=None, should_merge=True, delete_original=True,
                       remove_watermark=False, download_danmaku=False, download_comments=False,
-                      video_quality='1080p', stop_event=None):
+                      video_quality='1080p', video_codec='H.264/AVC', audio_quality='高音质 (Hi-Res/Dolby)',
+                      stop_event=None):
         """下载视频主流程"""
         
         # 1. 获取下载链接
-        print(f"正在获取视频 {bvid} 的下载链接 (画质偏好: {video_quality})...")
+        print(f"正在获取视频 {bvid} 的下载链接 (画质: {video_quality}, 编码: {video_codec})...")
         
         # 检查停止信号
         if stop_event and stop_event.is_set():
             return {"download_success": False, "message": "下载已取消"}
             
-        download_info = self.api.get_video_download_url(bvid, video_quality)
+        download_info = self.api.get_video_download_url(bvid, video_quality, video_codec, audio_quality)
         if not download_info:
             return {"download_success": False, "message": "无法获取下载地址"}
             

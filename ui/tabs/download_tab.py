@@ -235,7 +235,9 @@ class DownloadTab(QWidget):
             "remove_watermark": settings_tab.remove_watermark_check.isChecked(),
             "download_danmaku": settings_tab.download_danmaku_check.isChecked(),
             "download_comments": settings_tab.download_comments_check.isChecked(),
-            "video_quality": settings_tab.quality_combo.currentText()
+            "video_quality": settings_tab.quality_combo.currentText(),
+            "video_codec": settings_tab.codec_combo.currentText(),
+            "audio_quality": settings_tab.audio_quality_combo.currentText()
         }
         if title:
             params["title"] = title

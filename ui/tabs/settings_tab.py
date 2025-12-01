@@ -2,9 +2,10 @@ import os
 import json
 import logging
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-                             QLineEdit, QCheckBox, QGroupBox, QComboBox, QSpinBox, 
-                             QGridLayout, QFileDialog)
+                             QLineEdit, QCheckBox, QComboBox, QSpinBox, 
+                             QGridLayout, QFileDialog, QScrollArea, QFrame)
 from ui.message_box import BilibiliMessageBox
+from ui.widgets.card_widget import CardWidget
 from PyQt5.QtCore import Qt
 
 logger = logging.getLogger('bilibili_desktop')
@@ -18,159 +19,315 @@ class SettingsTab(QWidget):
         self.load_config_from_file()
         
     def init_ui(self):
-        # 使用主垂直布局，增加边距和间距
+        # 主布局使用垂直布局，包含滚动区域
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(25)
-        main_layout.setContentsMargins(30, 30, 30, 30)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         
-        # --- 1. 基本设置分组 ---
-        basic_group = QGroupBox("基本设置")
-        basic_group.setStyleSheet("""
-            QGroupBox { 
-                font-weight: bold; 
-                font-size: 28px; 
-                margin-top: 12px; 
-            } 
-            QGroupBox::title { 
-                subcontrol-origin: margin; 
-                subcontrol-position: top left; 
-                padding: 0 5px; 
+        # 滚动区域
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFrameShape(QScrollArea.NoFrame)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                background-color: #f9f9f9;
+                border: none;
             }
-            QLabel, QLineEdit, QSpinBox, QCheckBox, QComboBox {
-                font-size: 24px;
+            QScrollBar:vertical {
+                border: none;
+                background: #f0f0f0;
+                width: 10px;
+                margin: 0px;
+            }
+            QScrollBar::handle:vertical {
+                background: #ccc;
+                min-height: 20px;
+                border-radius: 5px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
             }
         """)
-        basic_layout = QGridLayout(basic_group)
-        basic_layout.setVerticalSpacing(15)
+        
+        # 滚动内容容器
+        content_widget = QWidget()
+        content_widget.setStyleSheet("background-color: #f9f9f9;")
+        self.content_layout = QVBoxLayout(content_widget)
+        self.content_layout.setSpacing(25)
+        self.content_layout.setContentsMargins(30, 30, 30, 30)
+        
+        # --- 1. 基本设置卡片 ---
+        basic_card = CardWidget("基本设置")
+        basic_layout = QGridLayout()
+        basic_layout.setVerticalSpacing(20)
         basic_layout.setHorizontalSpacing(15)
-        basic_layout.setContentsMargins(20, 25, 20, 20)
         
         # 数据存储目录
-        basic_layout.addWidget(QLabel("数据存储目录:"), 0, 0)
+        dir_label = QLabel("数据存储目录:")
+        dir_label.setStyleSheet("font-size: 16px; color: #555;")
+        basic_layout.addWidget(dir_label, 0, 0)
+        
         self.data_dir_input = QLineEdit(os.path.abspath(self.crawler.data_dir))
         self.data_dir_input.setMinimumWidth(400)
+        self.data_dir_input.setStyleSheet("""
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 15px;
+                background-color: #fafafa;
+            }
+            QLineEdit:focus {
+                border-color: #fb7299;
+                background-color: white;
+            }
+        """)
         basic_layout.addWidget(self.data_dir_input, 0, 1)
-        browse_btn = QPushButton("浏览...")
+        
+        browse_btn = QPushButton("浏览")
         browse_btn.setCursor(Qt.PointingHandCursor)
+        browse_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 14px;
+                padding: 8px 20px;
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                color: #555;
+            }
+            QPushButton:hover {
+                background-color: #f0f0f0;
+                border-color: #ccc;
+                color: #fb7299;
+            }
+        """)
         browse_btn.clicked.connect(self.browse_data_dir)
         basic_layout.addWidget(browse_btn, 0, 2)
 
         # 最大重试次数
-        basic_layout.addWidget(QLabel("最大重试次数:"), 1, 0)
+        retry_label = QLabel("最大重试次数:")
+        retry_label.setStyleSheet("font-size: 16px; color: #555;")
+        basic_layout.addWidget(retry_label, 1, 0)
+        
         self.retry_count = QSpinBox()
         self.retry_count.setRange(1, 10)
         self.retry_count.setValue(3)
-        self.retry_count.setFixedWidth(100)
-        basic_layout.addWidget(self.retry_count, 1, 1)
-        
-        main_layout.addWidget(basic_group)
-        
-        # --- 2. 下载设置分组 ---
-        download_group = QGroupBox("下载设置")
-        download_group.setStyleSheet("""
-            QGroupBox { 
-                font-weight: bold; 
-                font-size: 28px; 
-                margin-top: 12px; 
-            } 
-            QGroupBox::title { 
-                subcontrol-origin: margin; 
-                subcontrol-position: top left; 
-                padding: 0 5px; 
+        self.retry_count.setFixedWidth(120)
+        self.retry_count.setStyleSheet("""
+            QSpinBox {
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 15px;
             }
-            QLabel, QCheckBox, QComboBox {
-                font-size: 24px;
+            QSpinBox::up-button, QSpinBox::down-button {
+                width: 20px;
             }
         """)
-        download_layout = QGridLayout(download_group)
-        download_layout.setVerticalSpacing(15)
-        download_layout.setHorizontalSpacing(15)
-        download_layout.setContentsMargins(20, 25, 20, 20)
+        basic_layout.addWidget(self.retry_count, 1, 1)
         
-        # 画质选择
-        quality_layout = QHBoxLayout()
-        quality_layout.addWidget(QLabel("首选画质:"))
-        self.quality_combo = QComboBox()
-        self.quality_combo.addItems(["720p", "480p", "360p"])
-        self.quality_combo.setCurrentText("720p")
-        self.quality_combo.setFixedWidth(200)
-        quality_layout.addWidget(self.quality_combo)
-        tips_label = QLabel("（登录解锁1080P/4K）")
-        tips_label.setStyleSheet("color: #888;")
-        quality_layout.addWidget(tips_label)
-        quality_layout.addStretch()
-        download_layout.addLayout(quality_layout, 0, 0, 1, 3)
+        basic_card.add_layout(basic_layout)
+        self.content_layout.addWidget(basic_card)
+        
+        # --- 2. 下载偏好卡片 ---
+        pref_card = CardWidget("下载偏好")
+        pref_layout = QGridLayout()
+        pref_layout.setVerticalSpacing(20)
+        pref_layout.setHorizontalSpacing(15)
+        
+        # 通用下拉框样式
+        combo_style = """
+            QComboBox {
+                padding: 8px 12px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 15px;
+                background-color: #fafafa;
+                min-width: 200px;
+            }
+            QComboBox:hover {
+                border-color: #fb7299;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 30px;
+            }
+            QComboBox::down-arrow {
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 6px solid #666;
+                margin-right: 10px;
+            }
+        """
 
-        # 复选框选项 - 使用网格布局排列
-        # 第一行复选框
+        # 1. 视频编码
+        codec_label = QLabel("优先视频编码:")
+        codec_label.setStyleSheet("font-size: 16px; color: #555;")
+        pref_layout.addWidget(codec_label, 0, 0)
+        
+        self.codec_combo = QComboBox()
+        self.codec_combo.addItems(["H.264/AVC", "H.265/HEVC", "AV1"])
+        self.codec_combo.setCurrentText("H.264/AVC")
+        self.codec_combo.setStyleSheet(combo_style)
+        pref_layout.addWidget(self.codec_combo, 0, 1)
+        
+        # 2. 视频画质
+        quality_label = QLabel("优先视频画质:")
+        quality_label.setStyleSheet("font-size: 16px; color: #555;")
+        pref_layout.addWidget(quality_label, 1, 0)
+        
+        self.quality_combo = QComboBox()
+        self.quality_combo.addItems(["8K 超高清", "4K 超清", "1080P+ 高码率", "1080P 高清", "720P 高清", "480P 清晰", "360P 流畅"])
+        self.quality_combo.setCurrentText("1080P 高清")
+        self.quality_combo.setStyleSheet(combo_style)
+        pref_layout.addWidget(self.quality_combo, 1, 1)
+        
+        # 3. 视频音质
+        audio_label = QLabel("优先视频音质:")
+        audio_label.setStyleSheet("font-size: 16px; color: #555;")
+        pref_layout.addWidget(audio_label, 2, 0)
+        
+        self.audio_quality_combo = QComboBox()
+        self.audio_quality_combo.addItems(["高音质 (Hi-Res/Dolby)", "中等音质", "低音质"])
+        self.audio_quality_combo.setCurrentText("高音质 (Hi-Res/Dolby)")
+        self.audio_quality_combo.setStyleSheet(combo_style)
+        pref_layout.addWidget(self.audio_quality_combo, 2, 1)
+
+        tips_label = QLabel("💡 提示：实际下载画质取决于视频源和账号权限，登录大会员可解锁最高画质")
+        tips_label.setStyleSheet("color: #999; font-size: 14px; margin-top: 10px; font-style: italic;")
+        pref_layout.addWidget(tips_label, 3, 0, 1, 2)
+        
+        pref_card.add_layout(pref_layout)
+        self.content_layout.addWidget(pref_card)
+        
+        # --- 3. 下载选项卡片 ---
+        download_card = CardWidget("下载选项")
+        
+        # 通用复选框样式
+        checkbox_style = """
+            QCheckBox {
+                font-size: 16px;
+                color: #555;
+                spacing: 10px;
+            }
+            QCheckBox::indicator {
+                width: 20px;
+                height: 20px;
+                border: 1px solid #ccc;
+                border-radius: 4px;
+                background: white;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #fb7299;
+                border-color: #fb7299;
+                image: url(resource/check.png); /* 这里可以放一个勾选图标，或者用纯色 */
+            }
+            QCheckBox:hover {
+                color: #333;
+            }
+        """
+        
+        # 复选框容器
+        checkbox_layout = QGridLayout()
+        checkbox_layout.setVerticalSpacing(15)
+        checkbox_layout.setHorizontalSpacing(30)
+        
         self.merge_check = QCheckBox("合并视频和音频")
         self.merge_check.setChecked(True)
-        self.merge_check.setToolTip("推荐勾选，否则视频和音频将分离开")
-        download_layout.addWidget(self.merge_check, 1, 0, 1, 3)
+        self.merge_check.setStyleSheet(checkbox_style)
+        checkbox_layout.addWidget(self.merge_check, 0, 0)
         
         self.delete_original_check = QCheckBox("合并后删除原始文件")
         self.delete_original_check.setChecked(True)
-        download_layout.addWidget(self.delete_original_check, 2, 0, 1, 3)
+        self.delete_original_check.setStyleSheet(checkbox_style)
+        checkbox_layout.addWidget(self.delete_original_check, 0, 1)
 
-        # 第二行复选框
         self.remove_watermark_check = QCheckBox("尝试去除水印 (实验性)")
         self.remove_watermark_check.setChecked(False)
-        download_layout.addWidget(self.remove_watermark_check, 3, 0, 1, 3)
+        self.remove_watermark_check.setStyleSheet(checkbox_style)
+        checkbox_layout.addWidget(self.remove_watermark_check, 1, 0)
         
-        # 额外下载选项
-        extra_container = QHBoxLayout()
         self.download_danmaku_check = QCheckBox("下载弹幕")
-        extra_container.addWidget(self.download_danmaku_check)
+        self.download_danmaku_check.setStyleSheet(checkbox_style)
+        checkbox_layout.addWidget(self.download_danmaku_check, 1, 1)
         
         self.download_comments_check = QCheckBox("下载评论")
-        extra_container.addWidget(self.download_comments_check)
-        extra_container.addStretch()
+        self.download_comments_check.setStyleSheet(checkbox_style)
+        checkbox_layout.addWidget(self.download_comments_check, 2, 0)
         
-        download_layout.addLayout(extra_container, 4, 0, 1, 3)
+        download_card.add_layout(checkbox_layout)
         
-        # 下载完成后操作
-        complete_layout = QHBoxLayout()
-        complete_layout.addWidget(QLabel("下载完成后:"))
+        # 分割线
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Sunken)
+        line.setStyleSheet("background-color: #eee; margin: 15px 0;")
+        download_card.add_widget(line)
+        
+        # 完成后操作
+        action_layout = QHBoxLayout()
+        action_label = QLabel("下载完成后:")
+        action_label.setStyleSheet("font-size: 16px; color: #555;")
+        action_layout.addWidget(action_label)
+        
         self.complete_action = QComboBox()
         self.complete_action.addItems(["无操作", "打开文件夹", "播放视频", "关闭程序"])
         self.complete_action.setCurrentIndex(1)
+        self.complete_action.setStyleSheet(combo_style)
         self.complete_action.setFixedWidth(200)
-        complete_layout.addWidget(self.complete_action)
-        complete_layout.addStretch()
-        download_layout.addLayout(complete_layout, 5, 0, 1, 3)
+        action_layout.addWidget(self.complete_action)
+        action_layout.addStretch()
         
-        main_layout.addWidget(download_group)
+        download_card.add_layout(action_layout)
+        self.content_layout.addWidget(download_card)
         
-        # 底部保存按钮
-        main_layout.addStretch()
+        self.content_layout.addStretch()
+        
+        # 设置滚动区域内容
+        scroll_area.setWidget(content_widget)
+        main_layout.addWidget(scroll_area)
+        
+        # 底部保存按钮栏
+        bottom_bar = QWidget()
+        bottom_bar.setStyleSheet("""
+            QWidget {
+                background-color: white;
+                border-top: 1px solid #e0e0e0;
+            }
+        """)
+        bottom_layout = QHBoxLayout(bottom_bar)
+        bottom_layout.setContentsMargins(30, 15, 30, 15)
+        
+        status_label = QLabel("修改设置后请记得保存")
+        status_label.setStyleSheet("color: #999; font-size: 14px;")
+        bottom_layout.addWidget(status_label)
+        
+        bottom_layout.addStretch()
+        
         save_btn = QPushButton("保存设置")
-        save_btn.setMinimumHeight(45)
         save_btn.setCursor(Qt.PointingHandCursor)
         save_btn.setStyleSheet("""
             QPushButton {
-                font-weight: bold; 
-                font-size: 30px; 
-                background-color: #fb7299; 
-                color: white; 
+                font-size: 16px;
+                font-weight: bold;
+                background-color: #fb7299;
+                color: white;
                 border-radius: 6px;
-                padding: 0 30px;
+                padding: 10px 35px;
+                border: none;
             }
             QPushButton:hover {
                 background-color: #fc8bab;
+                transform: scale(1.05);
             }
             QPushButton:pressed {
                 background-color: #e45c84;
             }
         """)
         save_btn.clicked.connect(self.save_settings)
+        bottom_layout.addWidget(save_btn)
         
-        btn_container = QHBoxLayout()
-        btn_container.addStretch()
-        btn_container.addWidget(save_btn)
-        btn_container.addStretch()
-        
-        main_layout.addLayout(btn_container)
-        main_layout.addSpacing(20)
+        main_layout.addWidget(bottom_bar)
 
     def browse_data_dir(self):
         dir_path = QFileDialog.getExistingDirectory(self, "选择数据存储目录", os.path.abspath(self.crawler.data_dir))
@@ -203,7 +360,9 @@ class SettingsTab(QWidget):
             'download_danmaku': self.download_danmaku_check.isChecked(),
             'download_comments': self.download_comments_check.isChecked(),
             'complete_action': self.complete_action.currentIndex(),
-            'video_quality': self.quality_combo.currentText()
+            'video_quality': self.quality_combo.currentText(),
+            'video_codec': self.codec_combo.currentText(),
+            'audio_quality': self.audio_quality_combo.currentText()
         }
         try:
             config_dir = os.path.join(self.crawler.data_dir, 'config')
@@ -244,5 +403,9 @@ class SettingsTab(QWidget):
                     self.complete_action.setCurrentIndex(config['complete_action'])
                 if 'video_quality' in config:
                     self.quality_combo.setCurrentText(config['video_quality'])
+                if 'video_codec' in config:
+                    self.codec_combo.setCurrentText(config['video_codec'])
+                if 'audio_quality' in config:
+                    self.audio_quality_combo.setCurrentText(config['audio_quality'])
             except Exception as e:
                 logger.error(f"加载配置文件时出错: {e}")

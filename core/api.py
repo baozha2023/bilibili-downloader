@@ -31,10 +31,12 @@ class BilibiliAPI:
         url = f'https://api.bilibili.com/x/web-interface/view?bvid={bvid}'
         return self.network.make_request(url)
     
-    def get_video_download_url(self, bvid, quality_preference='1080p'):
+    def get_video_download_url(self, bvid, quality_preference='1080p', codec_preference='H.264/AVC', audio_quality_preference='高音质 (Hi-Res/Dolby)'):
         """
         获取视频下载链接
         quality_preference: '4k', '1080p', '720p', etc.
+        codec_preference: 'H.264/AVC', 'H.265/HEVC', 'AV1'
+        audio_quality_preference: '高音质 (Hi-Res/Dolby)', '中等音质', '低音质'
         """
         # 1. 获取视频信息
         video_info = self.get_video_info(bvid)
@@ -56,12 +58,13 @@ class BilibiliAPI:
         
         # 映射表
         quality_map = {
-            '4k': 120,
-            '1080p+': 112,
-            '1080p': 80,
-            '720p': 64,
-            '480p': 32,
-            '360p': 16
+            '8K 超高清': 127,
+            '4K 超清': 120,
+            '1080P+ 高码率': 112,
+            '1080P 高清': 80,
+            '720P 高清': 64,
+            '480P 清晰': 32,
+            '360P 流畅': 16,
         }
         
         target_qn = quality_map.get(quality_preference, 80)
@@ -73,19 +76,9 @@ class BilibiliAPI:
                 target_qn = 64
                 logger.info("未登录用户，画质限制为 720p")
         
-        # 注意：大会员检查通常需要单独的API，这里假设如果用户请求4k且已登录，就尝试请求
-        # API会返回实际可用的最高画质
-        
-        # fnval参数说明:
-        # 1: MP4
-        # 16: DASH
-        # 64: HDR
-        # 128: 4K
-        # 256: Dolby Vision
-        # 4048: 16 | 64 | 128 | ... (包含DASH, HDR, 4K等)
-        
+        # fnval参数说明: 4048 包含DASH, HDR, 4K等
         fnval = 4048
-        # 如果请求的是4K，确保fourk=1
+        # 如果请求的是4K或8K，确保fourk=1
         fourk = 1 if target_qn >= 120 else 0
         
         download_url_api = f'https://api.bilibili.com/x/player/playurl?bvid={bvid}&cid={cid}&qn={target_qn}&fnval={fnval}&fourk={fourk}'
@@ -107,46 +100,82 @@ class BilibiliAPI:
         if not video_streams:
             return None
             
-        # 按照id (qn) 排序
-        video_streams.sort(key=lambda x: x.get('id', 0), reverse=True)
-        
-        # 寻找最接近target_qn的流
-        best_video = None
+        # 编码映射
+        # 7: AVC, 12: HEVC, 13: AV1
+        codec_map = {
+            'H.264/AVC': 7,
+            'H.265/HEVC': 12,
+            'AV1': 13
+        }
+        target_codec = codec_map.get(codec_preference, 7)
         
         # 筛选逻辑优化：
-        # 1. 尝试找到id == target_qn的流
-        for stream in video_streams:
-            if stream.get('id', 0) == target_qn:
-                best_video = stream
-                break
+        # 优先级：Quality > Codec
         
-        # 2. 如果没找到，尝试找到id > target_qn的最小流（虽然API通常不会返回比qn更高的，但以防万一）
-        # 或者找id < target_qn的最大流
-        if not best_video:
-            # 重新遍历，找 <= target_qn 的最大值
-            for stream in video_streams:
-                if stream.get('id', 0) <= target_qn:
-                    best_video = stream
+        best_video = None
+        
+        # 1. 尝试找到 Quality 匹配且 Codec 匹配的流
+        candidates = [s for s in video_streams if s.get('id') == target_qn]
+        if candidates:
+            # 在匹配画质的流中找匹配编码的
+            for s in candidates:
+                if s.get('codecid') == target_codec:
+                    best_video = s
                     break
-                    
-        # 3. 如果还是没找到（说明所有流都比target_qn大？），取最小的那个
+            # 如果没找到匹配编码的，就取画质匹配的第一个（或者可以进一步策略，比如HEVC > AVC）
+            if not best_video:
+                # 尝试找HEVC作为备选 (节省带宽)
+                for s in candidates:
+                    if s.get('codecid') == 12:
+                        best_video = s
+                        break
+                # 还是没有，就取第一个
+                if not best_video:
+                    best_video = candidates[0]
+        
+        # 2. 如果没有找到目标画质，尝试降级查找 (找 <= target_qn 的最大值)
         if not best_video:
-            best_video = video_streams[-1]
+            # 按画质降序排序
+            video_streams.sort(key=lambda x: x.get('id', 0), reverse=True)
             
-        # 检查是否真的获取到了4K
-        if target_qn == 120 and best_video.get('id') < 120:
-             logger.warning(f"请求4K画质(120)，但API仅返回最高画质: {best_video.get('id')}")
-             # 尝试强制使用最高画质，即使不匹配
-             if video_streams[0].get('id') > best_video.get('id'):
-                 best_video = video_streams[0]
-                 logger.info(f"自动修正为可用最高画质: {best_video.get('id')}")
-             # 可以在这里添加逻辑，如果用户是大会员但没拿到4K，可能是API参数问题或者视频本身不支持
-             
-        # 音频选最好的
+            # 找到第一个 <= target_qn 的画质
+            fallback_qn = None
+            for s in video_streams:
+                if s.get('id') <= target_qn:
+                    fallback_qn = s.get('id')
+                    break
+            
+            if fallback_qn:
+                # 在降级画质中找匹配编码
+                candidates = [s for s in video_streams if s.get('id') == fallback_qn]
+                for s in candidates:
+                    if s.get('codecid') == target_codec:
+                        best_video = s
+                        break
+                if not best_video:
+                    best_video = candidates[0]
+            else:
+                # 如果连降级都找不到（理论上不可能，除非target_qn比所有流都小），取最小的
+                best_video = video_streams[-1]
+
+        # 音频选择逻辑
         best_audio = None
         if audio_streams:
+            # 30280: 192K, 30232: 132K, 30216: 64K
+            # 优先下载的视频音质: 高音质 (Hi-Res/Dolby), 中等音质, 低音质
+            
+            # 按bandwidth降序
             audio_streams.sort(key=lambda x: x.get('bandwidth', 0), reverse=True)
-            best_audio = audio_streams[0]
+            
+            if "低音质" in audio_quality_preference:
+                best_audio = audio_streams[-1]
+            elif "中等音质" in audio_quality_preference and len(audio_streams) > 1:
+                # 取中间的，或者如果不确定，取倒数第二个
+                mid_index = len(audio_streams) // 2
+                best_audio = audio_streams[mid_index]
+            else:
+                # 默认高音质
+                best_audio = audio_streams[0]
             
         return {
             'video_url': best_video.get('baseUrl'),
@@ -154,8 +183,18 @@ class BilibiliAPI:
             'title': video_info['data'].get('title', f'video_{bvid}'),
             'quality': best_video.get('id'),
             'quality_desc': self._get_quality_desc(best_video.get('id')),
+            'codecid': best_video.get('codecid'),
+            'codec_desc': self._get_codec_desc(best_video.get('codecid')),
             'video_info': video_info['data']
         }
+
+    def _get_codec_desc(self, codecid):
+        mapping = {
+            7: "AVC/H.264",
+            12: "HEVC/H.265", 
+            13: "AV1"
+        }
+        return mapping.get(codecid, f"Codec-{codecid}")
 
     def _get_quality_desc(self, qn):
         mapping = {

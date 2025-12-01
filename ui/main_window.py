@@ -46,7 +46,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v3.3")
+        self.setWindowTitle("哔哩哔哩视频下载器 v3.4")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -152,7 +152,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.3！", "info")
+        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.4！", "info")
         self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
         
         # 检查ffmpeg
@@ -163,13 +163,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v3.3"
+        version = "v3.4"
         updates = (
-            "1. 体验优化：格式转换界面全新升级，支持更多动画效果。\n"
-            "2. 系统日志：优化日志输出，关键步骤一目了然。\n"
-            "3. 功能增强：视频转换、账号登录、设置保存均已接入日志系统。\n"
-            "4. 界面美化：调整字体大小，优化布局，提升视觉体验。\n"
-            "5. 代码重构：优化核心逻辑，提升程序稳定性。"
+            "1. 功能新增：新增视频编码选择 (H.264/AVC, H.265/HEVC, AV1)。\n"
+            "2. 功能新增：新增音频质量选择 (Hi-Res/Dolby, 中等, 低)。\n"
+            "3. 问题修复：修复大会员用户下载4K/1080P+视频时降级为1080P的问题。\n"
+            "4. 体验优化：设置界面布局重构，更加清晰直观。\n"
+            "5. 核心升级：优化视频流选择逻辑，优先匹配用户偏好的画质和编码。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

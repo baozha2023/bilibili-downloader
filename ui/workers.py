@@ -251,6 +251,10 @@ class WorkerThread(QThread):
                 download_danmaku = self.params.get("download_danmaku", False)
                 download_comments = self.params.get("download_comments", False)
 
+                video_quality = self.params.get("video_quality", "1080p")
+                video_codec = self.params.get("video_codec", "H.264/AVC")
+                audio_quality = self.params.get("audio_quality", "高音质 (Hi-Res/Dolby)")
+
                 # 下载视频
                 start_time = time.time()
                 self.update_signal.emit({"status": "download", "message": f"开始下载: {title}"})
@@ -267,6 +271,9 @@ class WorkerThread(QThread):
                     remove_watermark=remove_watermark,
                     download_danmaku=download_danmaku,
                     download_comments=download_comments,
+                    video_quality=video_quality,
+                    video_codec=video_codec,
+                    audio_quality=audio_quality,
                     stop_event=self.stop_event
                 )
                 
