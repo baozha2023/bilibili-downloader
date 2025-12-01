@@ -214,6 +214,9 @@ class DownloadTab(QWidget):
         self.main_window.log_to_console(f"开始下载视频: {bvid}", "download")
         if title:
             self.main_window.log_to_console(f"视频标题: {title}", "info")
+            # 正在下载的标题，不再显示
+            # self.download_status.setText(f"正在下载: 《{title}》")
+            self.main_window.statusBar().showMessage(f"正在下载: {title}")
         self.main_window.log_to_console("正在获取视频信息...", "info")
         
         # 获取是否合并的选项（从设置界面获取）

@@ -129,21 +129,49 @@ class AccountTab(QWidget):
         logged_layout.addLayout(user_info_layout)
         
         # 收藏夹和历史记录
-        tabs_group = QGroupBox("我的内容")
-        tabs_layout = QVBoxLayout(tabs_group)
+        # tabs_group = QGroupBox("我的内容")
+        # tabs_layout = QVBoxLayout(tabs_group)
         
         self.content_tabs = QTabWidget()
+        self.content_tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: none;
+                background-color: #ffffff;
+            }
+            QTabBar::tab {
+                background-color: #f6f7f8;
+                color: #61666d;
+                padding: 10px 20px;
+                border: none;
+                font-size: 18px;
+            }
+            QTabBar::tab:selected {
+                background-color: #ffffff;
+                color: #fb7299;
+                font-weight: bold;
+                border-bottom: 2px solid #fb7299;
+            }
+        """)
         
         # 收藏夹列表
         self.favorites_list = QTableWidget(0, 4)
         self.favorites_list.setHorizontalHeaderLabels(["标题", "状态", "视频数量", "ID"])
         self.favorites_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.favorites_list.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.favorites_list.setFrameShape(QTableWidget.NoFrame) # 去除边框
         self.favorites_list.cellDoubleClicked.connect(self.on_favorite_double_clicked)
         self.favorites_list.setStyleSheet("""
-            QTableWidget { font-size: 18px; }
-            QHeaderView::section { font-size: 18px; padding: 4px; }
-            QTableWidget::item { padding: 2px; }
+            QTableWidget { 
+                font-size: 18px; 
+                border: none;
+            }
+            QHeaderView::section { 
+                font-size: 18px; 
+                padding: 8px; 
+                background-color: #f9f9f9;
+                border: none;
+            }
+            QTableWidget::item { padding: 5px; }
         """)
         self.content_tabs.addTab(self.favorites_list, "收藏夹")
         
@@ -152,17 +180,26 @@ class AccountTab(QWidget):
         self.history_list.setHorizontalHeaderLabels(["标题", "UP主", "观看时间", "BV号"])
         self.history_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.history_list.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.history_list.setFrameShape(QTableWidget.NoFrame) # 去除边框
         self.history_list.cellDoubleClicked.connect(self.on_history_video_clicked)
         self.history_list.setStyleSheet("""
-            QTableWidget { font-size: 18px; }
-            QHeaderView::section { font-size: 18px; padding: 4px; }
-            QTableWidget::item { padding: 2px; }
+            QTableWidget { 
+                font-size: 18px; 
+                border: none;
+            }
+            QHeaderView::section { 
+                font-size: 18px; 
+                padding: 8px; 
+                background-color: #f9f9f9;
+                border: none;
+            }
+            QTableWidget::item { padding: 5px; }
         """)
         self.content_tabs.addTab(self.history_list, "历史记录")
         
-        tabs_layout.addWidget(self.content_tabs)
-        
-        logged_layout.addWidget(tabs_group)
+        # tabs_layout.addWidget(self.content_tabs)
+        # logged_layout.addWidget(tabs_group)
+        logged_layout.addWidget(self.content_tabs)
         
         self.account_stack.addWidget(logged_widget)
         
@@ -174,17 +211,17 @@ class AccountTab(QWidget):
         layout.addWidget(self.account_stack)
         
         # 状态区域
-        status_layout = QHBoxLayout()
-        self.account_status = QLabel("未登录")
-        status_layout.addWidget(self.account_status)
-        layout.addLayout(status_layout)
+        # status_layout = QHBoxLayout()
+        # self.account_status = QLabel("未登录")
+        # status_layout.addWidget(self.account_status)
+        # layout.addLayout(status_layout)
 
     def open_login_window(self):
         """打开登录窗口"""
         self.login_window = BilibiliLoginWindow()
         self.login_window.show()
         self.login_window.finished_signal = lambda: self.check_login_status()
-        self.account_status.setText("正在登录...")
+        # self.account_status.setText("正在登录...")
 
     def check_login_status(self):
         """检查登录状态"""
@@ -198,23 +235,23 @@ class AccountTab(QWidget):
                     self.crawler.cookies = cookies
                     self.get_account_info(cookies)
                     self.account_stack.setCurrentIndex(1)
-                    self.account_status.setText("已登录")
+                    # self.account_status.setText("已登录")
                     return
             except Exception as e:
                 logger.error(f"读取登录配置失败: {e}")
         
         self.account_stack.setCurrentIndex(0)
-        self.account_status.setText("未登录")
+        # self.account_status.setText("未登录")
 
     def get_account_info(self, cookies):
         """获取账号信息"""
         self.account_thread = AccountInfoThread(self.crawler, cookies)
-        self.account_thread.update_signal.connect(self.update_account_status)
+        # self.account_thread.update_signal.connect(self.update_account_status)
         self.account_thread.finished_signal.connect(self.on_account_info_finished)
         self.account_thread.start()
     
-    def update_account_status(self, data):
-        self.account_status.setText(data.get("message", ""))
+    # def update_account_status(self, data):
+    #     self.account_status.setText(data.get("message", ""))
     
     def on_account_info_finished(self, result):
         if result["status"] == "success":
@@ -252,9 +289,9 @@ class AccountTab(QWidget):
             # 更新画质选择选项
             self.update_quality_options(vip_type, vip_status)
             
-            self.account_status.setText("账号信息获取成功")
+            # self.account_status.setText("账号信息获取成功")
         else:
-            self.account_status.setText(result["message"])
+            # self.account_status.setText(result["message"])
             # 登录失败或无效，重置画质选项
             self.update_quality_options(0, 0)
 
@@ -399,7 +436,7 @@ class AccountTab(QWidget):
                 except:
                     pass
             self.account_stack.setCurrentIndex(0)
-            self.account_status.setText("已退出登录")
+            # self.account_status.setText("已退出登录")
             
             # Reset quality options
             self.update_quality_options(0, 0)

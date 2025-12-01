@@ -113,12 +113,12 @@ class MediaProcessor:
                     logger.warning("水印区域计算无效，跳过去水印")
                     cmd_video = ['-c:v', 'copy']
                 else:
-                    # 增加band参数使边缘过渡更自然 (16)
+                    # 增加band参数使边缘过渡更自然 (32)
                     # 增加 show=0 参数确保不显示边界框 (delogo默认show=0，但显式指定更安全)
-                    filter_str = f"delogo=x={wm_x}:y={wm_y}:w={wm_w}:h={wm_h}:band=24:show=0"
+                    filter_str = f"delogo=x={wm_x}:y={wm_y}:w={wm_w}:h={wm_h}:band=32:show=0"
                     logger.info(f"应用去水印滤镜: {filter_str} (分辨率: {w}x{h})")
-                    # 使用libx264重编码，crf 17提升画质 (原18)，preset medium平衡速度和质量
-                    cmd_video = ['-vf', filter_str, '-c:v', 'libx264', '-preset', 'medium', '-crf', '17']
+                    # 使用libx264重编码，crf 16提升画质 (原17)，preset medium平衡速度和质量
+                    cmd_video = ['-vf', filter_str, '-c:v', 'libx264', '-preset', 'medium', '-crf', '16']
             else:
                 logger.warning("无法获取分辨率，跳过去水印")
                 cmd_video = ['-c:v', 'copy']

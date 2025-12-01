@@ -75,9 +75,66 @@ class NetworkManager:
         ua_list = [
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.107 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15'
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.63 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0',
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:91.0) Gecko/20100101 Firefox/91.0'
         ]
         return random.choice(ua_list)
+    
+    def make_request(self, url, method='GET', headers=None, params=None, data=None, stream=False):
+        """发送网络请求"""
+        self._control_request_frequency()
+        
+        # 动态更新User-Agent
+        if not headers:
+            headers = self.headers.copy()
+        headers['User-Agent'] = self._get_random_ua()
+        
+        for retry in range(5):
+            try:
+                if method.upper() == 'GET':
+                    response = self.session.get(
+                        url, headers=headers, params=params, 
+                        cookies=self.cookies, stream=stream, proxies=self.proxies,
+                        timeout=(5, 30)
+                    )
+                else:
+                    response = self.session.post(
+                        url, headers=headers, params=params, data=data,
+                        cookies=self.cookies, stream=stream, proxies=self.proxies,
+                        timeout=(5, 30)
+                    )
+                
+                response.raise_for_status()
+                
+                # 随机延迟
+                time.sleep(random.uniform(0.2, 0.8))
+                
+                if stream:
+                    return response
+                
+                # 尝试解析JSON
+                if 'application/json' in response.headers.get('Content-Type', ''):
+                    return response.json()
+                elif response.content.strip().startswith(b'{') and response.content.strip().endswith(b'}'):
+                     try:
+                         return response.json()
+                     except:
+                         pass
+                
+                return response.content
+                
+            except Exception as e:
+                logger.warning(f"请求失败: {url}, 重试 {retry+1}/5. 错误: {e}")
+                time.sleep(random.uniform(1, 3))
+                
+                # 每次重试更换UA
+                headers['User-Agent'] = self._get_random_ua()
+        
+        logger.error(f"请求最终失败: {url}")
+        return None
     
     def _update_proxies(self):
         """更新代理IP"""
@@ -106,63 +163,4 @@ class NetworkManager:
             self.request_count += 1
         self.last_request_time = time.time()
     
-    def make_request(self, url, method='GET', params=None, data=None, stream=False, retry_count=0, max_retries=3, retry_delay=2):
-        """发送HTTP请求"""
-        self._control_request_frequency()
-        
-        if self.use_proxy and random.random() < 0.3:
-            self._update_proxies()
-        
-        # 更新UA
-        current_headers = self.headers.copy()
-        current_headers['User-Agent'] = self._get_random_ua()
-        
-        kwargs = {
-            'headers': current_headers,
-            'cookies': self.cookies,
-            'stream': stream
-        }
-        
-        if params: kwargs['params'] = params
-        if data: kwargs['data'] = data
-        if self.use_proxy and self.proxies: kwargs['proxies'] = self.proxies
-        
-        logger.debug(f"发送{method}请求: {url}")
-        
-        try:
-            if method.upper() == 'GET':
-                response = self.session.get(url, **kwargs)
-            elif method.upper() == 'POST':
-                response = self.session.post(url, **kwargs)
-            else:
-                return None
-            
-            response.raise_for_status()
-            
-            # 如果是流式请求，直接返回响应对象
-            if stream:
-                return response
-            
-            # 尝试解析JSON
-            try:
-                json_data = response.json()
-                if 'code' in json_data and json_data['code'] != 0:
-                    error_msg = json_data.get('message', '未知错误')
-                    logger.warning(f"API返回错误: {error_msg}，状态码: {json_data['code']}")
-                    
-                    # 特定错误码重试
-                    if json_data['code'] in [412, 429] and retry_count < max_retries:
-                        time.sleep(retry_delay * (2 ** retry_count))
-                        return self.make_request(url, method, params, data, stream, retry_count + 1, max_retries, retry_delay)
-                return json_data
-            except ValueError:
-                # 非JSON响应，返回原始内容或None
-                return response.content
-                
-        except (requests.exceptions.RequestException) as e:
-            logger.error(f"请求出错: {e}")
-            if retry_count < max_retries:
-                time.sleep(retry_delay * (2 ** retry_count))
-                return self.make_request(url, method, params, data, stream, retry_count + 1, max_retries, retry_delay)
-        
-        return None
+

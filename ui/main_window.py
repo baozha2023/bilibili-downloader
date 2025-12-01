@@ -45,12 +45,14 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v2.8")
+        self.setWindowTitle("哔哩哔哩视频下载器 v3.0")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
         if os.path.exists("resource/icon.ico"):
             self.setWindowIcon(QIcon("resource/icon.ico"))
+        elif os.path.exists("resource/logo.jpg"):
+            self.setWindowIcon(QIcon("resource/logo.jpg"))
         elif os.path.exists("resource/logo.png"):
             self.setWindowIcon(QIcon("resource/logo.png"))
         
@@ -141,7 +143,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v2.8！", "info")
+        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.0！", "info")
         self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
         
         # 检查ffmpeg
@@ -152,13 +154,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v2.8"
+        version = "v3.0"
         updates = (
-            "1. 收藏夹增强：支持查看收藏夹内部视频，双击即可跳转下载。\n"
-            "2. 界面优化：调整下载历史、热门视频等界面的布局和字体大小。\n"
-            "3. 账号页面：优化布局，移除冗余边框，收藏夹列表增加ID显示。\n"
-            "4. 细节调整：优化部分弹窗的显示效果。\n"
-            "5. 版本更新：内核组件升级，提升稳定性。"
+            "1. 界面重构：全新设计的'我的账号'页面，去除冗余信息，更加清爽。\n"
+            "2. 体验优化：下载界面去除冗余文本，专注进度展示。\n"
+            "3. 核心升级：优化爬虫算法，增加智能防反爬机制，请求更稳定。\n"
+            "4. 画质增强：优化4K视频下载逻辑，修复降级问题；增强去水印效果。\n"
+            "5. 问题修复：修复LOGO显示异常等已知问题。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

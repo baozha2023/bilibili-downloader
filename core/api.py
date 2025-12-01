@@ -136,6 +136,10 @@ class BilibiliAPI:
         # 检查是否真的获取到了4K
         if target_qn == 120 and best_video.get('id') < 120:
              logger.warning(f"请求4K画质(120)，但API仅返回最高画质: {best_video.get('id')}")
+             # 尝试强制使用最高画质，即使不匹配
+             if video_streams[0].get('id') > best_video.get('id'):
+                 best_video = video_streams[0]
+                 logger.info(f"自动修正为可用最高画质: {best_video.get('id')}")
              # 可以在这里添加逻辑，如果用户是大会员但没拿到4K，可能是API参数问题或者视频本身不支持
              
         # 音频选最好的
