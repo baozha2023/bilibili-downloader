@@ -208,6 +208,12 @@ class MediaProcessor:
         """运行ffmpeg并解析进度"""
         try:
             # 使用shell=False, cmd为列表
+            # 创建无窗口标志 (仅Windows)
+            startupinfo = None
+            if os.name == 'nt':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            
             process = subprocess.Popen(
                 cmd, 
                 shell=False, 
@@ -216,7 +222,8 @@ class MediaProcessor:
                 universal_newlines=True,
                 bufsize=1,
                 encoding='utf-8',
-                errors='replace'
+                errors='replace',
+                startupinfo=startupinfo
             )
             
             def read_stderr():

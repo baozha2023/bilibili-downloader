@@ -1,7 +1,8 @@
 import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-                             QComboBox, QFileDialog, QProgressBar, QMessageBox, QListWidget, QListWidgetItem)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+                             QComboBox, QFileDialog, QProgressBar, QMessageBox, QListWidget, QListWidgetItem,
+                             QGraphicsOpacityEffect)
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEasingCurve
 from ui.message_box import BilibiliMessageBox
 
 class ConvertWorker(QThread):
@@ -81,7 +82,8 @@ class ConverterTab(QWidget):
         
         # 标题
         title_label = QLabel("视频格式转换")
-        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #333;")
+        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #333; margin-bottom: 10px;")
+        title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_label)
         
         # 拖拽区域 / 文件列表
@@ -183,6 +185,20 @@ class ConverterTab(QWidget):
         # 添加提示项
         self.add_placeholder_item()
 
+        # 初始动画
+        self.start_fade_in_animation()
+
+    def start_fade_in_animation(self):
+        effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(effect)
+        
+        self.anim = QPropertyAnimation(effect, b"opacity")
+        self.anim.setDuration(800)
+        self.anim.setStartValue(0)
+        self.anim.setEndValue(1)
+        self.anim.setEasingCurve(QEasingCurve.OutCubic)
+        self.anim.start()
+
     def add_placeholder_item(self):
         self.file_list.clear()
         item = QListWidgetItem("拖拽视频文件到此处，或点击“选择文件”按钮")
@@ -247,7 +263,12 @@ class ConverterTab(QWidget):
         if success:
             self.status_label.setText(f"转换成功！输出文件: {os.path.basename(msg)}")
             self.progress_bar.setValue(100)
-            BilibiliMessageBox.info(self, "转换成功", f"文件已保存至:\n{msg}")
+            
+            # 添加完成动画或效果
+            self.status_label.setStyleSheet("color: #00a1d6; font-size: 16px; font-weight: bold;")
+            
+            # 修复AttributeError，确保调用正确的方法
+            BilibiliMessageBox.information(self, "转换成功", f"文件已保存至:\n{msg}")
             
             # 询问是否打开文件夹
             reply = QMessageBox.question(self, "打开文件夹", "是否打开输出文件夹？", QMessageBox.Yes | QMessageBox.No)

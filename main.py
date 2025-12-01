@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 哔哩哔哩视频下载器主程序入口
-v3.1
+v3.2
 """
 
 import ctypes
@@ -69,7 +69,7 @@ def run_interactive_cli():
     crawler = BilibiliCrawler()
     
     while True:
-        print("\n哔哩哔哩视频下载器 v3.1 - 命令行模式")
+        print("\n哔哩哔哩视频下载器 v3.2 - 命令行模式")
         print("1. 爬取热门视频")
         print("2. 爬取指定视频详情")
         print("3. 下载视频")
@@ -107,7 +107,7 @@ def run_interactive_cli():
 def main():
     """主函数"""
     # 创建命令行参数解析器
-    parser = argparse.ArgumentParser(description='哔哩哔哩视频下载器 v3.1')
+    parser = argparse.ArgumentParser(description='哔哩哔哩视频下载器 v3.2')
     parser.add_argument('-g', '--gui', action='store_true', 
                         help='启动图形用户界面')
     parser.add_argument('-p', '--popular', action='store_true', 

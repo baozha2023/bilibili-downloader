@@ -212,7 +212,7 @@ class WorkerThread(QThread):
                     
                     title = info.get("data", {}).get("title", "未知视频")
                 
-                self.update_signal.emit({"status": "info", "message": f"正在下载: {title}"})
+#                 self.update_signal.emit({"status": "info", "message": f"正在下载: {title}"})
                 
                 # 定义视频下载进度回调函数
                 def video_progress_callback(current, total):

@@ -46,7 +46,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v3.1")
+        self.setWindowTitle("哔哩哔哩视频下载器 v3.2")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -146,7 +146,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.1！", "info")
+        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.2！", "info")
         self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
         
         # 检查ffmpeg
@@ -157,13 +157,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v3.1"
+        version = "v3.2"
         updates = (
-            "1. 格式转换：新增视频格式转换功能，支持mp4/mp3/gif等多种格式。\n"
-            "2. 设置优化：调整设置界面布局，选项对齐更美观。\n"
-            "3. 账号体验：优化个人中心界面，增加过渡动画，调整信息排版。\n"
-            "4. 系统集成：修复Windows任务栏图标显示问题。\n"
-            "5. 功能增强：支持拖拽文件进行格式转换。"
+            "1. 体验优化：移除下载进度中冗余的标题显示。\n"
+            "2. 系统日志：全面覆盖所有功能模块的操作日志。\n"
+            "3. 问题修复：修复视频格式转换完成后的报错问题。\n"
+            "4. 界面美化：优化格式转换界面布局，增加过渡动画。\n"
+            "5. 代码重构：优化项目结构，提升代码质量和可维护性。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
