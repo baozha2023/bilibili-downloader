@@ -389,12 +389,27 @@ class WorkerThread(QThread):
                                 "execution_time": time.time() - start_time,
                                 "should_merge": should_merge
                             }
+                
+                # 检查是否是取消下载
+                elif download_result.get("message") == "下载已取消":
+                    return {
+                        "status": "cancelled", 
+                        "message": "下载已取消",
+                        "execution_time": time.time() - start_time
+                    }
             except Exception as e:
                 if retry < self.max_retries - 1:
                     self.update_signal.emit({"status": "warning", "message": f"下载出错: {str(e)}，重试中 ({retry+1}/{self.max_retries})..."})
                     time.sleep(self.retry_delay)
                 else:
-                    return {"status": "error", "message": f"下载失败: {str(e)}"}
+                    import traceback
+                    error_traceback = traceback.format_exc()
+                    logger.error(f"下载失败: {str(e)}\n{error_traceback}")
+                    return {
+                        "status": "error", 
+                        "message": f"下载失败: {str(e)}",
+                        "error_traceback": error_traceback
+                    }
         
         return {"status": "error", "message": "下载失败，请稍后重试"}
     

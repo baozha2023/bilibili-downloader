@@ -135,6 +135,8 @@ class BilibiliAPI:
         
         # 2. 如果没有找到目标画质，尝试降级查找 (找 <= target_qn 的最大值)
         if not best_video:
+            logger.info(f"未找到目标画质 {target_qn}，尝试降级查找...")
+            
             # 按画质降序排序
             video_streams.sort(key=lambda x: x.get('id', 0), reverse=True)
             
@@ -146,6 +148,7 @@ class BilibiliAPI:
                     break
             
             if fallback_qn:
+                logger.info(f"已降级到画质: {self._get_quality_desc(fallback_qn)}")
                 # 在降级画质中找匹配编码
                 candidates = [s for s in video_streams if s.get('id') == fallback_qn]
                 for s in candidates:
@@ -154,9 +157,11 @@ class BilibiliAPI:
                         break
                 if not best_video:
                     best_video = candidates[0]
+                    logger.info(f"降级画质中未找到目标编码 {self._get_codec_desc(target_codec)}，使用: {self._get_codec_desc(best_video.get('codecid'))}")
             else:
                 # 如果连降级都找不到（理论上不可能，除非target_qn比所有流都小），取最小的
                 best_video = video_streams[-1]
+                logger.warning("无法找到合适画质，使用最低画质")
 
         # 音频选择逻辑
         best_audio = None

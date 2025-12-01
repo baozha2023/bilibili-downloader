@@ -5,7 +5,7 @@ import logging
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QStackedWidget, QGroupBox, QTableWidget, QTableWidgetItem, 
                              QHeaderView, QTabWidget, QMessageBox, QGraphicsOpacityEffect)
-from PyQt5.QtGui import QPixmap, QPainter, QBrush
+from PyQt5.QtGui import QPixmap, QPainter, QBrush, QDesktopServices, QCursor
 from PyQt5.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
@@ -79,6 +79,8 @@ class AccountTab(QWidget):
         self.account_avatar.setAlignment(Qt.AlignCenter)
         self.account_avatar.setStyleSheet("background-color: #f5f5f5; border-radius: 40px;")
         self.account_avatar.setText("头像")
+        self.account_avatar.setCursor(Qt.PointingHandCursor)
+        self.account_avatar.mousePressEvent = self.open_user_homepage
         user_info_layout.addWidget(self.account_avatar)
         
         # 用户详细信息
@@ -225,6 +227,12 @@ class AccountTab(QWidget):
         self.login_window.finished_signal = lambda: self.check_login_status()
         # self.account_status.setText("正在登录...")
 
+    def open_user_homepage(self, event):
+        """打开用户主页"""
+        if hasattr(self, 'current_mid') and self.current_mid:
+            url = f"https://space.bilibili.com/{self.current_mid}"
+            QDesktopServices.openUrl(QUrl(url))
+            
     def switch_to_logged_view(self):
         """切换到已登录视图（带动画）"""
         if self.account_stack.currentIndex() == 1:
@@ -279,9 +287,10 @@ class AccountTab(QWidget):
     def on_account_info_finished(self, result):
         if result["status"] == "success":
             user_info = result.get("data", {})
+            self.current_mid = user_info.get('mid')
             username = user_info.get("uname", "未知用户")
             self.account_name.setText(username)
-            self.account_uid.setText(f"UID: {user_info.get('mid', '--')}")
+            self.account_uid.setText(f"UID: {self.current_mid if self.current_mid else '--'}")
             self.account_level.setText(f"等级: Lv{user_info.get('level_info', {}).get('current_level', 0)}")
             
             # 记录登录成功日志

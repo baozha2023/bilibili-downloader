@@ -383,10 +383,25 @@ class DownloadTab(QWidget):
             except Exception as e:
                 self.main_window.log_to_console(f"执行完成后操作出错: {str(e)}", "error")
                 
+        elif result["status"] == "cancelled":
+            self.download_status.setText("下载已取消")
+            self.main_window.log_to_console("下载已取消", "warning")
+            
         else:
             error_message = f"下载失败: {result.get('message', '未知错误')}"
             self.download_status.setText(error_message)
-            self.main_window.log_to_console(error_message, "error")
+            
+            # Log error with traceback if available
+            if "error_traceback" in result:
+                self.main_window.log_to_console(error_message, "error")
+                self.main_window.log_to_console("错误详情已记录到系统日志", "info")
+                # The traceback is already logged in WorkerThread, but we ensure it's visible in console log if needed
+                # But main_window.log_to_console is for GUI log. 
+                # The requirement is "output specific error in system log".
+                # WorkerThread already logs to 'logger' (system log).
+            else:
+                self.main_window.log_to_console(error_message, "error")
+                
             self.main_window.add_download_history(bvid, title, "失败")
             QMessageBox.critical(self, "下载失败", error_message)
 

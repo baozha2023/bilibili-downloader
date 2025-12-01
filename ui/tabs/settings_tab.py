@@ -63,7 +63,7 @@ class SettingsTab(QWidget):
         
         # 数据存储目录
         dir_label = QLabel("数据存储目录:")
-        dir_label.setStyleSheet("font-size: 16px; color: #555;")
+        dir_label.setStyleSheet("font-size: 20px; color: #555;")
         basic_layout.addWidget(dir_label, 0, 0)
         
         self.data_dir_input = QLineEdit(os.path.abspath(self.crawler.data_dir))
@@ -73,7 +73,7 @@ class SettingsTab(QWidget):
                 padding: 8px;
                 border: 1px solid #ddd;
                 border-radius: 6px;
-                font-size: 15px;
+                font-size: 19px;
                 background-color: #fafafa;
             }
             QLineEdit:focus {
@@ -87,7 +87,7 @@ class SettingsTab(QWidget):
         browse_btn.setCursor(Qt.PointingHandCursor)
         browse_btn.setStyleSheet("""
             QPushButton {
-                font-size: 14px;
+                font-size: 18px;
                 padding: 8px 20px;
                 background-color: white;
                 border: 1px solid #ddd;
@@ -105,7 +105,7 @@ class SettingsTab(QWidget):
 
         # 最大重试次数
         retry_label = QLabel("最大重试次数:")
-        retry_label.setStyleSheet("font-size: 16px; color: #555;")
+        retry_label.setStyleSheet("font-size: 20px; color: #555;")
         basic_layout.addWidget(retry_label, 1, 0)
         
         self.retry_count = QSpinBox()
@@ -117,7 +117,7 @@ class SettingsTab(QWidget):
                 padding: 8px;
                 border: 1px solid #ddd;
                 border-radius: 6px;
-                font-size: 15px;
+                font-size: 19px;
             }
             QSpinBox::up-button, QSpinBox::down-button {
                 width: 20px;
@@ -140,7 +140,7 @@ class SettingsTab(QWidget):
                 padding: 8px 12px;
                 border: 1px solid #ddd;
                 border-radius: 6px;
-                font-size: 15px;
+                font-size: 19px;
                 background-color: #fafafa;
                 min-width: 200px;
             }
@@ -162,7 +162,7 @@ class SettingsTab(QWidget):
 
         # 1. 视频编码
         codec_label = QLabel("优先视频编码:")
-        codec_label.setStyleSheet("font-size: 16px; color: #555;")
+        codec_label.setStyleSheet("font-size: 20px; color: #555;")
         pref_layout.addWidget(codec_label, 0, 0)
         
         self.codec_combo = QComboBox()
@@ -173,7 +173,7 @@ class SettingsTab(QWidget):
         
         # 2. 视频画质
         quality_label = QLabel("优先视频画质:")
-        quality_label.setStyleSheet("font-size: 16px; color: #555;")
+        quality_label.setStyleSheet("font-size: 20px; color: #555;")
         pref_layout.addWidget(quality_label, 1, 0)
         
         self.quality_combo = QComboBox()
@@ -184,7 +184,7 @@ class SettingsTab(QWidget):
         
         # 3. 视频音质
         audio_label = QLabel("优先视频音质:")
-        audio_label.setStyleSheet("font-size: 16px; color: #555;")
+        audio_label.setStyleSheet("font-size: 20px; color: #555;")
         pref_layout.addWidget(audio_label, 2, 0)
         
         self.audio_quality_combo = QComboBox()
@@ -194,7 +194,7 @@ class SettingsTab(QWidget):
         pref_layout.addWidget(self.audio_quality_combo, 2, 1)
 
         tips_label = QLabel("💡 提示：实际下载画质取决于视频源和账号权限，登录大会员可解锁最高画质")
-        tips_label.setStyleSheet("color: #999; font-size: 14px; margin-top: 10px; font-style: italic;")
+        tips_label.setStyleSheet("color: #999; font-size: 18px; margin-top: 10px; font-style: italic;")
         pref_layout.addWidget(tips_label, 3, 0, 1, 2)
         
         pref_card.add_layout(pref_layout)
@@ -206,7 +206,7 @@ class SettingsTab(QWidget):
         # 通用复选框样式
         checkbox_style = """
             QCheckBox {
-                font-size: 16px;
+                font-size: 20px;
                 color: #555;
                 spacing: 10px;
             }
@@ -267,7 +267,7 @@ class SettingsTab(QWidget):
         # 完成后操作
         action_layout = QHBoxLayout()
         action_label = QLabel("下载完成后:")
-        action_label.setStyleSheet("font-size: 16px; color: #555;")
+        action_label.setStyleSheet("font-size: 20px; color: #555;")
         action_layout.addWidget(action_label)
         
         self.complete_action = QComboBox()

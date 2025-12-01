@@ -18,12 +18,12 @@ class CardWidget(QFrame):
             }
         """)
         
-        # 添加阴影效果
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(15)
-        shadow.setColor(QColor(0, 0, 0, 20))
-        shadow.setOffset(0, 2)
-        self.setGraphicsEffect(shadow)
+        # 添加阴影效果 (已移除)
+        # shadow = QGraphicsDropShadowEffect(self)
+        # shadow.setBlurRadius(15)
+        # shadow.setColor(QColor(0, 0, 0, 20))
+        # shadow.setOffset(0, 2)
+        # self.setGraphicsEffect(shadow)
         
         # 主布局
         self.layout = QVBoxLayout(self)
@@ -34,7 +34,7 @@ class CardWidget(QFrame):
         if title:
             self.title_label = QLabel(title)
             self.title_label.setStyleSheet("""
-                font-size: 22px;
+                font-size: 26px;
                 font-weight: bold;
                 color: #333;
                 padding-bottom: 10px;
