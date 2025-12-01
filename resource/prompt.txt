@@ -1,0 +1,6 @@
+Generate a modern, minimalist icon for a Bilibili video downloader application.
+The icon should feature a stylized download arrow or symbol combined with Bilibili's signature pink color (#fb7299) and white.
+The style should be flat, clean, and vector-like, suitable for an application icon.
+Include a subtle reference to a TV or play button if possible, but keep it abstract.
+Background should be white or transparent.
+High resolution, sharp edges.

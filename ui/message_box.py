@@ -54,7 +54,7 @@ class BilibiliMessageBox(QDialog):
         self.msg_label = QLabel(message)
         self.msg_label.setAlignment(Qt.AlignCenter)
         self.msg_label.setWordWrap(True)
-        self.msg_label.setStyleSheet("font-size: 22px; color: #666666; line-height: 1.5;")
+        self.msg_label.setStyleSheet("font-size: 22px; color: #666666; line-height: 1.5; border: none;")
         self.frame_layout.addWidget(self.msg_label)
         
         # Buttons
@@ -83,7 +83,7 @@ class BilibiliMessageBox(QDialog):
         # Shadow effect (optional, simple implementation)
         # self.setGraphicsEffect(...) 
         
-        self.resize(400, 300)
+        self.resize(500, 350)
         
     def style_primary_button(self, btn):
         btn.setCursor(Qt.PointingHandCursor)
@@ -133,6 +133,11 @@ class BilibiliMessageBox(QDialog):
     @staticmethod
     def information(parent, title, message):
         dialog = BilibiliMessageBox(parent, title, message, BilibiliMessageBox.Info)
+        return dialog.exec_()
+
+    @staticmethod
+    def error(parent, title, message):
+        dialog = BilibiliMessageBox(parent, title, message, BilibiliMessageBox.Error)
         return dialog.exec_()
         
     @staticmethod

@@ -68,8 +68,19 @@ class BilibiliAPI:
         # 注意：大会员检查通常需要单独的API，这里假设如果用户请求4k且已登录，就尝试请求
         # API会返回实际可用的最高画质
         
-        # fnval=4048 (DASH格式, 包含HDR/4K等)
-        download_url_api = f'https://api.bilibili.com/x/player/playurl?bvid={bvid}&cid={cid}&qn={target_qn}&fnval=4048&fourk=1'
+        # fnval参数说明:
+        # 1: MP4
+        # 16: DASH
+        # 64: HDR
+        # 128: 4K
+        # 256: Dolby Vision
+        # 4048: 16 | 64 | 128 | ... (包含DASH, HDR, 4K等)
+        
+        fnval = 4048
+        # 如果请求的是4K，确保fourk=1
+        fourk = 1 if target_qn >= 120 else 0
+        
+        download_url_api = f'https://api.bilibili.com/x/player/playurl?bvid={bvid}&cid={cid}&qn={target_qn}&fnval={fnval}&fourk={fourk}'
         download_info = self.network.make_request(download_url_api)
         
         if not download_info or 'data' not in download_info:
@@ -94,20 +105,31 @@ class BilibiliAPI:
         # 寻找最接近target_qn的流
         best_video = None
         
-        # 简单的筛选逻辑：
-        # 如果有流的id == target_qn，选中
-        # 否则选中 <= target_qn 的最高画质
-        
-        # 先尝试找完全匹配或更低
+        # 筛选逻辑优化：
+        # 1. 尝试找到id == target_qn的流
         for stream in video_streams:
-            if stream.get('id', 0) <= target_qn:
+            if stream.get('id', 0) == target_qn:
                 best_video = stream
                 break
-                
-        # 如果没找到（比如所有流都比target_qn大？不太可能），就取最小的
+        
+        # 2. 如果没找到，尝试找到id > target_qn的最小流（虽然API通常不会返回比qn更高的，但以防万一）
+        # 或者找id < target_qn的最大流
+        if not best_video:
+            # 重新遍历，找 <= target_qn 的最大值
+            for stream in video_streams:
+                if stream.get('id', 0) <= target_qn:
+                    best_video = stream
+                    break
+                    
+        # 3. 如果还是没找到（说明所有流都比target_qn大？），取最小的那个
         if not best_video:
             best_video = video_streams[-1]
             
+        # 检查是否真的获取到了4K
+        if target_qn == 120 and best_video.get('id') < 120:
+             logger.warning(f"请求4K画质(120)，但API仅返回最高画质: {best_video.get('id')}")
+             # 可以在这里添加逻辑，如果用户是大会员但没拿到4K，可能是API参数问题或者视频本身不支持
+             
         # 音频选最好的
         best_audio = None
         if audio_streams:

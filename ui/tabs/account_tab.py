@@ -82,21 +82,31 @@ class AccountTab(QWidget):
         
         # 用户详细信息
         user_details_layout = QVBoxLayout()
+        user_details_layout.setSpacing(10) # 增加间距
         
+        # 第一行：用户名
         self.account_name = QLabel("用户名")
-        self.account_name.setStyleSheet("font-size: 28px; font-weight: bold;")
+        self.account_name.setStyleSheet("font-size: 32px; font-weight: bold; margin-bottom: 5px;")
         user_details_layout.addWidget(self.account_name)
         
+        # 第二行：UID 和 等级 (水平排列)
+        info_row1 = QHBoxLayout()
+        info_row1.setSpacing(20)
+        
         self.account_uid = QLabel("UID: --")
-        self.account_uid.setStyleSheet("font-size: 22px; color: #666;")
-        user_details_layout.addWidget(self.account_uid)
+        self.account_uid.setStyleSheet("font-size: 24px; color: #666;")
+        info_row1.addWidget(self.account_uid)
         
         self.account_level = QLabel("等级: --")
-        self.account_level.setStyleSheet("font-size: 22px; color: #666;")
-        user_details_layout.addWidget(self.account_level)
+        self.account_level.setStyleSheet("font-size: 24px; color: #666;")
+        info_row1.addWidget(self.account_level)
         
+        info_row1.addStretch()
+        user_details_layout.addLayout(info_row1)
+        
+        # 第三行：会员状态
         self.account_vip = QLabel("会员状态: 非会员")
-        self.account_vip.setStyleSheet("font-size: 22px; color: #666;")
+        self.account_vip.setStyleSheet("font-size: 24px; color: #666;")
         user_details_layout.addWidget(self.account_vip)
         
         user_info_layout.addLayout(user_details_layout)
@@ -216,13 +226,13 @@ class AccountTab(QWidget):
             # status 1 为有效，0 为过期/无效
             if vip_type == 0 or vip_status != 1:
                 self.account_vip.setText("会员状态: 非会员")
-                self.account_vip.setStyleSheet("font-size: 22px; color: #666;")
+                self.account_vip.setStyleSheet("font-size: 24px; color: #666;")
             elif vip_type == 1:
                 self.account_vip.setText("会员状态: 大会员")
-                self.account_vip.setStyleSheet("font-size: 22px; color: #FB7299;")
+                self.account_vip.setStyleSheet("font-size: 24px; color: #FB7299;")
             elif vip_type == 2:
                 self.account_vip.setText("会员状态: 年度大会员")
-                self.account_vip.setStyleSheet("font-size: 22px; color: #FB7299; font-weight: bold;")
+                self.account_vip.setStyleSheet("font-size: 24px; color: #FB7299; font-weight: bold;")
             
             face_url = user_info.get("face", "")
             if face_url:

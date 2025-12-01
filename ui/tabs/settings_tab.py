@@ -3,7 +3,8 @@ import json
 import logging
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QLineEdit, QCheckBox, QGroupBox, QComboBox, QSpinBox, 
-                             QGridLayout, QFileDialog, QMessageBox)
+                             QGridLayout, QFileDialog)
+from ui.message_box import BilibiliMessageBox
 from PyQt5.QtCore import Qt
 
 logger = logging.getLogger('bilibili_desktop')
@@ -183,7 +184,7 @@ class SettingsTab(QWidget):
         self.crawler.proxies = {}
         
         self.save_config_to_file()
-        QMessageBox.information(self, "设置保存", "设置已保存")
+        BilibiliMessageBox.information(self, "设置保存", "设置已保存")
 
     def save_config_to_file(self):
         config = {
