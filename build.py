@@ -3,7 +3,7 @@
 
 """
 哔哩哔哩视频下载器打包脚本
-版本: 3.5
+版本: 3.6
 """
 
 import os
@@ -53,6 +53,7 @@ def build_executable():
         '--hidden-import=ui.tabs.download_tab',
         '--hidden-import=ui.tabs.popular_tab',
         '--hidden-import=ui.tabs.account_tab',
+        '--hidden-import=ui.tabs.video_edit_tab',
         '--hidden-import=ui.tabs.settings_tab',
         'main.py'
     ]
@@ -136,7 +137,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v2.7_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v3.6_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -180,7 +181,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  哔哩哔哩视频下载器打包工具 v2.7")
+    print("  哔哩哔哩视频下载器打包工具 v3.6")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -205,12 +206,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v2.7 更新内容:")
-    print("- 修复了会员用户下载4K视频时画质被限制的问题")
-    print("- 优化了账号界面布局，提升空间利用率")
-    print("- 增大了设置保存提示弹窗的尺寸")
-    print("- 去水印功能画质进一步增强")
-    print("- 界面细节优化：移除了BV号提示弹窗的文字边框")
+    print("\n新版本 v3.6 更新内容:")
+    print("- 新增视频编辑功能：集成了格式转换、视频剪辑、视频合并、去水印")
+    print("- 界面优化：全新设计的视频编辑Tab，贴近B站风格")
+    print("- 优化去水印：支持自定义区域去水印，更灵活")
+    print("- 适配优化：优化了不同分辨率屏幕的显示效果")
+    print("- 核心升级：增强了错误处理和版本管理")
 
 if __name__ == "__main__":
     main() 

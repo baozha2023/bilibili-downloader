@@ -16,7 +16,7 @@ from ui.tabs.download_tab import DownloadTab
 from ui.tabs.popular_tab import PopularTab
 from ui.tabs.account_tab import AccountTab
 from ui.tabs.settings_tab import SettingsTab
-from ui.tabs.converter_tab import ConverterTab
+from ui.tabs.video_edit_tab import VideoEditTab
 
 # 配置日志
 logger = logging.getLogger('bilibili_desktop')
@@ -46,7 +46,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v3.5")
+        self.setWindowTitle("哔哩哔哩视频下载器 v3.6")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -132,12 +132,12 @@ class BilibiliDesktop(QMainWindow):
         self.download_tab = DownloadTab(self)
         self.popular_tab = PopularTab(self)
         self.account_tab = AccountTab(self)
-        self.converter_tab = ConverterTab(self)
+        self.video_edit_tab = VideoEditTab(self)
         
         self.tabs.addTab(self.download_tab, "视频下载")
         self.tabs.addTab(self.popular_tab, "热门视频")
         self.tabs.addTab(self.account_tab, "我的账号")
-        self.tabs.addTab(self.converter_tab, "格式转换")
+        self.tabs.addTab(self.video_edit_tab, "视频编辑")
         self.tabs.addTab(self.settings_tab, "设置")
         
         # 连接设置变更信号
@@ -152,7 +152,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.5！", "info")
+        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.6！", "info")
         self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
         
         # 检查ffmpeg
@@ -163,13 +163,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v3.5"
+        version = "v3.6"
         updates = (
-            "1. 功能优化：下载失败时会在系统日志中输出具体的错误信息。\n"
-            "2. 界面优化：设置界面字体放大，去除阴影，更加清晰易读。\n"
-            "3. 智能下载：爬取时若无偏好画质/编码/音频，自动降级寻找最佳可用资源。\n"
-            "4. 交互优化：点击我的账号头像可直接跳转至B站个人主页。\n"
-            "5. 核心升级：优化了错误处理和日志记录机制。"
+            "1. 新增视频编辑功能：集成了格式转换、视频剪辑、视频合并、去水印。\n"
+            "2. 界面优化：全新设计的视频编辑Tab，贴近B站风格。\n"
+            "3. 优化去水印：支持自定义区域去水印，更灵活。\n"
+            "4. 适配优化：优化了不同分辨率屏幕的显示效果。\n"
+            "5. 核心升级：增强了错误处理和版本管理。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

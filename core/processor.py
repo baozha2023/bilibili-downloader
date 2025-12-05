@@ -5,6 +5,7 @@ import subprocess
 import logging
 import threading
 import shutil
+import tempfile
 
 logger = logging.getLogger('bilibili_core.processor')
 
@@ -203,6 +204,167 @@ class MediaProcessor:
         except Exception as e:
             logger.error(f"获取分辨率失败: {e}")
         return None
+
+    def get_video_duration(self, video_path):
+        """获取视频时长(秒)"""
+        try:
+            cmd = [self.ffmpeg_path, '-i', video_path]
+            # 必须使用shell=False并传入列表
+            if os.name == 'nt':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            else:
+                startupinfo = None
+
+            # Explicitly use utf-8 encoding to avoid gbk decode error on Windows
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, 
+                               universal_newlines=True, startupinfo=startupinfo, 
+                               encoding='utf-8', errors='replace')
+            _, stderr = p.communicate()
+            
+            match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2})', stderr)
+            if match:
+                h, m, s = map(int, match.groups())
+                return h * 3600 + m * 60 + s
+        except Exception as e:
+            logger.error(f"获取时长失败: {e}")
+        return 0
+
+    def cut_video(self, input_path, start_time, end_time, output_path=None, progress_callback=None):
+        """
+        剪辑视频
+        :param start_time: 开始时间 (秒)
+        :param end_time: 结束时间 (秒)
+        """
+        if not self.ffmpeg_available:
+            return False, "ffmpeg未安装"
+            
+        if not output_path:
+            input_dir = os.path.dirname(input_path)
+            input_name = os.path.splitext(os.path.basename(input_path))[0]
+            ext = os.path.splitext(input_path)[1]
+            output_path = os.path.join(input_dir, f"{input_name}_cut{ext}")
+            
+        # 计算持续时间
+        duration = end_time - start_time
+        if duration <= 0:
+            return False, "无效的时间范围"
+            
+        # 使用 -ss (before -i) 快速定位，重编码保证精确
+        cmd = [
+            self.ffmpeg_path, 
+            '-ss', str(start_time),
+            '-i', input_path,
+            '-t', str(duration),
+            '-c:v', 'libx264', '-c:a', 'aac',
+            '-y', output_path
+        ]
+        
+        logger.info(f"剪辑视频: {cmd}")
+        if self._run_ffmpeg_with_progress(cmd, progress_callback):
+            return True, output_path
+        else:
+            return False, "剪辑失败"
+
+    def merge_video_files(self, file_list, output_path, progress_callback=None):
+        """
+        合并多个视频文件 (Concat)
+        """
+        if not self.ffmpeg_available:
+            return False, "ffmpeg未安装"
+        
+        if len(file_list) < 2:
+            return False, "至少需要两个文件"
+            
+        # 创建临时列表文件
+        try:
+            fd, list_path = tempfile.mkstemp(suffix=".txt", text=True)
+            os.close(fd)
+            
+            with open(list_path, 'w', encoding='utf-8') as f:
+                for file in file_list:
+                    # 转义路径中的单引号
+                    path = file.replace("'", "'\\''")
+                    f.write(f"file '{path}'\n")
+            
+            cmd = [
+                self.ffmpeg_path,
+                '-f', 'concat',
+                '-safe', '0',
+                '-i', list_path,
+                '-c', 'copy', # 尝试复制流 (前提是格式一致)
+                '-y', output_path
+            ]
+            
+            logger.info(f"合并视频: {cmd}")
+            success = self._run_ffmpeg_with_progress(cmd, progress_callback)
+            
+            # 清理临时文件
+            if os.path.exists(list_path):
+                os.remove(list_path)
+                
+            if success:
+                return True, output_path
+            else:
+                # 如果copy失败，尝试重编码合并 (更稳健但更慢)
+                logger.warning("流复制合并失败，尝试重编码合并...")
+                cmd = [
+                    self.ffmpeg_path,
+                    '-f', 'concat',
+                    '-safe', '0',
+                    '-i', list_path,
+                    '-c:v', 'libx264', '-c:a', 'aac',
+                    '-y', output_path
+                ]
+                
+                # 再次创建列表文件 (因为可能已被删除)
+                with open(list_path, 'w', encoding='utf-8') as f:
+                    for file in file_list:
+                        path = file.replace("'", "'\\''")
+                        f.write(f"file '{path}'\n")
+                        
+                success = self._run_ffmpeg_with_progress(cmd, progress_callback)
+                if os.path.exists(list_path):
+                    os.remove(list_path)
+                    
+                if success:
+                    return True, output_path
+                else:
+                    return False, "合并失败"
+                    
+        except Exception as e:
+            logger.error(f"合并出错: {e}")
+            return False, str(e)
+
+    def remove_watermark_custom(self, input_path, x, y, w, h, output_path=None, progress_callback=None):
+        """
+        自定义区域去水印
+        """
+        if not self.ffmpeg_available:
+            return False, "ffmpeg未安装"
+            
+        if not output_path:
+            input_dir = os.path.dirname(input_path)
+            input_name = os.path.splitext(os.path.basename(input_path))[0]
+            ext = os.path.splitext(input_path)[1]
+            output_path = os.path.join(input_dir, f"{input_name}_clean{ext}")
+            
+        filter_str = f"delogo=x={x}:y={y}:w={w}:h={h}:band=10:show=0"
+        
+        cmd = [
+            self.ffmpeg_path,
+            '-i', input_path,
+            '-vf', filter_str,
+            '-c:v', 'libx264', '-preset', 'medium', '-crf', '18',
+            '-c:a', 'copy',
+            '-y', output_path
+        ]
+        
+        logger.info(f"自定义去水印: {cmd}")
+        if self._run_ffmpeg_with_progress(cmd, progress_callback):
+            return True, output_path
+        else:
+            return False, "去水印失败"
 
     def _run_ffmpeg_with_progress(self, cmd, progress_callback):
         """运行ffmpeg并解析进度"""
