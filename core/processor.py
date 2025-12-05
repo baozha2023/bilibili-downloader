@@ -349,6 +349,9 @@ class MediaProcessor:
             ext = os.path.splitext(input_path)[1]
             output_path = os.path.join(input_dir, f"{input_name}_clean{ext}")
             
+        # 使用更智能的delogo参数
+        # show=0: 不显示绿框
+        # band=4: 边缘过渡宽度 (默认4，适度增加可平滑)
         filter_str = f"delogo=x={x}:y={y}:w={w}:h={h}:band=10:show=0"
         
         cmd = [
@@ -365,6 +368,38 @@ class MediaProcessor:
             return True, output_path
         else:
             return False, "去水印失败"
+
+    def compress_video(self, input_path, target_resolution, crf=23, output_path=None, progress_callback=None):
+        """
+        压缩视频
+        :param target_resolution: 目标分辨率 (e.g. "1280x720", "1920x1080")
+        :param crf: 压缩质量 (18-28, 越小画质越好体积越大)
+        """
+        if not self.ffmpeg_available:
+            return False, "ffmpeg未安装"
+            
+        if not output_path:
+            input_dir = os.path.dirname(input_path)
+            input_name = os.path.splitext(os.path.basename(input_path))[0]
+            ext = os.path.splitext(input_path)[1]
+            output_path = os.path.join(input_dir, f"{input_name}_compressed_{target_resolution}{ext}")
+            
+        cmd = [
+            self.ffmpeg_path,
+            '-i', input_path,
+            '-vf', f'scale={target_resolution}:force_original_aspect_ratio=decrease',
+            '-c:v', 'libx264', 
+            '-crf', str(crf), 
+            '-preset', 'medium',
+            '-c:a', 'aac', '-b:a', '128k',
+            '-y', output_path
+        ]
+        
+        logger.info(f"压缩视频: {cmd}")
+        if self._run_ffmpeg_with_progress(cmd, progress_callback):
+            return True, output_path
+        else:
+            return False, "压缩失败"
 
     def _run_ffmpeg_with_progress(self, cmd, progress_callback):
         """运行ffmpeg并解析进度"""

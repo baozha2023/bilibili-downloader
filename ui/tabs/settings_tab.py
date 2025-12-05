@@ -318,7 +318,6 @@ class SettingsTab(QWidget):
             }
             QPushButton:hover {
                 background-color: #fc8bab;
-                transform: scale(1.05);
             }
             QPushButton:pressed {
                 background-color: #e45c84;

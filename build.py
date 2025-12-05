@@ -3,7 +3,7 @@
 
 """
 哔哩哔哩视频下载器打包脚本
-版本: 3.6
+版本: 3.7
 """
 
 import os
@@ -137,7 +137,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v3.6_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v3.7_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -181,7 +181,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  哔哩哔哩视频下载器打包工具 v3.6")
+    print("  哔哩哔哩视频下载器打包工具 v3.7")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -206,12 +206,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v3.6 更新内容:")
-    print("- 新增视频编辑功能：集成了格式转换、视频剪辑、视频合并、去水印")
-    print("- 界面优化：全新设计的视频编辑Tab，贴近B站风格")
-    print("- 优化去水印：支持自定义区域去水印，更灵活")
-    print("- 适配优化：优化了不同分辨率屏幕的显示效果")
-    print("- 核心升级：增强了错误处理和版本管理")
+    print("\n新版本 v3.7 更新内容:")
+    print("- 新增视频压缩功能：支持自定义分辨率和画质，轻松减小视频体积")
+    print("- 界面优化：视频编辑界面字体增大，提升阅读体验")
+    print("- 优化去水印：采用更智能的去水印算法，效果更自然")
+    print("- 修复BUG：修复了控制台日志输出异常的问题")
+    print("- 性能提升：优化了视频处理流程，更加稳定")
 
 if __name__ == "__main__":
     main() 

@@ -36,7 +36,7 @@ class DragDropListWidget(QListWidget):
             QListWidget {
                 border: 2px dashed #ccc;
                 border-radius: 12px;
-                font-size: 16px;
+                font-size: 20px;
                 color: #555;
                 background-color: #fafafa;
                 outline: none;
@@ -129,7 +129,7 @@ class VideoEditTab(QWidget):
                 text-align: left;
                 padding: 15px 20px;
                 border: none;
-                font-size: 16px;
+                font-size: 20px;
                 color: #61666d;
                 background-color: transparent;
                 border-radius: 6px;
@@ -150,7 +150,7 @@ class VideoEditTab(QWidget):
         sidebar_layout.setSpacing(5)
         
         self.nav_btns = []
-        nav_items = [("格式转换", "convert"), ("视频剪辑", "cut"), ("视频合并", "merge"), ("去水印", "watermark")]
+        nav_items = [("格式转换", "convert"), ("视频剪辑", "cut"), ("视频合并", "merge"), ("去水印", "watermark"), ("视频压缩", "compress")]
         
         for text, tag in nav_items:
             btn = QPushButton(text)
@@ -173,6 +173,7 @@ class VideoEditTab(QWidget):
         self.pages['cut'] = self.create_cut_page()
         self.pages['merge'] = self.create_merge_page()
         self.pages['watermark'] = self.create_watermark_page()
+        self.pages['compress'] = self.create_compress_page()
         
         for tag, page in self.pages.items():
             self.content_stack.addWidget(page)
@@ -274,7 +275,7 @@ class VideoEditTab(QWidget):
         
         # Time Selection
         time_group = QGroupBox("剪辑范围 (秒)")
-        time_group.setStyleSheet("QGroupBox { font-size: 16px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
+        time_group.setStyleSheet("QGroupBox { font-size: 20px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
         time_layout = QHBoxLayout(time_group)
         
         time_layout.addWidget(QLabel("开始时间:"))
@@ -395,7 +396,7 @@ class VideoEditTab(QWidget):
         
         # Area Selection
         area_group = QGroupBox("水印区域 (像素)")
-        area_group.setStyleSheet("QGroupBox { font-size: 16px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
+        area_group.setStyleSheet("QGroupBox { font-size: 20px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
         area_layout = QHBoxLayout(area_group)
         
         self.wm_x = QSpinBox()
@@ -444,15 +445,77 @@ class VideoEditTab(QWidget):
         return page
 
     # ==========================================
+    # 5. Video Compress Page
+    # ==========================================
+    def create_compress_page(self):
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(40, 30, 40, 30)
+        layout.setSpacing(20)
+        
+        self.setup_header(layout, "视频压缩", "调整分辨率和画质以减小体积")
+        
+        self.compress_file_list = DragDropListWidget()
+        self.compress_file_list.file_dropped.connect(lambda p: self.set_single_file(p, self.compress_file_list, self.compress_btn))
+        layout.addWidget(self.compress_file_list)
+        
+        # Settings
+        settings_group = QGroupBox("压缩设置")
+        settings_group.setStyleSheet("QGroupBox { font-size: 20px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
+        settings_layout = QHBoxLayout(settings_group)
+        
+        settings_layout.addWidget(QLabel("目标分辨率:"))
+        self.res_combo = QComboBox()
+        self.res_combo.addItems(["1920x1080", "1280x720", "854x480", "640x360"])
+        self.style_combo(self.res_combo)
+        settings_layout.addWidget(self.res_combo)
+        
+        settings_layout.addWidget(QLabel("画质 (CRF):"))
+        self.crf_spin = QSpinBox()
+        self.crf_spin.setRange(18, 51)
+        self.crf_spin.setValue(23)
+        self.crf_spin.setToolTip("数值越小画质越好，体积越大。推荐23。")
+        self.style_spinbox(self.crf_spin)
+        settings_layout.addWidget(self.crf_spin)
+        
+        layout.addWidget(settings_group)
+        
+        # Controls
+        controls_frame = self.create_control_frame()
+        controls_layout = QHBoxLayout(controls_frame)
+        
+        select_btn = self.create_button("选择文件", lambda: self.select_single_file(self.compress_file_list, self.compress_btn))
+        controls_layout.addWidget(select_btn)
+        
+        controls_layout.addStretch()
+        
+        self.compress_btn = self.create_primary_button("开始压缩", self.start_compress)
+        self.compress_btn.setEnabled(False)
+        controls_layout.addWidget(self.compress_btn)
+        
+        layout.addWidget(controls_frame)
+        
+        self.compress_progress = self.create_progress_bar()
+        layout.addWidget(self.compress_progress)
+        
+        self.compress_status = QLabel("")
+        self.compress_status.setAlignment(Qt.AlignCenter)
+        layout.addWidget(self.compress_status)
+        
+        layout.addStretch()
+        self.reset_list(self.compress_file_list, "👇 拖拽视频文件到此处")
+        return page
+
+    # ==========================================
     # Helper Methods
     # ==========================================
     def setup_header(self, layout, title, subtitle):
         title_label = QLabel(title)
-        title_label.setStyleSheet("font-size: 28px; font-weight: bold; color: #333;")
+        title_label.setStyleSheet("font-size: 32px; font-weight: bold; color: #333;")
         layout.addWidget(title_label)
         
         sub_label = QLabel(subtitle)
-        sub_label.setStyleSheet("font-size: 16px; color: #999;")
+        sub_label.setStyleSheet("font-size: 20px; color: #999;")
         layout.addWidget(sub_label)
 
     def create_control_frame(self):
@@ -471,7 +534,7 @@ class VideoEditTab(QWidget):
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet("""
             QPushButton {
-                font-size: 16px;
+                font-size: 20px;
                 padding: 8px 20px;
                 background-color: white;
                 border: 1px solid #ddd;
@@ -492,7 +555,7 @@ class VideoEditTab(QWidget):
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet("""
             QPushButton {
-                font-size: 18px;
+                font-size: 22px;
                 font-weight: bold;
                 padding: 10px 30px;
                 background-color: #fb7299;
@@ -524,7 +587,7 @@ class VideoEditTab(QWidget):
                 background-color: #e0e0e0;
                 text-align: center;
                 height: 25px;
-                font-size: 14px;
+                font-size: 18px;
                 color: white;
             }
             QProgressBar::chunk {
@@ -537,7 +600,7 @@ class VideoEditTab(QWidget):
     def style_combo(self, combo):
         combo.setStyleSheet("""
             QComboBox {
-                font-size: 16px;
+                font-size: 20px;
                 padding: 5px;
                 border: 1px solid #ddd;
                 border-radius: 6px;
@@ -551,7 +614,7 @@ class VideoEditTab(QWidget):
     def style_spinbox(self, spin):
         spin.setStyleSheet("""
             QSpinBox, QDoubleSpinBox {
-                font-size: 16px;
+                font-size: 20px;
                 padding: 5px;
                 border: 1px solid #ddd;
                 border-radius: 6px;
@@ -735,3 +798,30 @@ class VideoEditTab(QWidget):
             self.wm_progress.setValue(100)
         else:
             self.wm_status.setText(f"❌ 失败: {msg}")
+
+    # --- Compress ---
+    def start_compress(self):
+        if self.compress_file_list.count() == 0 or not self.compress_file_list.item(0).flags() & Qt.ItemIsEnabled:
+            return
+            
+        file_path = self.compress_file_list.item(0).text()
+        res = self.res_combo.currentText()
+        crf = self.crf_spin.value()
+        
+        self.compress_btn.setEnabled(False)
+        self.compress_progress.setVisible(True)
+        self.compress_progress.setValue(0)
+        self.compress_status.setText("正在压缩中...")
+        
+        self.worker = Worker(self.processor.compress_video, file_path, res, crf)
+        self.worker.progress_signal.connect(self.compress_progress.setValue)
+        self.worker.finished_signal.connect(self.on_compress_finished)
+        self.worker.start()
+        
+    def on_compress_finished(self, success, msg):
+        self.compress_btn.setEnabled(True)
+        if success:
+            self.compress_status.setText(f"✅ 压缩成功: {os.path.basename(msg)}")
+            self.compress_progress.setValue(100)
+        else:
+            self.compress_status.setText(f"❌ 失败: {msg}")
