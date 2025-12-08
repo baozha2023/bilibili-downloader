@@ -188,46 +188,65 @@ class MediaProcessor:
         
         return self._run_ffmpeg_with_progress(full_cmd, progress_callback)
 
-    def _get_video_resolution(self, video_path):
-        """获取视频分辨率 (w, h)"""
+    def get_video_info(self, video_path):
+        """获取视频信息：时长(秒), 分辨率(w,h), 帧率"""
         try:
             cmd = [self.ffmpeg_path, '-i', video_path]
-            # 必须使用shell=False并传入列表
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-            _, stderr = p.communicate()
-            
-            # 查找 Stream #0:0... Video: ... 1920x1080
-            # 注意：有时会有多个流，或者格式不同，这里匹配最常见的
-            match = re.search(r'Stream #\d+:\d+.*Video:.* (\d{3,5})x(\d{3,5})', stderr)
-            if match:
-                return int(match.group(1)), int(match.group(2))
-        except Exception as e:
-            logger.error(f"获取分辨率失败: {e}")
-        return None
-
-    def get_video_duration(self, video_path):
-        """获取视频时长(秒)"""
-        try:
-            cmd = [self.ffmpeg_path, '-i', video_path]
-            # 必须使用shell=False并传入列表
             if os.name == 'nt':
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
             else:
                 startupinfo = None
 
-            # Explicitly use utf-8 encoding to avoid gbk decode error on Windows
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, 
                                universal_newlines=True, startupinfo=startupinfo, 
                                encoding='utf-8', errors='replace')
             _, stderr = p.communicate()
             
-            match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2})', stderr)
+            info = {
+                'duration': 0,
+                'width': 0,
+                'height': 0,
+                'fps': 0
+            }
+            
+            # Duration
+            match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2}\.\d+)', stderr)
             if match:
-                h, m, s = map(int, match.groups())
-                return h * 3600 + m * 60 + s
+                h, m, s = match.groups()
+                info['duration'] = int(h) * 3600 + int(m) * 60 + float(s)
+            else:
+                # Fallback for integer seconds
+                match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2})', stderr)
+                if match:
+                    h, m, s = map(int, match.groups())
+                    info['duration'] = h * 3600 + m * 60 + s
+
+            # Resolution & FPS
+            # Stream #0:0(und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709), 1920x1080 [SAR 1:1 DAR 16:9], 1666 kb/s, 30 fps, 30 tbr, 16k tbn, 60 tbc
+            match = re.search(r'Stream #\d+:\d+.*Video:.* (\d{3,5})x(\d{3,5}).*, (\d+(?:\.\d+)?) fps', stderr)
+            if match:
+                info['width'] = int(match.group(1))
+                info['height'] = int(match.group(2))
+                info['fps'] = float(match.group(3))
+            
+            return info
         except Exception as e:
-            logger.error(f"获取时长失败: {e}")
+            logger.error(f"获取视频信息失败: {e}")
+            return None
+
+    def _get_video_resolution(self, video_path):
+        """获取视频分辨率 (w, h)"""
+        info = self.get_video_info(video_path)
+        if info:
+            return info['width'], info['height']
+        return None
+
+    def get_video_duration(self, video_path):
+        """获取视频时长(秒)"""
+        info = self.get_video_info(video_path)
+        if info:
+            return info['duration']
         return 0
 
     def cut_video(self, input_path, start_time, end_time, output_path=None, progress_callback=None):

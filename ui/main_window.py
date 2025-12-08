@@ -46,7 +46,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v3.7")
+        self.setWindowTitle("bilibili downloader v3.8")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -152,7 +152,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.7！", "info")
+        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.8！", "info")
         self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
         
         # 检查ffmpeg
@@ -163,13 +163,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v3.7"
+        version = "v3.8"
         updates = (
-            "1. 新增视频压缩功能：支持自定义分辨率和画质，轻松减小视频体积。\n"
-            "2. 界面优化：视频编辑界面字体增大，提升阅读体验。\n"
-            "3. 优化去水印：采用更智能的去水印算法，效果更自然。\n"
-            "4. 修复BUG：修复了控制台日志输出异常的问题。\n"
-            "5. 性能提升：优化了视频处理流程，更加稳定。"
+            "1. 视频剪辑新增根据帧数剪辑，剪辑更精准。\n"
+            "2. 视频剪辑新增预览功能，支持实时查看剪辑效果。\n"
+            "3. 视频合并新增预览功能，支持分别裁剪每个视频片段。\n"
+            "4. 优化了视频剪辑、合并、压缩的过渡动画，体验更流畅。\n"
+            "5. 修复了已知问题，提升软件稳定性。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

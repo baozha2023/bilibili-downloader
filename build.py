@@ -3,7 +3,7 @@
 
 """
 哔哩哔哩视频下载器打包脚本
-版本: 3.7
+版本: 3.8
 """
 
 import os
@@ -55,6 +55,8 @@ def build_executable():
         '--hidden-import=ui.tabs.account_tab',
         '--hidden-import=ui.tabs.video_edit_tab',
         '--hidden-import=ui.tabs.settings_tab',
+        '--hidden-import=PyQt5.QtMultimedia',
+        '--hidden-import=PyQt5.QtMultimediaWidgets',
         'main.py'
     ]
     

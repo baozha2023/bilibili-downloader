@@ -31,10 +31,6 @@ class AccountTab(QWidget):
     def init_ui(self):
         layout = QVBoxLayout(self)
         
-        # 账号信息区域
-        # account_group = QGroupBox("账号信息")
-        # account_layout = QVBoxLayout(account_group)
-        
         # 创建两个堆叠的小部件，一个用于显示未登录状态，一个用于显示已登录状态
         self.account_stack = QStackedWidget()
         
@@ -92,24 +88,21 @@ class AccountTab(QWidget):
         self.account_name.setStyleSheet("font-size: 32px; font-weight: bold; margin-bottom: 5px;")
         user_details_layout.addWidget(self.account_name)
         
-        # 第二行：UID 和 等级 (水平排列 -> 垂直排列)
+
         info_col1 = QVBoxLayout()
         info_col1.setSpacing(5)
-        
+        # 第二行：UID
         self.account_uid = QLabel("UID: --")
         self.account_uid.setStyleSheet("font-size: 24px; color: #666;")
         info_col1.addWidget(self.account_uid)
-        
+         # 第三行：等级
         self.account_level = QLabel("等级: --")
         self.account_level.setStyleSheet("font-size: 24px; color: #666;")
         info_col1.addWidget(self.account_level)
         
         user_details_layout.addLayout(info_col1)
-        
-        # info_row1.addStretch()
-        # user_details_layout.addLayout(info_row1)
-        
-        # 第三行：会员状态
+
+        # 第四行：会员状态
         self.account_vip = QLabel("会员状态: 非会员")
         self.account_vip.setStyleSheet("font-size: 24px; color: #666;")
         user_details_layout.addWidget(self.account_vip)
@@ -131,11 +124,7 @@ class AccountTab(QWidget):
         user_info_layout.addLayout(actions_layout)
         
         logged_layout.addLayout(user_info_layout)
-        
-        # 收藏夹和历史记录
-        # tabs_group = QGroupBox("我的内容")
-        # tabs_layout = QVBoxLayout(tabs_group)
-        
+
         self.content_tabs = QTabWidget()
         self.content_tabs.setStyleSheet("""
             QTabWidget::pane {
@@ -201,31 +190,19 @@ class AccountTab(QWidget):
         """)
         self.content_tabs.addTab(self.history_list, "历史记录")
         
-        # tabs_layout.addWidget(self.content_tabs)
-        # logged_layout.addWidget(tabs_group)
         logged_layout.addWidget(self.content_tabs)
         
         self.account_stack.addWidget(logged_widget)
         
         # 默认显示未登录状态
         self.account_stack.setCurrentIndex(0)
-        
-        # account_layout.addWidget(self.account_stack)
-        # layout.addWidget(account_group)
         layout.addWidget(self.account_stack)
-        
-        # 状态区域
-        # status_layout = QHBoxLayout()
-        # self.account_status = QLabel("未登录")
-        # status_layout.addWidget(self.account_status)
-        # layout.addLayout(status_layout)
 
     def open_login_window(self):
         """打开登录窗口"""
         self.login_window = BilibiliLoginWindow()
         self.login_window.show()
         self.login_window.finished_signal = lambda: self.check_login_status()
-        # self.account_status.setText("正在登录...")
 
     def open_user_homepage(self, event):
         """打开用户主页"""
@@ -264,7 +241,6 @@ class AccountTab(QWidget):
                     self.crawler.cookies = cookies
                     self.get_account_info(cookies)
                     self.switch_to_logged_view()
-                    # self.account_status.setText("已登录")
                     return
             except Exception as e:
                 logger.error(f"读取登录配置失败: {e}")
@@ -272,18 +248,13 @@ class AccountTab(QWidget):
         
         self.account_stack.setCurrentIndex(0)
         self.main_window.log_to_console("未检测到登录状态", "info")
-        # self.account_status.setText("未登录")
 
     def get_account_info(self, cookies):
         """获取账号信息"""
         self.account_thread = AccountInfoThread(self.crawler, cookies)
-        # self.account_thread.update_signal.connect(self.update_account_status)
         self.account_thread.finished_signal.connect(self.on_account_info_finished)
         self.account_thread.start()
-    
-    # def update_account_status(self, data):
-    #     self.account_status.setText(data.get("message", ""))
-    
+
     def on_account_info_finished(self, result):
         if result["status"] == "success":
             user_info = result.get("data", {})
@@ -325,9 +296,7 @@ class AccountTab(QWidget):
             # 更新画质选择选项
             self.update_quality_options(vip_type, vip_status)
             
-            # self.account_status.setText("账号信息获取成功")
         else:
-            # self.account_status.setText(result["message"])
             # 登录失败或无效，重置画质选项
             self.update_quality_options(0, 0)
 
@@ -475,8 +444,7 @@ class AccountTab(QWidget):
             self.account_stack.setCurrentIndex(0)
             
             self.main_window.log_to_console(f"账号已退出登录: {username}", "warning")
-            # self.account_status.setText("已退出登录")
-            
+
             # Reset quality options
             self.update_quality_options(0, 0)
 
