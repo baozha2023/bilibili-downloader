@@ -307,7 +307,7 @@ class AccountTab(QWidget):
         settings_tab.quality_combo.clear()
         
         # 基础选项
-        qualities = ["720p", "480p", "360p"]
+        qualities = ["720P 高清", "480P 清晰", "360P 流畅"]
         
         # 登录用户 (非会员)
         is_logged_in = False
@@ -324,15 +324,15 @@ class AccountTab(QWidget):
         
         # 只要登录了就可以尝试1080p (qn=80)
         if is_logged_in:
-             if "1080p" not in qualities:
-                qualities.insert(0, "1080p")
+             if "1080P 高清" not in qualities:
+                qualities.insert(0, "1080P 高清")
              
         # 大会员
         if is_vip:
-            if "1080p+" not in qualities:
-                qualities.insert(0, "1080p+")
-            if "4k" not in qualities:
-                qualities.insert(0, "4k")
+            if "1080P+ 高码率" not in qualities:
+                qualities.insert(0, "1080P+ 高码率")
+            if "4K 超清" not in qualities:
+                qualities.insert(0, "4K 超清")
             
         settings_tab.quality_combo.addItems(qualities)
         

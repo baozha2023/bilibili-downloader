@@ -6,6 +6,7 @@ import logging
 import threading
 import shutil
 import tempfile
+from core.watermark import WatermarkRemover
 
 logger = logging.getLogger('bilibili_core.processor')
 
@@ -16,6 +17,7 @@ class MediaProcessor:
     def __init__(self):
         self.ffmpeg_path = self._find_ffmpeg()
         self.ffmpeg_available = self.ffmpeg_path is not None
+        self.watermark_remover = WatermarkRemover(self.ffmpeg_path, self._run_ffmpeg_with_progress) if self.ffmpeg_available else None
         
     def _find_ffmpeg(self):
         """查找ffmpeg路径"""
@@ -115,62 +117,24 @@ class MediaProcessor:
             if resolution:
                 w, h = resolution
                 
-                # 智能计算水印位置 (针对B站水印优化)
-                # 根据常见分辨率预设水印大小和位置
-                if w >= 3840: # 4K
-                    wm_w = 320
-                    wm_h = 100
-                    margin_x = 55
-                    margin_y = 45
-                elif w >= 2560: # 2K
-                    wm_w = 250
-                    wm_h = 80
-                    margin_x = 45
-                    margin_y = 35
-                elif w >= 1920: # 1080p
-                    wm_w = 200
-                    wm_h = 65
-                    margin_x = 40
-                    margin_y = 30
-                elif w >= 1280: # 720p
-                    wm_w = 150
-                    wm_h = 50
-                    margin_x = 25
-                    margin_y = 20
+                # 使用 WatermarkRemover 的智能计算逻辑
+                if self.watermark_remover:
+                    wm_x, wm_y, wm_w, wm_h = self.watermark_remover.calculate_watermark_rect(w, h)
+                    
+                    # 确保尺寸有效
+                    if wm_w <= 0 or wm_h <= 0:
+                        logger.warning("水印区域计算无效，跳过去水印")
+                        cmd_video = ['-c:v', 'copy']
+                    else:
+                        # 增加band参数使边缘过渡更自然 (32)
+                        # 增加 show=0 参数确保不显示边界框
+                        filter_str = f"delogo=x={wm_x}:y={wm_y}:w={wm_w}:h={wm_h}:band=32:show=0"
+                        logger.info(f"应用去水印滤镜: {filter_str} (分辨率: {w}x{h})")
+                        # 使用libx264重编码，crf 16提升画质 (原17)，preset medium平衡速度和质量
+                        cmd_video = ['-vf', filter_str, '-c:v', 'libx264', '-preset', 'medium', '-crf', '16']
                 else:
-                    # 其他分辨率使用比例计算
-                    wm_w = max(int(w * 0.12), 100)
-                    wm_h = max(int(h * 0.06), 40)
-                    margin_x = int(w * 0.03)
-                    margin_y = int(h * 0.03)
-                
-                # 针对竖屏视频调整
-                if h > w:
-                    wm_w = int(w * 0.35) # 再次增加宽度
-                    wm_h = int(wm_w * 0.35)
-                    margin_x = int(w * 0.05)
-                    margin_y = int(h * 0.02)
-                
-                wm_x = w - wm_w - margin_x
-                wm_y = margin_y
-                
-                # 边界检查和微调
-                if wm_x < 0: wm_x = 0
-                if wm_y < 0: wm_y = 0
-                if wm_x + wm_w > w: wm_w = max(1, w - wm_x)
-                if wm_y + wm_h > h: wm_h = max(1, h - wm_y)
-                
-                # 确保尺寸有效
-                if wm_w <= 0 or wm_h <= 0:
-                    logger.warning("水印区域计算无效，跳过去水印")
+                    logger.warning("WatermarkRemover未初始化")
                     cmd_video = ['-c:v', 'copy']
-                else:
-                    # 增加band参数使边缘过渡更自然 (32)
-                    # 增加 show=0 参数确保不显示边界框 (delogo默认show=0，但显式指定更安全)
-                    filter_str = f"delogo=x={wm_x}:y={wm_y}:w={wm_w}:h={wm_h}:band=32:show=0"
-                    logger.info(f"应用去水印滤镜: {filter_str} (分辨率: {w}x{h})")
-                    # 使用libx264重编码，crf 16提升画质 (原17)，preset medium平衡速度和质量
-                    cmd_video = ['-vf', filter_str, '-c:v', 'libx264', '-preset', 'medium', '-crf', '16']
             else:
                 logger.warning("无法获取分辨率，跳过去水印")
                 cmd_video = ['-c:v', 'copy']
@@ -511,31 +475,9 @@ class MediaProcessor:
         if not self.ffmpeg_available:
             return False, "ffmpeg未安装"
             
-        if not output_path:
-            input_dir = os.path.dirname(input_path)
-            input_name = os.path.splitext(os.path.basename(input_path))[0]
-            ext = os.path.splitext(input_path)[1]
-            output_path = os.path.join(input_dir, f"{input_name}_clean{ext}")
-            
-        # 使用更智能的delogo参数
-        # show=0: 不显示绿框
-        # band=4: 边缘过渡宽度 (默认4，适度增加可平滑)
-        filter_str = f"delogo=x={x}:y={y}:w={w}:h={h}:band=10:show=0"
-        
-        cmd = [
-            self.ffmpeg_path,
-            '-i', input_path,
-            '-vf', filter_str,
-            '-c:v', 'libx264', '-preset', 'medium', '-crf', '18',
-            '-c:a', 'copy',
-            '-y', output_path
-        ]
-        
-        logger.info(f"自定义去水印: {cmd}")
-        if self._run_ffmpeg_with_progress(cmd, progress_callback):
-            return True, output_path
-        else:
-            return False, "去水印失败"
+        return self.watermark_remover.remove_watermark_delogo(
+            input_path, output_path, rect=(x, y, w, h), progress_callback=progress_callback
+        )
 
     def compress_video(self, input_path, target_resolution, crf=23, fade_in=False, fade_out=False, output_path=None, progress_callback=None):
         """

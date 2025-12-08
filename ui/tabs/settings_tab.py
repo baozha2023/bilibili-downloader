@@ -10,6 +10,8 @@ from PyQt5.QtCore import Qt
 
 logger = logging.getLogger('bilibili_desktop')
 
+from ui.widgets.custom_combobox import NoScrollComboBox
+
 class SettingsTab(QWidget):
     def __init__(self, main_window):
         super().__init__()
@@ -124,6 +126,28 @@ class SettingsTab(QWidget):
             }
         """)
         basic_layout.addWidget(self.retry_count, 1, 1)
+
+        # 界面缩放
+        scale_label = QLabel("界面缩放 (重启生效):")
+        scale_label.setStyleSheet("font-size: 20px; color: #555;")
+        basic_layout.addWidget(scale_label, 2, 0)
+
+        self.scale_combo = NoScrollComboBox()
+        self.scale_combo.addItems(["100% (默认/1k)", "125%", "150% (2k)", "175%", "200% (4k)"])
+        self.scale_combo.setStyleSheet("""
+            QComboBox {
+                padding: 8px 12px;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                font-size: 19px;
+                background-color: #fafafa;
+                min-width: 200px;
+            }
+            QComboBox:hover {
+                border-color: #fb7299;
+            }
+        """)
+        basic_layout.addWidget(self.scale_combo, 2, 1)
         
         basic_card.add_layout(basic_layout)
         self.content_layout.addWidget(basic_card)
@@ -165,7 +189,7 @@ class SettingsTab(QWidget):
         codec_label.setStyleSheet("font-size: 20px; color: #555;")
         pref_layout.addWidget(codec_label, 0, 0)
         
-        self.codec_combo = QComboBox()
+        self.codec_combo = NoScrollComboBox()
         self.codec_combo.addItems(["H.264/AVC", "H.265/HEVC", "AV1"])
         self.codec_combo.setCurrentText("H.264/AVC")
         self.codec_combo.setStyleSheet(combo_style)
@@ -176,7 +200,7 @@ class SettingsTab(QWidget):
         quality_label.setStyleSheet("font-size: 20px; color: #555;")
         pref_layout.addWidget(quality_label, 1, 0)
         
-        self.quality_combo = QComboBox()
+        self.quality_combo = NoScrollComboBox()
         self.quality_combo.addItems(["8K 超高清", "4K 超清", "1080P+ 高码率", "1080P 高清", "720P 高清", "480P 清晰", "360P 流畅"])
         self.quality_combo.setCurrentText("1080P 高清")
         self.quality_combo.setStyleSheet(combo_style)
@@ -187,7 +211,7 @@ class SettingsTab(QWidget):
         audio_label.setStyleSheet("font-size: 20px; color: #555;")
         pref_layout.addWidget(audio_label, 2, 0)
         
-        self.audio_quality_combo = QComboBox()
+        self.audio_quality_combo = NoScrollComboBox()
         self.audio_quality_combo.addItems(["高音质 (Hi-Res/Dolby)", "中等音质", "低音质"])
         self.audio_quality_combo.setCurrentText("高音质 (Hi-Res/Dolby)")
         self.audio_quality_combo.setStyleSheet(combo_style)
@@ -270,7 +294,7 @@ class SettingsTab(QWidget):
         action_label.setStyleSheet("font-size: 20px; color: #555;")
         action_layout.addWidget(action_label)
         
-        self.complete_action = QComboBox()
+        self.complete_action = NoScrollComboBox()
         self.complete_action.addItems(["无操作", "打开文件夹", "播放视频", "关闭程序"])
         self.complete_action.setCurrentIndex(1)
         self.complete_action.setStyleSheet(combo_style)
@@ -353,6 +377,7 @@ class SettingsTab(QWidget):
         config = {
             'data_dir': self.data_dir_input.text().strip(),
             'max_retries': self.retry_count.value(),
+            'ui_scale': self.scale_combo.currentText(),
             'merge_video': self.merge_check.isChecked(),
             'delete_original': self.delete_original_check.isChecked(),
             'remove_watermark': self.remove_watermark_check.isChecked(),
@@ -388,6 +413,8 @@ class SettingsTab(QWidget):
                     self.crawler.download_dir = os.path.join(config['data_dir'], 'downloads')
                 if 'max_retries' in config:
                     self.retry_count.setValue(config['max_retries'])
+                if 'ui_scale' in config:
+                    self.scale_combo.setCurrentText(config['ui_scale'])
                 if 'merge_video' in config:
                     self.merge_check.setChecked(config['merge_video'])
                 if 'delete_original' in config:

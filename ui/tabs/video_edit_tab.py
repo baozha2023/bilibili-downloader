@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
                              QGroupBox, QScrollArea, QAbstractItemView, QCheckBox, QSizePolicy)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEasingCurve, QSize
 from PyQt5.QtGui import QIcon, QColor, QBrush, QPixmap
+from ui.widgets.custom_combobox import NoScrollComboBox
 
 class MergeItemWidget(QWidget):
     removed = pyqtSignal(QWidget)
@@ -107,11 +108,13 @@ class Worker(QThread):
 
 class DragDropListWidget(QListWidget):
     file_dropped = pyqtSignal(str)
+    clicked = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptDrops(True)
         self.setDragDropMode(QListWidget.DropOnly)
+        self.setCursor(Qt.PointingHandCursor)  # Add pointer cursor
         self.setStyleSheet("""
             QListWidget {
                 border: 2px dashed #ccc;
@@ -133,6 +136,11 @@ class DragDropListWidget(QListWidget):
             }
         """)
         
+    def mousePressEvent(self, event):
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
+
     def dragEnterEvent(self, event):
         if event.mimeData().hasUrls():
             event.accept()
@@ -268,21 +276,46 @@ class VideoEditTab(QWidget):
             
         # Switch stack
         if tag in self.pages:
-            self.content_stack.setCurrentWidget(self.pages[tag])
+            new_widget = self.pages[tag]
+            current_widget = self.content_stack.currentWidget()
+            
+            if current_widget == new_widget:
+                return
+                
+            self.content_stack.setCurrentWidget(new_widget)
             
             # Animation
-            self.fade_in(self.pages[tag])
+            self.fade_in(new_widget)
 
     def fade_in(self, widget):
-        effect = QGraphicsOpacityEffect(widget)
-        widget.setGraphicsEffect(effect)
-        anim = QPropertyAnimation(effect, b"opacity")
+        # Reset opacity
+        opacity = QGraphicsOpacityEffect(widget)
+        widget.setGraphicsEffect(opacity)
+        
+        # Opacity Animation
+        anim = QPropertyAnimation(opacity, b"opacity")
         anim.setDuration(300)
         anim.setStartValue(0)
         anim.setEndValue(1)
         anim.setEasingCurve(QEasingCurve.OutQuad)
+        
+        # Position Animation (Slide up slightly)
+        pos_anim = QPropertyAnimation(widget, b"pos")
+        pos_anim.setDuration(300)
+        start_pos = widget.pos()
+        # Create a temporary offset
+        widget.move(start_pos.x(), start_pos.y() + 20)
+        pos_anim.setStartValue(widget.pos())
+        pos_anim.setEndValue(start_pos)
+        pos_anim.setEasingCurve(QEasingCurve.OutQuad)
+        
+        # Group animations? 
+        # Parallel animation requires QParallelAnimationGroup which needs QObject parents.
+        # Simple sequence: just start opacity. Position might fight with layout.
+        # Stick to opacity but make it cleaner.
+        
         anim.start()
-        # Keep reference to prevent gc
+        # Keep reference
         widget.anim = anim
 
     # ==========================================
@@ -299,19 +332,17 @@ class VideoEditTab(QWidget):
         # File List
         self.convert_file_list = DragDropListWidget()
         self.convert_file_list.file_dropped.connect(lambda p: self.set_single_file(p, self.convert_file_list, self.convert_btn))
+        self.convert_file_list.clicked.connect(lambda: self.select_single_file(self.convert_file_list, self.convert_btn))
         layout.addWidget(self.convert_file_list)
         
         # Controls
         controls_frame = self.create_control_frame()
         controls_layout = QHBoxLayout(controls_frame)
         
-        select_btn = self.create_button("选择文件", lambda: self.select_single_file(self.convert_file_list, self.convert_btn))
-        controls_layout.addWidget(select_btn)
-        
         controls_layout.addStretch()
         
         controls_layout.addWidget(QLabel("目标格式:"))
-        self.format_combo = QComboBox()
+        self.format_combo = NoScrollComboBox()
         self.format_combo.addItems(["mp4", "mp3", "mkv", "avi", "mov", "gif"])
         self.format_combo.setFixedWidth(100)
         self.style_combo(self.format_combo)
@@ -351,6 +382,7 @@ class VideoEditTab(QWidget):
         
         self.cut_file_list = DragDropListWidget()
         self.cut_file_list.file_dropped.connect(lambda p: self.on_cut_file_dropped(p))
+        self.cut_file_list.clicked.connect(lambda: self.select_single_file(self.cut_file_list, None, callback=self.on_cut_file_dropped))
         layout.addWidget(self.cut_file_list)
         
         # Controls Group
@@ -363,7 +395,7 @@ class VideoEditTab(QWidget):
         range_layout = QHBoxLayout()
         
         range_layout.addWidget(QLabel("单位:"))
-        self.unit_combo = QComboBox()
+        self.unit_combo = NoScrollComboBox()
         self.unit_combo.addItems(["秒 (Time)", "帧 (Frame)"])
         self.unit_combo.setFixedWidth(120)
         self.style_combo(self.unit_combo)
@@ -442,9 +474,6 @@ class VideoEditTab(QWidget):
         # Controls
         controls_frame = self.create_control_frame()
         controls_layout = QHBoxLayout(controls_frame)
-        
-        select_btn = self.create_button("选择文件", lambda: self.select_single_file(self.cut_file_list, None, callback=self.on_cut_file_dropped))
-        controls_layout.addWidget(select_btn)
         
         controls_layout.addStretch()
         
@@ -570,6 +599,7 @@ class VideoEditTab(QWidget):
         
         self.wm_file_list = DragDropListWidget()
         self.wm_file_list.file_dropped.connect(lambda p: self.set_single_file(p, self.wm_file_list, self.wm_btn))
+        self.wm_file_list.clicked.connect(lambda: self.select_single_file(self.wm_file_list, self.wm_btn))
         layout.addWidget(self.wm_file_list)
         
         # Area Selection
@@ -599,9 +629,6 @@ class VideoEditTab(QWidget):
         # Controls
         controls_frame = self.create_control_frame()
         controls_layout = QHBoxLayout(controls_frame)
-        
-        select_btn = self.create_button("选择文件", lambda: self.select_single_file(self.wm_file_list, self.wm_btn))
-        controls_layout.addWidget(select_btn)
         
         controls_layout.addStretch()
         
@@ -635,6 +662,7 @@ class VideoEditTab(QWidget):
         
         self.compress_file_list = DragDropListWidget()
         self.compress_file_list.file_dropped.connect(lambda p: self.set_single_file(p, self.compress_file_list, self.compress_btn))
+        self.compress_file_list.clicked.connect(lambda: self.select_single_file(self.compress_file_list, self.compress_btn))
         layout.addWidget(self.compress_file_list)
         
         # Settings
@@ -646,7 +674,7 @@ class VideoEditTab(QWidget):
         # Res & CRF
         params_layout = QHBoxLayout()
         params_layout.addWidget(QLabel("目标分辨率:"))
-        self.res_combo = QComboBox()
+        self.res_combo = NoScrollComboBox()
         self.res_combo.addItems(["1920x1080", "1280x720", "854x480", "640x360"])
         self.style_combo(self.res_combo)
         params_layout.addWidget(self.res_combo)
@@ -682,9 +710,6 @@ class VideoEditTab(QWidget):
         # Controls
         controls_frame = self.create_control_frame()
         controls_layout = QHBoxLayout(controls_frame)
-        
-        select_btn = self.create_button("选择文件", lambda: self.select_single_file(self.compress_file_list, self.compress_btn))
-        controls_layout.addWidget(select_btn)
         
         controls_layout.addStretch()
         
