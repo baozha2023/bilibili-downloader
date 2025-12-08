@@ -188,8 +188,50 @@ class MediaProcessor:
         
         return self._run_ffmpeg_with_progress(full_cmd, progress_callback)
 
-    def get_video_info(self, video_path):
-        """获取视频信息：时长(秒), 分辨率(w,h), 帧率"""
+    def _get_video_resolution(self, video_path):
+        """获取视频分辨率 (w, h)"""
+        try:
+            cmd = [self.ffmpeg_path, '-i', video_path]
+            # 必须使用shell=False并传入列表
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+            _, stderr = p.communicate()
+            
+            # 查找 Stream #0:0... Video: ... 1920x1080
+            # 注意：有时会有多个流，或者格式不同，这里匹配最常见的
+            match = re.search(r'Stream #\d+:\d+.*Video:.* (\d{3,5})x(\d{3,5})', stderr)
+            if match:
+                return int(match.group(1)), int(match.group(2))
+        except Exception as e:
+            logger.error(f"获取分辨率失败: {e}")
+        return None
+
+    def get_video_duration(self, video_path):
+        """获取视频时长(秒)"""
+        try:
+            cmd = [self.ffmpeg_path, '-i', video_path]
+            # 必须使用shell=False并传入列表
+            if os.name == 'nt':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            else:
+                startupinfo = None
+
+            # Explicitly use utf-8 encoding to avoid gbk decode error on Windows
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, 
+                               universal_newlines=True, startupinfo=startupinfo, 
+                               encoding='utf-8', errors='replace')
+            _, stderr = p.communicate()
+            
+            match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2})', stderr)
+            if match:
+                h, m, s = map(int, match.groups())
+                return h * 3600 + m * 60 + s
+        except Exception as e:
+            logger.error(f"获取时长失败: {e}")
+        return 0
+
+    def get_video_fps(self, video_path):
+        """获取视频帧率"""
         try:
             cmd = [self.ffmpeg_path, '-i', video_path]
             if os.name == 'nt':
@@ -203,57 +245,22 @@ class MediaProcessor:
                                encoding='utf-8', errors='replace')
             _, stderr = p.communicate()
             
-            info = {
-                'duration': 0,
-                'width': 0,
-                'height': 0,
-                'fps': 0
-            }
-            
-            # Duration
-            match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2}\.\d+)', stderr)
+            # Match 30 fps, 29.97 fps, etc.
+            match = re.search(r', (\d+(?:\.\d+)?) fps', stderr)
             if match:
-                h, m, s = match.groups()
-                info['duration'] = int(h) * 3600 + int(m) * 60 + float(s)
-            else:
-                # Fallback for integer seconds
-                match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2})', stderr)
-                if match:
-                    h, m, s = map(int, match.groups())
-                    info['duration'] = h * 3600 + m * 60 + s
-
-            # Resolution & FPS
-            # Stream #0:0(und): Video: h264 (High) (avc1 / 0x31637661), yuv420p(tv, bt709), 1920x1080 [SAR 1:1 DAR 16:9], 1666 kb/s, 30 fps, 30 tbr, 16k tbn, 60 tbc
-            match = re.search(r'Stream #\d+:\d+.*Video:.* (\d{3,5})x(\d{3,5}).*, (\d+(?:\.\d+)?) fps', stderr)
-            if match:
-                info['width'] = int(match.group(1))
-                info['height'] = int(match.group(2))
-                info['fps'] = float(match.group(3))
-            
-            return info
+                return float(match.group(1))
         except Exception as e:
-            logger.error(f"获取视频信息失败: {e}")
-            return None
-
-    def _get_video_resolution(self, video_path):
-        """获取视频分辨率 (w, h)"""
-        info = self.get_video_info(video_path)
-        if info:
-            return info['width'], info['height']
-        return None
-
-    def get_video_duration(self, video_path):
-        """获取视频时长(秒)"""
-        info = self.get_video_info(video_path)
-        if info:
-            return info['duration']
+            logger.error(f"获取帧率失败: {e}")
         return 0
 
-    def cut_video(self, input_path, start_time, end_time, output_path=None, progress_callback=None):
+    def cut_video(self, input_path, start, end, unit='time', fade_in=False, fade_out=False, output_path=None, progress_callback=None):
         """
         剪辑视频
-        :param start_time: 开始时间 (秒)
-        :param end_time: 结束时间 (秒)
+        :param start: 开始时间/帧
+        :param end: 结束时间/帧
+        :param unit: 'time' (秒) 或 'frame' (帧)
+        :param fade_in: 是否开启淡入 (1秒)
+        :param fade_out: 是否开启淡出 (1秒)
         """
         if not self.ffmpeg_available:
             return False, "ffmpeg未安装"
@@ -263,27 +270,169 @@ class MediaProcessor:
             input_name = os.path.splitext(os.path.basename(input_path))[0]
             ext = os.path.splitext(input_path)[1]
             output_path = os.path.join(input_dir, f"{input_name}_cut{ext}")
-            
-        # 计算持续时间
-        duration = end_time - start_time
+
+        start_time = start
+        duration = end - start
+        
+        # 如果是帧数模式，转换为时间
+        if unit == 'frame':
+            fps = self.get_video_fps(input_path)
+            if fps <= 0:
+                return False, "无法获取视频帧率，无法使用帧数剪辑"
+            start_time = start / fps
+            duration = (end - start) / fps
+
         if duration <= 0:
             return False, "无效的时间范围"
+
+        # 构建滤镜链
+        filters = []
+        if fade_in:
+            filters.append("fade=t=in:st=0:d=1")
+        if fade_out:
+            # 淡出需要在剪辑后的流上应用，开始时间是 duration - 1
+            filters.append(f"fade=t=out:st={duration-1}:d=1")
             
-        # 使用 -ss (before -i) 快速定位，重编码保证精确
-        cmd = [
-            self.ffmpeg_path, 
-            '-ss', str(start_time),
-            '-i', input_path,
-            '-t', str(duration),
-            '-c:v', 'libx264', '-c:a', 'aac',
-            '-y', output_path
-        ]
+        cmd = [self.ffmpeg_path]
+        
+        # 使用 -ss 在输入前快速定位
+        cmd.extend(['-ss', str(start_time)])
+        cmd.extend(['-i', input_path])
+        cmd.extend(['-t', str(duration)])
+        
+        if filters:
+            cmd.extend(['-vf', ','.join(filters)])
+            # 重新编码是必须的
+            cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
+            cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
+        else:
+            # 如果没有滤镜，尽量使用 copy 模式? 
+            # 不，因为 cut_video 之前的实现就是重编码 (-c:v libx264)，为了精确剪辑通常建议重编码
+            # 特别是当 start_time 不是关键帧时。这里保持重编码以保证一致性和精确性。
+            cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
+            cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
+            
+        cmd.extend(['-y', output_path])
         
         logger.info(f"剪辑视频: {cmd}")
         if self._run_ffmpeg_with_progress(cmd, progress_callback):
             return True, output_path
         else:
             return False, "剪辑失败"
+
+    def merge_video_files_complex(self, file_list, output_path, transition=True, progress_callback=None):
+        """
+        高级合并：支持每个片段的裁剪范围，以及片段间的转场
+        file_list: [{'path': str, 'start': float, 'end': float, 'unit': 'time'|'frame'}, ...]
+        """
+        if not self.ffmpeg_available:
+            return False, "ffmpeg未安装"
+        
+        if len(file_list) < 2:
+            return False, "至少需要两个文件"
+
+        # 构造 filter_complex
+        # 1. 准备输入
+        # 2. 对每个输入进行 trim (如果需要)
+        # 3. 使用 xfade 和 acrossfade 连接
+        
+        inputs = []
+        filter_complex = []
+        
+        # 预处理：获取FPS (为了帧转时间)
+        # 假设所有视频FPS一致，或者ffmpeg会自动处理。
+        # 为了安全，先把所有时间转换为秒
+        
+        processed_clips = []
+        for i, clip in enumerate(file_list):
+            path = clip['path']
+            inputs.extend(['-i', path])
+            
+            start = clip.get('start', 0)
+            end = clip.get('end', None)
+            unit = clip.get('unit', 'time')
+            
+            if unit == 'frame':
+                fps = self.get_video_fps(path)
+                if fps > 0:
+                    start = start / fps
+                    if end is not None:
+                        end = end / fps
+                else:
+                    # Fallback to seconds if fps fails, assuming user meant seconds? No, better error.
+                    logger.warning(f"无法获取FPS: {path}, 将按秒处理")
+            
+            # 如果 end 为 None，需要获取视频时长
+            if end is None:
+                duration = self.get_video_duration(path)
+                end = duration
+            
+            duration = end - start
+            processed_clips.append({'index': i, 'start': start, 'end': end, 'duration': duration})
+
+        # 构建 Filter Graph
+        # [0:v]trim=start=s:end=e,setpts=PTS-STARTPTS[v0];
+        # [0:a]atrim=start=s:end=e,asetpts=PTS-STARTPTS[a0];
+        
+        video_streams = []
+        audio_streams = []
+        
+        for i, clip in enumerate(processed_clips):
+            # Trim Video
+            v_tag = f"v{i}"
+            filter_complex.append(f"[{i}:v]trim=start={clip['start']}:end={clip['end']},setpts=PTS-STARTPTS[{v_tag}]")
+            video_streams.append(v_tag)
+            
+            # Trim Audio
+            a_tag = f"a{i}"
+            filter_complex.append(f"[{i}:a]atrim=start={clip['start']}:end={clip['end']},asetpts=PTS-STARTPTS[{a_tag}]")
+            audio_streams.append(a_tag)
+
+        if not transition:
+            # 直接 concat
+            v_concat = "".join([f"[{v}]" for v in video_streams])
+            a_concat = "".join([f"[{a}]" for a in audio_streams])
+            filter_complex.append(f"{v_concat}concat=n={len(file_list)}:v=1:a=0[outv]")
+            filter_complex.append(f"{a_concat}concat=n={len(file_list)}:v=0:a=1[outa]")
+        else:
+            # 使用 xfade
+            # Offset calculation:
+            # Offset for clip N = sum(duration of 0..N-1) - N * transition_duration
+            trans_dur = 1 # 1秒转场
+            
+            # Video Xfade
+            curr_v = video_streams[0]
+            offset = processed_clips[0]['duration'] - trans_dur
+            
+            for i in range(1, len(video_streams)):
+                next_v = video_streams[i]
+                next_tag = f"vm{i}"
+                # transition=fade, slideleft, circleopen, etc.
+                filter_complex.append(f"[{curr_v}][{next_v}]xfade=transition=fade:duration={trans_dur}:offset={offset}[{next_tag}]")
+                curr_v = next_tag
+                if i < len(video_streams) - 1:
+                    offset += processed_clips[i]['duration'] - trans_dur
+            
+            filter_complex.append(f"[{curr_v}]format=yuv420p[outv]") # Ensure format
+
+            # Audio Crossfade
+            curr_a = audio_streams[0]
+            for i in range(1, len(audio_streams)):
+                next_a = audio_streams[i]
+                next_tag = f"am{i}"
+                filter_complex.append(f"[{curr_a}][{next_a}]acrossfade=d={trans_dur}[{next_tag}]")
+                curr_a = next_tag
+            
+            filter_complex.append(f"[{curr_a}]anull[outa]")
+
+        cmd = [self.ffmpeg_path] + inputs + ['-filter_complex', ";".join(filter_complex)]
+        cmd.extend(['-map', '[outv]', '-map', '[outa]'])
+        cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
+        cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
+        cmd.extend(['-y', output_path])
+        
+        logger.info(f"高级合并: {cmd}")
+        return self._run_ffmpeg_with_progress(cmd, progress_callback)
 
     def merge_video_files(self, file_list, output_path, progress_callback=None):
         """
@@ -388,7 +537,7 @@ class MediaProcessor:
         else:
             return False, "去水印失败"
 
-    def compress_video(self, input_path, target_resolution, crf=23, output_path=None, progress_callback=None):
+    def compress_video(self, input_path, target_resolution, crf=23, fade_in=False, fade_out=False, output_path=None, progress_callback=None):
         """
         压缩视频
         :param target_resolution: 目标分辨率 (e.g. "1280x720", "1920x1080")
@@ -403,10 +552,20 @@ class MediaProcessor:
             ext = os.path.splitext(input_path)[1]
             output_path = os.path.join(input_dir, f"{input_name}_compressed_{target_resolution}{ext}")
             
+        # Filters
+        filters = [f'scale={target_resolution}:force_original_aspect_ratio=decrease']
+        
+        if fade_in or fade_out:
+            duration = self.get_video_duration(input_path)
+            if fade_in:
+                filters.append("fade=t=in:st=0:d=1")
+            if fade_out and duration > 1:
+                filters.append(f"fade=t=out:st={duration-1}:d=1")
+        
         cmd = [
             self.ffmpeg_path,
             '-i', input_path,
-            '-vf', f'scale={target_resolution}:force_original_aspect_ratio=decrease',
+            '-vf', ','.join(filters),
             '-c:v', 'libx264', 
             '-crf', str(crf), 
             '-preset', 'medium',

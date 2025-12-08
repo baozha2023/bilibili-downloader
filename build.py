@@ -55,8 +55,6 @@ def build_executable():
         '--hidden-import=ui.tabs.account_tab',
         '--hidden-import=ui.tabs.video_edit_tab',
         '--hidden-import=ui.tabs.settings_tab',
-        '--hidden-import=PyQt5.QtMultimedia',
-        '--hidden-import=PyQt5.QtMultimediaWidgets',
         'main.py'
     ]
     

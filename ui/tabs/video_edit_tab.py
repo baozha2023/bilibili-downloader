@@ -2,9 +2,89 @@ import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QComboBox, QFileDialog, QProgressBar, QMessageBox, QListWidget, QListWidgetItem,
                              QGraphicsOpacityEffect, QFrame, QStackedWidget, QSplitter, QSpinBox, QDoubleSpinBox,
-                             QGroupBox, QScrollArea, QAbstractItemView, QSlider, QRadioButton, QButtonGroup, QStyle, QSizePolicy)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEasingCurve, QSize, QUrl
-from PyQt5.QtGui import QIcon, QColor, QBrush
+                             QGroupBox, QScrollArea, QAbstractItemView, QCheckBox, QSizePolicy)
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEasingCurve, QSize
+from PyQt5.QtGui import QIcon, QColor, QBrush, QPixmap
+
+class MergeItemWidget(QWidget):
+    removed = pyqtSignal(QWidget)
+    
+    def __init__(self, path, duration=0):
+        super().__init__()
+        self.path = path
+        self.duration = duration
+        self.init_ui()
+        
+    def init_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(5, 5, 5, 5)
+        layout.setSpacing(10)
+        
+        # Icon or simple label
+        icon_label = QLabel("🎬")
+        icon_label.setStyleSheet("font-size: 20px;")
+        layout.addWidget(icon_label)
+        
+        # Filename
+        name_label = QLabel(os.path.basename(self.path))
+        name_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
+        name_label.setWordWrap(True)
+        layout.addWidget(name_label, 1)
+        
+        # Range Selection
+        range_group = QFrame()
+        range_group.setStyleSheet("background-color: #f9f9f9; border-radius: 4px; padding: 2px;")
+        range_layout = QHBoxLayout(range_group)
+        range_layout.setContentsMargins(0, 0, 0, 0)
+        range_layout.setSpacing(5)
+        
+        range_layout.addWidget(QLabel("Start:"))
+        self.start_spin = QDoubleSpinBox()
+        self.start_spin.setRange(0, 99999)
+        self.start_spin.setValue(0)
+        self.start_spin.setDecimals(1)
+        self.start_spin.setFixedWidth(70)
+        range_layout.addWidget(self.start_spin)
+        
+        range_layout.addWidget(QLabel("End:"))
+        self.end_spin = QDoubleSpinBox()
+        self.end_spin.setRange(0, 99999)
+        self.end_spin.setValue(self.duration if self.duration > 0 else 0)
+        self.end_spin.setDecimals(1)
+        self.end_spin.setFixedWidth(70)
+        range_layout.addWidget(self.end_spin)
+        
+        layout.addWidget(range_group)
+        
+        # Remove button
+        remove_btn = QPushButton("✕")
+        remove_btn.setFixedSize(30, 30)
+        remove_btn.setCursor(Qt.PointingHandCursor)
+        remove_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #999;
+                border: none;
+                font-size: 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                color: #ff4d4f;
+                background-color: #fff1f0;
+                border-radius: 15px;
+            }
+        """)
+        remove_btn.clicked.connect(lambda: self.removed.emit(self))
+        layout.addWidget(remove_btn)
+        
+        # Style
+        self.setStyleSheet("""
+            MergeItemWidget {
+                background-color: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+            }
+        """)
 
 class Worker(QThread):
     progress_signal = pyqtSignal(int, int)
@@ -205,19 +285,6 @@ class VideoEditTab(QWidget):
         # Keep reference to prevent gc
         widget.anim = anim
 
-    def show_with_animation(self, widget):
-        widget.setVisible(True)
-        effect = QGraphicsOpacityEffect(widget)
-        widget.setGraphicsEffect(effect)
-        anim = QPropertyAnimation(effect, b"opacity")
-        anim.setDuration(500)
-        anim.setStartValue(0)
-        anim.setEndValue(1)
-        anim.setEasingCurve(QEasingCurve.OutQuad)
-        anim.start()
-        # Keep reference to prevent gc
-        widget.anim = anim
-
     # ==========================================
     # 1. Format Conversion Page
     # ==========================================
@@ -280,188 +347,149 @@ class VideoEditTab(QWidget):
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
         
-        self.setup_header(layout, "视频剪辑", "精确裁剪视频片段")
-
-        # Main Layout: Left (File) + Right (Settings)
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(30)
-
-        # Left: File Selection Area
-        left_layout = QVBoxLayout()
+        self.setup_header(layout, "视频剪辑", "精确裁剪视频片段，支持帧级剪辑")
         
         self.cut_file_list = DragDropListWidget()
         self.cut_file_list.file_dropped.connect(lambda p: self.on_cut_file_dropped(p))
-        self.cut_file_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        left_layout.addWidget(self.cut_file_list)
+        layout.addWidget(self.cut_file_list)
         
-        select_btn = self.create_button("📂 选择文件", lambda: self.select_single_file(self.cut_file_list, self.cut_btn, callback=self.on_cut_file_dropped))
-        left_layout.addWidget(select_btn)
+        # Controls Group
+        settings_group = QGroupBox("剪辑设置")
+        settings_group.setStyleSheet("QGroupBox { font-size: 16px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
+        settings_layout = QVBoxLayout(settings_group)
+        settings_layout.setSpacing(15)
         
-        content_layout.addLayout(left_layout, 2) # 2/3 width
+        # Unit & Range Row
+        range_layout = QHBoxLayout()
         
-        # Right: Settings Area
-        right_frame = QFrame()
-        right_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f6f7f8;
-                border-radius: 12px;
-                padding: 20px;
-            }
-        """)
-        right_layout = QVBoxLayout(right_frame)
-        right_layout.setSpacing(20)
+        range_layout.addWidget(QLabel("单位:"))
+        self.unit_combo = QComboBox()
+        self.unit_combo.addItems(["秒 (Time)", "帧 (Frame)"])
+        self.unit_combo.setFixedWidth(120)
+        self.style_combo(self.unit_combo)
+        self.unit_combo.currentIndexChanged.connect(self.update_cut_inputs)
+        range_layout.addWidget(self.unit_combo)
         
-        # Info Card
-        info_group = QGroupBox("当前视频")
-        info_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 18px; border: none; margin-top: 10px; }")
-        info_layout = QVBoxLayout(info_group)
-        self.cut_info_label = QLabel("暂无视频")
-        self.cut_info_label.setStyleSheet("color: #666; font-size: 14px; font-weight: normal;")
-        self.cut_info_label.setWordWrap(True)
-        info_layout.addWidget(self.cut_info_label)
-        right_layout.addWidget(info_group)
+        range_layout.addSpacing(20)
         
-        # Settings
-        settings_group = QGroupBox("剪辑参数")
-        settings_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 18px; border: none; margin-top: 10px; }")
-        settings_inner_layout = QVBoxLayout(settings_group)
-        settings_inner_layout.setSpacing(15)
+        # Time Inputs
+        self.time_widget = QWidget()
+        time_layout = QHBoxLayout(self.time_widget)
+        time_layout.setContentsMargins(0, 0, 0, 0)
+        time_layout.addWidget(QLabel("开始(秒):"))
+        self.start_time_spin = QDoubleSpinBox()
+        self.start_time_spin.setRange(0, 99999)
+        self.start_time_spin.setDecimals(1)
+        self.style_spinbox(self.start_time_spin)
+        time_layout.addWidget(self.start_time_spin)
         
-        # Mode
-        mode_layout = QHBoxLayout()
-        mode_layout.addWidget(QLabel("模式:"))
-        self.mode_time_rb = QRadioButton("时间 (秒)")
-        self.mode_frame_rb = QRadioButton("帧数")
-        self.mode_time_rb.setChecked(True)
-        self.mode_time_rb.toggled.connect(self.update_cut_ui_mode)
+        time_layout.addWidget(QLabel("结束(秒):"))
+        self.end_time_spin = QDoubleSpinBox()
+        self.end_time_spin.setRange(0, 99999)
+        self.end_time_spin.setDecimals(1)
+        self.style_spinbox(self.end_time_spin)
+        time_layout.addWidget(self.end_time_spin)
+        range_layout.addWidget(self.time_widget)
         
-        mode_btn_group = QButtonGroup(page)
-        mode_btn_group.addButton(self.mode_time_rb)
-        mode_btn_group.addButton(self.mode_frame_rb)
+        # Frame Inputs (Hidden by default)
+        self.frame_widget = QWidget()
+        frame_layout = QHBoxLayout(self.frame_widget)
+        frame_layout.setContentsMargins(0, 0, 0, 0)
+        frame_layout.addWidget(QLabel("开始(帧):"))
+        self.start_frame_spin = QSpinBox()
+        self.start_frame_spin.setRange(0, 999999)
+        self.style_spinbox(self.start_frame_spin)
+        frame_layout.addWidget(self.start_frame_spin)
         
-        mode_layout.addWidget(self.mode_time_rb)
-        mode_layout.addWidget(self.mode_frame_rb)
-        settings_inner_layout.addLayout(mode_layout)
+        frame_layout.addWidget(QLabel("结束(帧):"))
+        self.end_frame_spin = QSpinBox()
+        self.end_frame_spin.setRange(0, 999999)
+        self.style_spinbox(self.end_frame_spin)
+        frame_layout.addWidget(self.end_frame_spin)
+        self.frame_widget.setVisible(False)
+        range_layout.addWidget(self.frame_widget)
         
-        # Start
-        settings_inner_layout.addWidget(QLabel("开始位置:"))
-        self.cut_start_stack = QStackedWidget()
-        self.cut_start_time = QDoubleSpinBox()
-        self.cut_start_time.setRange(0, 99999)
-        self.cut_start_time.setDecimals(2)
-        self.style_spinbox(self.cut_start_time)
-        self.cut_start_frame = QSpinBox()
-        self.cut_start_frame.setRange(0, 999999)
-        self.style_spinbox(self.cut_start_frame)
-        self.cut_start_stack.addWidget(self.cut_start_time)
-        self.cut_start_stack.addWidget(self.cut_start_frame)
-        settings_inner_layout.addWidget(self.cut_start_stack)
+        range_layout.addStretch()
         
-        # End
-        settings_inner_layout.addWidget(QLabel("结束位置:"))
-        self.cut_end_stack = QStackedWidget()
-        self.cut_end_time = QDoubleSpinBox()
-        self.cut_end_time.setRange(0, 99999)
-        self.cut_end_time.setDecimals(2)
-        self.style_spinbox(self.cut_end_time)
-        self.cut_end_frame = QSpinBox()
-        self.cut_end_frame.setRange(0, 999999)
-        self.style_spinbox(self.cut_end_frame)
-        self.cut_end_stack.addWidget(self.cut_end_time)
-        self.cut_end_stack.addWidget(self.cut_end_frame)
-        settings_inner_layout.addWidget(self.cut_end_stack)
+        self.duration_label = QLabel("总时长: --")
+        self.duration_label.setStyleSheet("color: #666; font-size: 14px;")
+        range_layout.addWidget(self.duration_label)
         
-        right_layout.addWidget(settings_group)
-        right_layout.addStretch()
+        settings_layout.addLayout(range_layout)
         
-        # Action Button
-        self.cut_btn = self.create_primary_button("✂️ 开始剪辑", self.start_cut)
+        # Effects Row
+        effects_layout = QHBoxLayout()
+        effects_layout.addWidget(QLabel("特效:"))
+        self.fade_in_chk = QCheckBox("淡入 (Fade In)")
+        self.fade_out_chk = QCheckBox("淡出 (Fade Out)")
+        # Style checkboxes
+        chk_style = """
+            QCheckBox { font-size: 14px; color: #555; spacing: 5px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ccc; }
+            QCheckBox::indicator:checked { background-color: #fb7299; border-color: #fb7299; image: url(:/icons/check.png); }
+        """
+        self.fade_in_chk.setStyleSheet(chk_style)
+        self.fade_out_chk.setStyleSheet(chk_style)
+        
+        effects_layout.addWidget(self.fade_in_chk)
+        effects_layout.addWidget(self.fade_out_chk)
+        effects_layout.addStretch()
+        
+        settings_layout.addLayout(effects_layout)
+        
+        layout.addWidget(settings_group)
+        
+        # Controls
+        controls_frame = self.create_control_frame()
+        controls_layout = QHBoxLayout(controls_frame)
+        
+        select_btn = self.create_button("选择文件", lambda: self.select_single_file(self.cut_file_list, None, callback=self.on_cut_file_dropped))
+        controls_layout.addWidget(select_btn)
+        
+        controls_layout.addStretch()
+        
+        self.cut_btn = self.create_primary_button("开始剪辑", self.start_cut)
         self.cut_btn.setEnabled(False)
-        self.cut_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        right_layout.addWidget(self.cut_btn)
+        controls_layout.addWidget(self.cut_btn)
         
-        content_layout.addWidget(right_frame, 1) # 1/3 width
-        
-        layout.addLayout(content_layout)
+        layout.addWidget(controls_frame)
         
         self.cut_progress = self.create_progress_bar()
         layout.addWidget(self.cut_progress)
         
         self.cut_status = QLabel("")
         self.cut_status.setAlignment(Qt.AlignCenter)
-        self.cut_status.setStyleSheet("color: #666; margin-top: 10px;")
         layout.addWidget(self.cut_status)
         
-        # Store current video info
-        self.current_cut_fps = 30.0
-        
-        self.reset_list(self.cut_file_list, "👇 拖拽视频到此处\n支持 mp4, mkv, avi 等格式")
+        layout.addStretch()
+        self.reset_list(self.cut_file_list, "👇 拖拽视频文件到此处")
         return page
 
-    def update_cut_ui_mode(self):
-        is_time = self.mode_time_rb.isChecked()
-        self.cut_start_stack.setCurrentIndex(0 if is_time else 1)
-        self.cut_end_stack.setCurrentIndex(0 if is_time else 1)
-
-    # --- Cut ---
-    def on_cut_file_dropped(self, file_path):
-        self.set_single_file(file_path, self.cut_file_list, self.cut_btn)
-        # self.cut_player.load_video(file_path) # Removed
+    def update_cut_inputs(self):
+        is_frame = self.unit_combo.currentIndex() == 1
+        self.time_widget.setVisible(not is_frame)
+        self.frame_widget.setVisible(is_frame)
         
-        # Get info
-        info = self.processor.get_video_info(file_path)
-        if info:
-            duration = info['duration']
-            fps = info['fps']
-            self.current_cut_fps = fps if fps > 0 else 30.0
-            total_frames = int(duration * self.current_cut_fps)
-            
-            self.cut_info_label.setText(f"总时长: {duration}秒 / 总帧数: {total_frames}")
-            
-            # Update Time inputs
-            self.cut_start_time.setMaximum(duration)
-            self.cut_end_time.setMaximum(duration)
-            self.cut_end_time.setValue(duration)
-            
-            # Update Frame inputs
-            self.cut_start_frame.setMaximum(total_frames)
-            self.cut_end_frame.setMaximum(total_frames)
-            self.cut_end_frame.setValue(total_frames)
-        
-    def start_cut(self):
-        file_path = self.cut_file_list.item(0).text()
-        
-        if self.mode_time_rb.isChecked():
-            start = self.cut_start_time.value()
-            end = self.cut_end_time.value()
-        else:
-            # Convert frame to seconds
-            start_frame = self.cut_start_frame.value()
-            end_frame = self.cut_end_frame.value()
-            start = start_frame / self.current_cut_fps
-            end = end_frame / self.current_cut_fps
-        
-        if start >= end:
-            QMessageBox.warning(self, "错误", "开始时间必须小于结束时间")
-            return
-            
-        self.cut_btn.setEnabled(False)
-        self.show_with_animation(self.cut_progress)
-        self.cut_progress.setValue(0)
-        self.cut_status.setText("正在剪辑中...")
-        
-        self.worker = Worker(self.processor.cut_video, file_path, start, end)
-        self.worker.progress_signal.connect(self.cut_progress.setValue)
-        self.worker.finished_signal.connect(self.on_cut_finished)
-        self.worker.start()
-        
-    def on_cut_finished(self, success, msg):
-        self.cut_btn.setEnabled(True)
-        if success:
-            self.cut_status.setText(f"✅ 剪辑成功: {os.path.basename(msg)}")
-            self.cut_progress.setValue(100)
-        else:
-            self.cut_status.setText(f"❌ 失败: {msg}")
+        # Update limits if file loaded
+        if self.cut_file_list.count() > 0:
+            file_path = self.cut_file_list.item(0).text()
+            if is_frame:
+                # Update frame limits
+                fps = self.processor.get_video_fps(file_path)
+                duration = self.processor.get_video_duration(file_path)
+                total_frames = int(duration * fps) if fps > 0 else 0
+                self.start_frame_spin.setMaximum(total_frames)
+                self.end_frame_spin.setMaximum(total_frames)
+                if self.end_frame_spin.value() == 0:
+                    self.end_frame_spin.setValue(total_frames)
+                self.duration_label.setText(f"总时长: {duration}秒 (约 {total_frames} 帧)")
+            else:
+                duration = self.processor.get_video_duration(file_path)
+                self.start_time_spin.setMaximum(duration)
+                self.end_time_spin.setMaximum(duration)
+                if self.end_time_spin.value() == 0:
+                    self.end_time_spin.setValue(duration)
+                self.duration_label.setText(f"总时长: {duration}秒")
 
     # ==========================================
     # 3. Video Merge Page
@@ -472,242 +500,66 @@ class VideoEditTab(QWidget):
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
         
-        self.setup_header(layout, "视频合并", "将多个视频拼接为一个文件")
+        self.setup_header(layout, "视频合并", "将多个视频拼接为一个文件，支持片段剪辑与转场")
         
-        # Main Layout
-        content_layout = QHBoxLayout()
-        content_layout.setSpacing(30)
-        
-        # Left: List
-        left_layout = QVBoxLayout()
+        # Merge List
         self.merge_list = QListWidget()
-        self.merge_list.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.merge_list.setSelectionMode(QAbstractItemView.NoSelection)
         self.merge_list.setDragDropMode(QAbstractItemView.InternalMove)
-        self.merge_list.itemClicked.connect(self.on_merge_item_clicked)
         self.merge_list.setStyleSheet("""
             QListWidget {
-                border: 2px dashed #ccc;
-                border-radius: 12px;
+                border: 2px solid #eee;
+                border-radius: 8px;
                 font-size: 16px;
-                padding: 10px;
-                background-color: #fafafa;
-            }
-            QListWidget::item {
-                padding: 12px;
-                border-bottom: 1px solid #f0f0f0;
+                padding: 5px;
                 background-color: white;
-                margin-bottom: 5px;
-                border-radius: 6px;
-            }
-            QListWidget::item:selected {
-                background-color: #fff0f5;
-                color: #fb7299;
-                border: 1px solid #fb7299;
             }
         """)
-        left_layout.addWidget(self.merge_list)
+        layout.addWidget(self.merge_list)
         
-        btns_layout = QHBoxLayout()
-        add_btn = self.create_button("➕ 添加视频", self.add_merge_files)
-        clear_btn = self.create_button("🗑️ 清空", self.merge_list.clear)
-        btns_layout.addWidget(add_btn)
-        btns_layout.addWidget(clear_btn)
-        left_layout.addLayout(btns_layout)
-        
-        content_layout.addLayout(left_layout, 2)
-        
-        # Right: Settings
-        right_frame = QFrame()
-        right_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f6f7f8;
-                border-radius: 12px;
-                padding: 20px;
-            }
+        # Options
+        options_layout = QHBoxLayout()
+        self.merge_transition_chk = QCheckBox("开启转场动画 (Crossfade)")
+        self.merge_transition_chk.setChecked(True)
+        self.merge_transition_chk.setStyleSheet("""
+            QCheckBox { font-size: 16px; color: #555; spacing: 5px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ccc; }
+            QCheckBox::indicator:checked { background-color: #fb7299; border-color: #fb7299; image: url(:/icons/check.png); }
         """)
-        right_layout = QVBoxLayout(right_frame)
-        right_layout.setSpacing(20)
+        options_layout.addWidget(self.merge_transition_chk)
+        options_layout.addStretch()
+        layout.addLayout(options_layout)
         
-        right_layout.addWidget(QLabel("选中视频设置"))
+        # Controls
+        controls_frame = self.create_control_frame()
+        controls_layout = QHBoxLayout(controls_frame)
         
-        self.merge_range_check = QGroupBox("启用裁剪")
-        self.merge_range_check.setCheckable(True)
-        self.merge_range_check.setChecked(False)
-        self.merge_range_check.toggled.connect(self.save_merge_item_settings)
-        self.merge_range_check.setStyleSheet("QGroupBox { font-weight: bold; border: 1px solid #ddd; border-radius: 6px; margin-top: 10px; padding-top: 10px; }")
+        add_btn = self.create_button("添加文件", self.add_merge_files)
+        controls_layout.addWidget(add_btn)
         
-        range_layout = QVBoxLayout(self.merge_range_check)
-        range_layout.setSpacing(10)
+        clear_btn = self.create_button("清空列表", self.merge_list.clear)
+        controls_layout.addWidget(clear_btn)
         
-        range_layout.addWidget(QLabel("开始 (秒):"))
-        self.merge_start = QDoubleSpinBox()
-        self.merge_start.setRange(0, 99999)
-        self.merge_start.valueChanged.connect(self.save_merge_item_settings)
-        self.style_spinbox(self.merge_start)
-        range_layout.addWidget(self.merge_start)
+        controls_layout.addStretch()
         
-        range_layout.addWidget(QLabel("结束 (秒):"))
-        self.merge_end = QDoubleSpinBox()
-        self.merge_end.setRange(0, 99999)
-        self.merge_end.valueChanged.connect(self.save_merge_item_settings)
-        self.style_spinbox(self.merge_end)
-        range_layout.addWidget(self.merge_end)
+        self.merge_btn = self.create_primary_button("开始合并", self.start_merge)
+        controls_layout.addWidget(self.merge_btn)
         
-        right_layout.addWidget(self.merge_range_check)
-        right_layout.addStretch()
-        
-        self.merge_btn = self.create_primary_button("🔗 开始合并", self.start_merge)
-        self.merge_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        right_layout.addWidget(self.merge_btn)
-        
-        content_layout.addWidget(right_frame, 1)
-        
-        layout.addLayout(content_layout)
+        layout.addWidget(controls_frame)
         
         self.merge_progress = self.create_progress_bar()
         layout.addWidget(self.merge_progress)
         
         self.merge_status = QLabel("")
         self.merge_status.setAlignment(Qt.AlignCenter)
-        self.merge_status.setStyleSheet("color: #666; margin-top: 10px;")
         layout.addWidget(self.merge_status)
         
+        layout.addStretch()
         return page
 
-    # --- Merge ---
-    def on_merge_item_clicked(self, item):
-        file_path = item.text().split(' [')[0]
-        if os.path.exists(file_path):
-            # self.merge_player.load_video(file_path) # Removed
-            pass
-            data = item.data(Qt.UserRole)
-            self.merge_range_check.blockSignals(True)
-            self.merge_start.blockSignals(True)
-            self.merge_end.blockSignals(True)
-            
-            if data:
-                self.merge_range_check.setChecked(data.get('enabled', False))
-                self.merge_start.setValue(data.get('start', 0))
-                self.merge_end.setValue(data.get('end', 0))
-            else:
-                # Default
-                self.merge_range_check.setChecked(False)
-                info = self.processor.get_video_info(file_path)
-                if info:
-                    self.merge_start.setValue(0)
-                    self.merge_end.setValue(info['duration'])
-            
-            self.merge_range_check.blockSignals(False)
-            self.merge_start.blockSignals(False)
-            self.merge_end.blockSignals(False)
-
-    def save_merge_item_settings(self):
-        item = self.merge_list.currentItem()
-        if item:
-            data = {
-                'enabled': self.merge_range_check.isChecked(),
-                'start': self.merge_start.value(),
-                'end': self.merge_end.value()
-            }
-            item.setData(Qt.UserRole, data)
-            base_text = item.text().split(' [')[0]
-            if data['enabled']:
-                item.setText(f"{base_text} [裁剪: {data['start']}s - {data['end']}s]")
-            else:
-                item.setText(base_text)
-
-    def add_merge_files(self):
-        files, _ = QFileDialog.getOpenFileNames(
-            self, "选择视频文件", self.main_window.crawler.data_dir,
-            "Video Files (*.mp4 *.mkv *.avi *.mov *.flv)"
-        )
-        if files:
-            for f in files:
-                item = QListWidgetItem(f)
-                # Default data
-                info = self.processor.get_video_info(f)
-                duration = info['duration'] if info else 0
-                item.setData(Qt.UserRole, {'enabled': False, 'start': 0, 'end': duration})
-                self.merge_list.addItem(item)
-                
-    def start_merge(self):
-        if self.merge_list.count() < 2:
-            QMessageBox.warning(self, "提示", "请至少添加两个文件进行合并")
-            return
-            
-        # Collect files and process cuts if needed
-        final_files = []
-        temp_files = []
-        
-        import tempfile
-        temp_dir = tempfile.gettempdir()
-        
-        self.merge_btn.setEnabled(False)
-        self.show_with_animation(self.merge_progress)
-        self.merge_progress.setValue(0)
-        self.merge_status.setText("正在处理...")
-        
-        try:
-            for i in range(self.merge_list.count()):
-                item = self.merge_list.item(i)
-                file_path = item.text().split(' [')[0]
-                data = item.data(Qt.UserRole)
-                
-                if data and data.get('enabled'):
-                    # Need cut
-                    start = data['start']
-                    end = data['end']
-                    
-                    self.merge_status.setText(f"正在裁剪第 {i+1} 个视频...")
-                    temp_out = os.path.join(temp_dir, f"temp_merge_cut_{i}_{int(time.time())}.mp4")
-                    
-                    success, msg = self.processor.cut_video(file_path, start, end, temp_out)
-                    if success:
-                        final_files.append(temp_out)
-                        temp_files.append(temp_out)
-                    else:
-                        raise Exception(f"裁剪失败: {file_path}")
-                else:
-                    final_files.append(file_path)
-            
-            # Merge
-            self.merge_status.setText("正在合并所有片段...")
-            
-            merge_dir = os.path.join(self.main_window.crawler.data_dir, "merge")
-            if not os.path.exists(merge_dir):
-                os.makedirs(merge_dir)
-                
-            base_name = os.path.splitext(os.path.basename(final_files[0]))[0]
-            output_path = os.path.join(merge_dir, f"{base_name}_merged.mp4")
-            
-            counter = 1
-            while os.path.exists(output_path):
-                output_path = os.path.join(merge_dir, f"{base_name}_merged_{counter}.mp4")
-                counter += 1
-                
-            self.worker = Worker(self.processor.merge_video_files, final_files, output_path)
-            self.worker.progress_signal.connect(self.merge_progress.setValue)
-            self.worker.finished_signal.connect(lambda s, m: self.on_merge_finished_cleanup(s, m, merge_dir, temp_files))
-            self.worker.start()
-            
-        except Exception as e:
-            self.merge_btn.setEnabled(True)
-            self.merge_status.setText(f"❌ 错误: {e}")
-            # Cleanup
-            for f in temp_files:
-                if os.path.exists(f):
-                    os.remove(f)
-
-    def on_merge_finished_cleanup(self, success, msg, merge_dir, temp_files):
-        # Cleanup temp files
-        for f in temp_files:
-            try:
-                if os.path.exists(f):
-                    os.remove(f)
-            except:
-                pass
-                
-        self.on_merge_finished(success, msg, merge_dir)
+    # ==========================================
+    # 4. Watermark Page
+    # ==========================================
     def create_watermark_page(self):
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -779,7 +631,7 @@ class VideoEditTab(QWidget):
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
         
-        self.setup_header(layout, "视频压缩", "调整分辨率和画质以减小体积")
+        self.setup_header(layout, "视频压缩", "调整分辨率和画质以减小体积，支持淡入淡出")
         
         self.compress_file_list = DragDropListWidget()
         self.compress_file_list.file_dropped.connect(lambda p: self.set_single_file(p, self.compress_file_list, self.compress_btn))
@@ -788,21 +640,42 @@ class VideoEditTab(QWidget):
         # Settings
         settings_group = QGroupBox("压缩设置")
         settings_group.setStyleSheet("QGroupBox { font-size: 20px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
-        settings_layout = QHBoxLayout(settings_group)
+        settings_layout = QVBoxLayout(settings_group)
+        settings_layout.setSpacing(15)
         
-        settings_layout.addWidget(QLabel("目标分辨率:"))
+        # Res & CRF
+        params_layout = QHBoxLayout()
+        params_layout.addWidget(QLabel("目标分辨率:"))
         self.res_combo = QComboBox()
         self.res_combo.addItems(["1920x1080", "1280x720", "854x480", "640x360"])
         self.style_combo(self.res_combo)
-        settings_layout.addWidget(self.res_combo)
+        params_layout.addWidget(self.res_combo)
         
-        settings_layout.addWidget(QLabel("画质 (CRF):"))
+        params_layout.addWidget(QLabel("画质 (CRF):"))
         self.crf_spin = QSpinBox()
         self.crf_spin.setRange(18, 51)
         self.crf_spin.setValue(23)
         self.crf_spin.setToolTip("数值越小画质越好，体积越大。推荐23。")
         self.style_spinbox(self.crf_spin)
-        settings_layout.addWidget(self.crf_spin)
+        params_layout.addWidget(self.crf_spin)
+        settings_layout.addLayout(params_layout)
+        
+        # Effects
+        effects_layout = QHBoxLayout()
+        effects_layout.addWidget(QLabel("特效:"))
+        self.compress_fade_in_chk = QCheckBox("淡入 (Fade In)")
+        self.compress_fade_out_chk = QCheckBox("淡出 (Fade Out)")
+        chk_style = """
+            QCheckBox { font-size: 16px; color: #555; spacing: 5px; }
+            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ccc; }
+            QCheckBox::indicator:checked { background-color: #fb7299; border-color: #fb7299; image: url(:/icons/check.png); }
+        """
+        self.compress_fade_in_chk.setStyleSheet(chk_style)
+        self.compress_fade_out_chk.setStyleSheet(chk_style)
+        effects_layout.addWidget(self.compress_fade_in_chk)
+        effects_layout.addWidget(self.compress_fade_out_chk)
+        effects_layout.addStretch()
+        settings_layout.addLayout(effects_layout)
         
         layout.addWidget(settings_group)
         
@@ -849,7 +722,7 @@ class VideoEditTab(QWidget):
         frame.setStyleSheet("""
             QFrame {
                 background-color: #f6f7f8;
-                border-radius: 12px;
+                border-radius: 10px;
                 padding: 10px;
             }
         """)
@@ -860,17 +733,16 @@ class VideoEditTab(QWidget):
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet("""
             QPushButton {
-                font-size: 16px;
-                padding: 10px 20px;
+                font-size: 20px;
+                padding: 8px 20px;
                 background-color: white;
                 border: 1px solid #ddd;
-                border-radius: 8px;
+                border-radius: 6px;
                 color: #333;
-                font-weight: bold;
             }
             QPushButton:hover {
-                background-color: #fff0f5;
-                border-color: #fb7299;
+                background-color: #f0f0f0;
+                border-color: #ccc;
                 color: #fb7299;
             }
         """)
@@ -882,13 +754,13 @@ class VideoEditTab(QWidget):
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet("""
             QPushButton {
-                font-size: 18px;
+                font-size: 22px;
                 font-weight: bold;
-                padding: 12px 30px;
+                padding: 10px 30px;
                 background-color: #fb7299;
                 color: white;
                 border: none;
-                border-radius: 8px;
+                border-radius: 6px;
             }
             QPushButton:hover {
                 background-color: #fc8bab;
@@ -989,7 +861,7 @@ class VideoEditTab(QWidget):
         fmt = self.format_combo.currentText()
         
         self.convert_btn.setEnabled(False)
-        self.show_with_animation(self.convert_progress)
+        self.convert_progress.setVisible(True)
         self.convert_progress.setValue(0)
         self.convert_status.setText("正在转换中...")
         
@@ -1007,10 +879,123 @@ class VideoEditTab(QWidget):
             self.convert_status.setText(f"❌ 失败: {msg}")
 
     # --- Cut ---
-    # (Moved to top)
+    def on_cut_file_dropped(self, file_path):
+        self.set_single_file(file_path, self.cut_file_list, self.cut_btn)
+        # Get duration
+        duration = self.processor.get_video_duration(file_path)
+        self.duration_label.setText(f"总时长: {duration}秒")
+        self.start_time_spin.setMaximum(duration)
+        self.end_time_spin.setMaximum(duration)
+        self.end_time_spin.setValue(duration)
+        
+    def start_cut(self):
+        file_path = self.cut_file_list.item(0).text()
+        start = self.start_time_spin.value()
+        end = self.end_time_spin.value()
+        
+        if start >= end:
+            QMessageBox.warning(self, "错误", "开始时间必须小于结束时间")
+            return
+            
+        self.cut_btn.setEnabled(False)
+        self.cut_progress.setVisible(True)
+        self.cut_progress.setValue(0)
+        self.cut_status.setText("正在剪辑中...")
+        
+        self.worker = Worker(self.processor.cut_video, file_path, start, end)
+        self.worker.progress_signal.connect(self.cut_progress.setValue)
+        self.worker.finished_signal.connect(self.on_cut_finished)
+        self.worker.start()
+        
+    def on_cut_finished(self, success, msg):
+        self.cut_btn.setEnabled(True)
+        if success:
+            self.cut_status.setText(f"✅ 剪辑成功: {os.path.basename(msg)}")
+            self.cut_progress.setValue(100)
+        else:
+            self.cut_status.setText(f"❌ 失败: {msg}")
 
     # --- Merge ---
-    # (Moved to top)
+    def add_merge_files(self):
+        files, _ = QFileDialog.getOpenFileNames(
+            self, "选择视频文件", self.main_window.crawler.data_dir,
+            "Video Files (*.mp4 *.mkv *.avi *.mov *.flv)"
+        )
+        if files:
+            for f in files:
+                # Get duration
+                duration = self.processor.get_video_duration(f)
+                
+                item = QListWidgetItem(self.merge_list)
+                item.setSizeHint(QSize(0, 70))
+                
+                widget = MergeItemWidget(f, duration)
+                widget.removed.connect(lambda w: self.remove_merge_item(w))
+                self.merge_list.setItemWidget(item, widget)
+                
+    def remove_merge_item(self, widget):
+        for i in range(self.merge_list.count()):
+            item = self.merge_list.item(i)
+            if self.merge_list.itemWidget(item) == widget:
+                self.merge_list.takeItem(i)
+                break
+                
+    def start_merge(self):
+        count = self.merge_list.count()
+        if count < 2:
+            QMessageBox.warning(self, "提示", "请至少添加两个文件进行合并")
+            return
+            
+        file_list = []
+        for i in range(count):
+            item = self.merge_list.item(i)
+            widget = self.merge_list.itemWidget(item)
+            if widget:
+                file_list.append({
+                    'path': widget.path,
+                    'start': widget.start_spin.value(),
+                    'end': widget.end_spin.value(),
+                    'unit': 'time'
+                })
+        
+        # Output path
+        merge_dir = os.path.join(self.main_window.crawler.data_dir, "merge")
+        if not os.path.exists(merge_dir):
+            os.makedirs(merge_dir)
+            
+        base_name = os.path.splitext(os.path.basename(file_list[0]['path']))[0]
+        output_path = os.path.join(merge_dir, f"{base_name}_merged.mp4")
+        
+        counter = 1
+        while os.path.exists(output_path):
+            output_path = os.path.join(merge_dir, f"{base_name}_merged_{counter}.mp4")
+            counter += 1
+            
+        transition = self.merge_transition_chk.isChecked()
+            
+        self.merge_btn.setEnabled(False)
+        self.merge_progress.setVisible(True)
+        self.merge_progress.setValue(0)
+        self.merge_status.setText("正在合并中...")
+        
+        # Use new complex merge
+        self.worker = Worker(self.processor.merge_video_files_complex, file_list, output_path, transition)
+        self.worker.progress_signal.connect(self.merge_progress.setValue)
+        self.worker.finished_signal.connect(lambda s, m: self.on_merge_finished(s, m, merge_dir))
+        self.worker.start()
+        
+    def on_merge_finished(self, success, msg, merge_dir):
+        self.merge_btn.setEnabled(True)
+        if success:
+            self.merge_status.setText(f"✅ 合并成功: {os.path.basename(msg)}")
+            self.merge_progress.setValue(100)
+            # Open merge folder
+            try:
+                os.startfile(merge_dir)
+            except Exception as e:
+                self.main_window.log_to_console(f"打开文件夹失败: {e}", "error")
+        else:
+            self.merge_status.setText(f"❌ 失败: {msg}")
 
     # --- Watermark ---
     def start_watermark(self):
@@ -1024,7 +1009,7 @@ class VideoEditTab(QWidget):
         h = self.wm_h.value()
         
         self.wm_btn.setEnabled(False)
-        self.show_with_animation(self.wm_progress)
+        self.wm_progress.setVisible(True)
         self.wm_progress.setValue(0)
         self.wm_status.setText("正在去水印...")
         
@@ -1050,12 +1035,15 @@ class VideoEditTab(QWidget):
         res = self.res_combo.currentText()
         crf = self.crf_spin.value()
         
+        fade_in = self.compress_fade_in_chk.isChecked()
+        fade_out = self.compress_fade_out_chk.isChecked()
+        
         self.compress_btn.setEnabled(False)
-        self.show_with_animation(self.compress_progress)
+        self.compress_progress.setVisible(True)
         self.compress_progress.setValue(0)
         self.compress_status.setText("正在压缩中...")
         
-        self.worker = Worker(self.processor.compress_video, file_path, res, crf)
+        self.worker = Worker(self.processor.compress_video, file_path, res, crf, fade_in, fade_out)
         self.worker.progress_signal.connect(self.compress_progress.setValue)
         self.worker.finished_signal.connect(self.on_compress_finished)
         self.worker.start()

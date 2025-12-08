@@ -46,7 +46,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibili downloader v3.8")
+        self.setWindowTitle("哔哩哔哩视频下载器 v3.8")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -165,11 +165,11 @@ class BilibiliDesktop(QMainWindow):
         """显示更新公告"""
         version = "v3.8"
         updates = (
-            "1. 视频剪辑新增根据帧数剪辑，剪辑更精准。\n"
-            "2. 视频剪辑新增预览功能，支持实时查看剪辑效果。\n"
-            "3. 视频合并新增预览功能，支持分别裁剪每个视频片段。\n"
-            "4. 优化了视频剪辑、合并、压缩的过渡动画，体验更流畅。\n"
-            "5. 修复了已知问题，提升软件稳定性。"
+            "1. 剪辑升级：支持帧数精确剪辑，增加淡入淡出特效。\n"
+            "2. 合并升级：支持直接裁剪合并，增加转场动画。\n"
+            "3. 体验优化：压缩功能支持淡入淡出，UI全面美化。\n"
+            "4. 界面美化：视频编辑Tab贴合B站风格，交互更流畅。\n"
+            "5. 性能提升：优化了视频处理流程，更加稳定。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
