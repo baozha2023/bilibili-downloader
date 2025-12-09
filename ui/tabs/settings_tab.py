@@ -4,7 +4,10 @@ import logging
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QLineEdit, QCheckBox, QComboBox, QSpinBox, 
                              QGridLayout, QFileDialog, QScrollArea, QFrame,
-                             QDialog, QTextEdit)
+                             QDialog, QTextBrowser)
+from PyQt5.QtGui import QDesktopServices
+from PyQt5.QtCore import Qt, QUrl
+import sys
 from ui.message_box import BilibiliMessageBox
 from ui.widgets.card_widget import CardWidget
 from PyQt5.QtCore import Qt
@@ -466,22 +469,46 @@ class SettingsTab(QWidget):
         
         layout = QVBoxLayout(dialog)
         
-        text_edit = QTextEdit()
-        text_edit.setReadOnly(True)
-        text_edit.setStyleSheet("font-size: 16px; padding: 10px; font-family: Consolas, 'Microsoft YaHei';")
+        # 使用 QTextBrowser 以支持富文本和链接
+        text_browser = QTextBrowser()
+        text_browser.setOpenExternalLinks(True) # 允许打开外部链接
+        text_browser.setStyleSheet("font-size: 16px; padding: 10px; font-family: Consolas, 'Microsoft YaHei';")
         
         try:
-            credits_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'credits.txt')
+            # 兼容开发环境和打包后的环境
+            if getattr(sys, 'frozen', False):
+                # 打包后的路径
+                base_path = sys._MEIPASS
+            else:
+                # 开发环境路径
+                base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+                
+            credits_path = os.path.join(base_path, 'credits.txt')
+            
             if os.path.exists(credits_path):
                 with open(credits_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    text_edit.setText(content)
+                    # 简单处理：将特定URL转换为HTML链接，保留换行
+                    # 这里针对作者首页进行特殊处理，其他URL如果需要也可以正则替换
+                    html_content = content.replace('\n', '<br>')
+                    # 替换作者首页链接
+                    homepage_url = "https://space.bilibili.com/451133247"
+                    if homepage_url in html_content:
+                        link_html = f'<a href="{homepage_url}" style="color: #fb7299; text-decoration: none;">{homepage_url}</a>'
+                        html_content = html_content.replace(homepage_url, link_html)
+                    
+                    # 也可以尝试自动链接化其他URL (简单正则)
+                    # import re
+                    # url_pattern = re.compile(r'(https?://[^\s<]+)')
+                    # ... (略，为防止破坏格式，仅针对明确要求的作者首页做处理，或者手动维护的credits.txt格式比较固定)
+                    
+                    text_browser.setHtml(html_content)
             else:
-                text_edit.setText("credits.txt 文件未找到。")
+                text_browser.setText(f"credits.txt 文件未找到。\n路径: {credits_path}")
         except Exception as e:
-            text_edit.setText(f"读取 credits.txt 失败: {str(e)}")
+            text_browser.setText(f"读取 credits.txt 失败: {str(e)}")
             
-        layout.addWidget(text_edit)
+        layout.addWidget(text_browser)
         
         close_btn = QPushButton("关闭")
         close_btn.clicked.connect(dialog.accept)

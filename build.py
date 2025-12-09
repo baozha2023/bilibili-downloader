@@ -41,6 +41,7 @@ def build_executable():
         '--noconfirm',  # 不确认覆盖
         '--clean',      # 清理缓存
         '--add-data=README.md;.',  # 添加说明文件
+        '--add-data=credits.txt;.',  # 添加致谢文件
         '--hidden-import=core.crawler',
         '--hidden-import=core.network',
         '--hidden-import=core.api',
