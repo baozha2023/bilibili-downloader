@@ -65,7 +65,7 @@ class BilibiliDesktop(QMainWindow):
         
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v3.10")
+        self.setWindowTitle("哔哩哔哩视频下载器 v4.0")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
@@ -147,7 +147,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v3.10！", "info")
+        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v4.0！", "info")
         self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
         
         # 检查ffmpeg
@@ -158,13 +158,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v3.10"
+        version = "v4.0"
         updates = (
-            "1. 界面优化：修复Tab名称显示不全的问题，优化视频编辑Tab交互体验。\n"
-            "2. 视频编辑：新增页面过渡动画，优化文件选择逻辑，去除冗余按钮。\n"
-            "3. 画质修复：修复登录后选择低画质仍下载1080P的问题。\n"
-            "4. 去水印：重构去水印模块，支持更智能的区域检测。\n"
-            "5. 稳定性：修复若干已知问题，提升软件稳定性。"
+            "1. 日志系统：视频编辑功能新增详细日志输出，覆盖转换、剪辑、合并、去水印等操作。\n"
+            "2. 交互体验：优化视频剪辑和去水印功能的交互体验，增加状态反馈和更清晰的指引。\n"
+            "3. 下载优化：优化视频下载取消逻辑，取消后自动重置进度条和UI状态。\n"
+            "4. 作者声明：设置界面新增'作者声明'按钮，详细列出致谢名单和开源技术。\n"
+            "5. 完善文档：更新Credits文件，补全所有使用到的工具和库的声明。"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

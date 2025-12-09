@@ -3,7 +3,8 @@ import json
 import logging
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QLineEdit, QCheckBox, QComboBox, QSpinBox, 
-                             QGridLayout, QFileDialog, QScrollArea, QFrame)
+                             QGridLayout, QFileDialog, QScrollArea, QFrame,
+                             QDialog, QTextEdit)
 from ui.message_box import BilibiliMessageBox
 from ui.widgets.card_widget import CardWidget
 from PyQt5.QtCore import Qt
@@ -328,6 +329,27 @@ class SettingsTab(QWidget):
         
         bottom_layout.addStretch()
         
+        # 作者声明按钮
+        credits_btn = QPushButton("作者声明")
+        credits_btn.setCursor(Qt.PointingHandCursor)
+        credits_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                background-color: #f6f7f8;
+                color: #666;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                padding: 10px 20px;
+                margin-right: 15px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+                color: #333;
+            }
+        """)
+        credits_btn.clicked.connect(self.show_credits)
+        bottom_layout.addWidget(credits_btn)
+        
         save_btn = QPushButton("保存设置")
         save_btn.setCursor(Qt.PointingHandCursor)
         save_btn.setStyleSheet("""
@@ -435,3 +457,52 @@ class SettingsTab(QWidget):
                     self.audio_quality_combo.setCurrentText(config['audio_quality'])
             except Exception as e:
                 logger.error(f"加载配置文件时出错: {e}")
+
+    def show_credits(self):
+        """显示作者声明和致谢"""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("作者声明 / Credits")
+        dialog.setMinimumSize(600, 500)
+        
+        layout = QVBoxLayout(dialog)
+        
+        text_edit = QTextEdit()
+        text_edit.setReadOnly(True)
+        text_edit.setStyleSheet("font-size: 16px; padding: 10px; font-family: Consolas, 'Microsoft YaHei';")
+        
+        try:
+            credits_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'credits.txt')
+            if os.path.exists(credits_path):
+                with open(credits_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    text_edit.setText(content)
+            else:
+                text_edit.setText("credits.txt 文件未找到。")
+        except Exception as e:
+            text_edit.setText(f"读取 credits.txt 失败: {str(e)}")
+            
+        layout.addWidget(text_edit)
+        
+        close_btn = QPushButton("关闭")
+        close_btn.clicked.connect(dialog.accept)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fb7299;
+                color: white;
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-weight: bold;
+                font-size: 16px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #fc8bab;
+            }
+        """)
+        
+        btn_layout = QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(close_btn)
+        layout.addLayout(btn_layout)
+        
+        dialog.exec_()

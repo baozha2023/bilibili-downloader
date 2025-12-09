@@ -18,41 +18,65 @@ class MergeItemWidget(QWidget):
         
     def init_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        layout.setSpacing(10)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(15)
         
-        # Icon or simple label
+        # Left colored strip (optional, using a Frame)
+        strip = QFrame()
+        strip.setFixedWidth(4)
+        strip.setStyleSheet("background-color: #fb7299; border-radius: 2px;")
+        layout.addWidget(strip)
+        
+        # Icon
         icon_label = QLabel("🎬")
-        icon_label.setStyleSheet("font-size: 20px;")
+        icon_label.setStyleSheet("font-size: 24px; background-color: #f0f0f0; border-radius: 4px; padding: 5px;")
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setFixedSize(40, 40)
         layout.addWidget(icon_label)
+        
+        # Info Layout (Name + Duration)
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(5)
         
         # Filename
         name_label = QLabel(os.path.basename(self.path))
-        name_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #333;")
+        name_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #333;")
         name_label.setWordWrap(True)
-        layout.addWidget(name_label, 1)
+        info_layout.addWidget(name_label)
+        
+        # Duration info
+        dur_text = f"时长: {self.duration}s"
+        dur_label = QLabel(dur_text)
+        dur_label.setStyleSheet("font-size: 12px; color: #888;")
+        info_layout.addWidget(dur_label)
+        
+        layout.addLayout(info_layout, 1)
         
         # Range Selection
         range_group = QFrame()
-        range_group.setStyleSheet("background-color: #f9f9f9; border-radius: 4px; padding: 2px;")
+        range_group.setStyleSheet("background-color: #f9f9f9; border-radius: 6px; padding: 5px; border: 1px solid #eee;")
         range_layout = QHBoxLayout(range_group)
-        range_layout.setContentsMargins(0, 0, 0, 0)
-        range_layout.setSpacing(5)
+        range_layout.setContentsMargins(5, 5, 5, 5)
+        range_layout.setSpacing(8)
         
-        range_layout.addWidget(QLabel("Start:"))
+        range_layout.addWidget(QLabel("截取:"))
         self.start_spin = QDoubleSpinBox()
         self.start_spin.setRange(0, 99999)
         self.start_spin.setValue(0)
         self.start_spin.setDecimals(1)
-        self.start_spin.setFixedWidth(70)
+        self.start_spin.setSuffix("s")
+        self.start_spin.setFixedWidth(80)
+        self.style_spinbox(self.start_spin)
         range_layout.addWidget(self.start_spin)
         
-        range_layout.addWidget(QLabel("End:"))
+        range_layout.addWidget(QLabel("-"))
         self.end_spin = QDoubleSpinBox()
         self.end_spin.setRange(0, 99999)
         self.end_spin.setValue(self.duration if self.duration > 0 else 0)
         self.end_spin.setDecimals(1)
-        self.end_spin.setFixedWidth(70)
+        self.end_spin.setSuffix("s")
+        self.end_spin.setFixedWidth(80)
+        self.style_spinbox(self.end_spin)
         range_layout.addWidget(self.end_spin)
         
         layout.addWidget(range_group)
@@ -61,29 +85,48 @@ class MergeItemWidget(QWidget):
         remove_btn = QPushButton("✕")
         remove_btn.setFixedSize(30, 30)
         remove_btn.setCursor(Qt.PointingHandCursor)
+        remove_btn.setToolTip("移除此项")
         remove_btn.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
-                color: #999;
+                color: #ccc;
                 border: none;
                 font-size: 16px;
                 font-weight: bold;
+                border-radius: 15px;
             }
             QPushButton:hover {
                 color: #ff4d4f;
                 background-color: #fff1f0;
-                border-radius: 15px;
             }
         """)
         remove_btn.clicked.connect(lambda: self.removed.emit(self))
         layout.addWidget(remove_btn)
         
-        # Style
+        # Main Widget Style
         self.setStyleSheet("""
             MergeItemWidget {
                 background-color: white;
                 border: 1px solid #e0e0e0;
-                border-radius: 6px;
+                border-radius: 8px;
+            }
+            MergeItemWidget:hover {
+                border-color: #fb7299;
+                background-color: #fffbfc;
+            }
+        """)
+
+    def style_spinbox(self, spin):
+        spin.setStyleSheet("""
+            QDoubleSpinBox {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 2px 5px;
+                background: white;
+                selection-background-color: #fb7299;
+            }
+            QDoubleSpinBox:focus {
+                border-color: #fb7299;
             }
         """)
 
@@ -299,6 +342,9 @@ class VideoEditTab(QWidget):
         anim.setEndValue(1)
         anim.setEasingCurve(QEasingCurve.OutQuad)
         
+        # Cleanup effect after animation
+        anim.finished.connect(lambda: widget.setGraphicsEffect(None))
+        
         # Position Animation (Slide up slightly)
         pos_anim = QPropertyAnimation(widget, b"pos")
         pos_anim.setDuration(300)
@@ -381,6 +427,7 @@ class VideoEditTab(QWidget):
         self.setup_header(layout, "视频剪辑", "精确裁剪视频片段，支持帧级剪辑")
         
         self.cut_file_list = DragDropListWidget()
+        self.cut_file_list.setToolTip("支持拖拽视频文件到此处")
         self.cut_file_list.file_dropped.connect(lambda p: self.on_cut_file_dropped(p))
         self.cut_file_list.clicked.connect(lambda: self.select_single_file(self.cut_file_list, None, callback=self.on_cut_file_dropped))
         layout.addWidget(self.cut_file_list)
@@ -531,17 +578,27 @@ class VideoEditTab(QWidget):
         
         self.setup_header(layout, "视频合并", "将多个视频拼接为一个文件，支持片段剪辑与转场")
         
+        # Tip
+        tip_label = QLabel("💡 提示：支持拖拽调整视频顺序")
+        tip_label.setStyleSheet("color: #999; font-size: 14px; margin-bottom: 5px;")
+        layout.addWidget(tip_label)
+        
         # Merge List
         self.merge_list = QListWidget()
         self.merge_list.setSelectionMode(QAbstractItemView.NoSelection)
         self.merge_list.setDragDropMode(QAbstractItemView.InternalMove)
         self.merge_list.setStyleSheet("""
             QListWidget {
-                border: 2px solid #eee;
-                border-radius: 8px;
+                border: 2px dashed #e0e0e0;
+                border-radius: 12px;
                 font-size: 16px;
-                padding: 5px;
-                background-color: white;
+                padding: 10px;
+                background-color: #fafafa;
+                outline: none;
+            }
+            QListWidget::item {
+                margin-bottom: 10px;
+                background: transparent;
             }
         """)
         layout.addWidget(self.merge_list)
@@ -550,6 +607,7 @@ class VideoEditTab(QWidget):
         options_layout = QHBoxLayout()
         self.merge_transition_chk = QCheckBox("开启转场动画 (Crossfade)")
         self.merge_transition_chk.setChecked(True)
+        self.merge_transition_chk.setToolTip("开启后，视频片段之间会有1秒的淡入淡出效果")
         self.merge_transition_chk.setStyleSheet("""
             QCheckBox { font-size: 16px; color: #555; spacing: 5px; }
             QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ccc; }
@@ -563,15 +621,48 @@ class VideoEditTab(QWidget):
         controls_frame = self.create_control_frame()
         controls_layout = QHBoxLayout(controls_frame)
         
-        add_btn = self.create_button("添加文件", self.add_merge_files)
+        add_btn = self.create_button("➕ 添加文件", self.add_merge_files)
+        add_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 18px;
+                padding: 10px 25px;
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                color: #333;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #f0f0f0;
+                border-color: #fb7299;
+                color: #fb7299;
+            }
+        """)
         controls_layout.addWidget(add_btn)
         
-        clear_btn = self.create_button("清空列表", self.merge_list.clear)
+        clear_btn = QPushButton("🗑️ 清空列表")
+        clear_btn.setCursor(Qt.PointingHandCursor)
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 18px;
+                padding: 10px 25px;
+                background-color: white;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                color: #666;
+            }
+            QPushButton:hover {
+                background-color: #fff1f0;
+                border-color: #ff4d4f;
+                color: #ff4d4f;
+            }
+        """)
+        clear_btn.clicked.connect(self.clear_merge_list_safe)
         controls_layout.addWidget(clear_btn)
         
         controls_layout.addStretch()
         
-        self.merge_btn = self.create_primary_button("开始合并", self.start_merge)
+        self.merge_btn = self.create_primary_button("🚀 开始合并", self.start_merge)
         controls_layout.addWidget(self.merge_btn)
         
         layout.addWidget(controls_frame)
@@ -581,10 +672,17 @@ class VideoEditTab(QWidget):
         
         self.merge_status = QLabel("")
         self.merge_status.setAlignment(Qt.AlignCenter)
+        self.merge_status.setStyleSheet("font-size: 16px; margin-top: 5px;")
         layout.addWidget(self.merge_status)
         
         layout.addStretch()
         return page
+
+    def clear_merge_list_safe(self):
+        if self.merge_list.count() > 0:
+            reply = QMessageBox.question(self, "确认清空", "确定要清空所有已添加的视频吗？", QMessageBox.Yes | QMessageBox.No)
+            if reply == QMessageBox.Yes:
+                self.merge_list.clear()
 
     # ==========================================
     # 4. Watermark Page
@@ -598,12 +696,13 @@ class VideoEditTab(QWidget):
         self.setup_header(layout, "去水印", "自定义区域去除视频水印")
         
         self.wm_file_list = DragDropListWidget()
+        self.wm_file_list.setToolTip("支持拖拽视频文件到此处")
         self.wm_file_list.file_dropped.connect(lambda p: self.set_single_file(p, self.wm_file_list, self.wm_btn))
         self.wm_file_list.clicked.connect(lambda: self.select_single_file(self.wm_file_list, self.wm_btn))
         layout.addWidget(self.wm_file_list)
         
         # Area Selection
-        area_group = QGroupBox("水印区域 (像素)")
+        area_group = QGroupBox("水印区域设置 (像素)")
         area_group.setStyleSheet("QGroupBox { font-size: 20px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
         area_layout = QHBoxLayout(area_group)
         
@@ -612,9 +711,19 @@ class VideoEditTab(QWidget):
         self.wm_w = QSpinBox()
         self.wm_h = QSpinBox()
         
-        for label, spin in [("X:", self.wm_x), ("Y:", self.wm_y), ("宽:", self.wm_w), ("高:", self.wm_h)]:
-            area_layout.addWidget(QLabel(label))
+        # Helper for tooltip
+        tip_x = "水印左上角距离视频左边缘的距离 (像素)"
+        tip_y = "水印左上角距离视频上边缘的距离 (像素)"
+        tip_w = "水印区域的宽度 (像素)"
+        tip_h = "水印区域的高度 (像素)"
+
+        for label, spin, tip in [("X坐标:", self.wm_x, tip_x), ("Y坐标:", self.wm_y, tip_y), ("宽度:", self.wm_w, tip_w), ("高度:", self.wm_h, tip_h)]:
+            lbl = QLabel(label)
+            lbl.setToolTip(tip)
+            area_layout.addWidget(lbl)
+            
             spin.setRange(0, 9999)
+            spin.setToolTip(tip)
             self.style_spinbox(spin)
             area_layout.addWidget(spin)
             
@@ -625,6 +734,11 @@ class VideoEditTab(QWidget):
         self.wm_h.setValue(60)
             
         layout.addWidget(area_group)
+        
+        # Tip label
+        tip_label = QLabel("💡 提示：请根据视频实际分辨率调整坐标和大小，建议先截图测量")
+        tip_label.setStyleSheet("color: #999; font-size: 16px; font-style: italic;")
+        layout.addWidget(tip_label)
         
         # Controls
         controls_frame = self.create_control_frame()
@@ -890,6 +1004,8 @@ class VideoEditTab(QWidget):
         self.convert_progress.setValue(0)
         self.convert_status.setText("正在转换中...")
         
+        self.main_window.log_to_console(f"开始转换视频: {os.path.basename(file_path)} -> {fmt}", "info")
+        
         self.worker = Worker(self.processor.convert_video, file_path, fmt)
         self.worker.progress_signal.connect(self.convert_progress.setValue)
         self.worker.finished_signal.connect(self.on_convert_finished)
@@ -900,8 +1016,10 @@ class VideoEditTab(QWidget):
         if success:
             self.convert_status.setText(f"✅ 转换成功: {os.path.basename(msg)}")
             self.convert_progress.setValue(100)
+            self.main_window.log_to_console(f"转换成功: {msg}", "success")
         else:
             self.convert_status.setText(f"❌ 失败: {msg}")
+            self.main_window.log_to_console(f"转换失败: {msg}", "error")
 
     # --- Cut ---
     def on_cut_file_dropped(self, file_path):
@@ -927,6 +1045,8 @@ class VideoEditTab(QWidget):
         self.cut_progress.setValue(0)
         self.cut_status.setText("正在剪辑中...")
         
+        self.main_window.log_to_console(f"开始剪辑视频: {os.path.basename(file_path)} ({start}s - {end}s)", "info")
+        
         self.worker = Worker(self.processor.cut_video, file_path, start, end)
         self.worker.progress_signal.connect(self.cut_progress.setValue)
         self.worker.finished_signal.connect(self.on_cut_finished)
@@ -937,8 +1057,10 @@ class VideoEditTab(QWidget):
         if success:
             self.cut_status.setText(f"✅ 剪辑成功: {os.path.basename(msg)}")
             self.cut_progress.setValue(100)
+            self.main_window.log_to_console(f"剪辑成功: {msg}", "success")
         else:
             self.cut_status.setText(f"❌ 失败: {msg}")
+            self.main_window.log_to_console(f"剪辑失败: {msg}", "error")
 
     # --- Merge ---
     def add_merge_files(self):
@@ -952,11 +1074,23 @@ class VideoEditTab(QWidget):
                 duration = self.processor.get_video_duration(f)
                 
                 item = QListWidgetItem(self.merge_list)
-                item.setSizeHint(QSize(0, 70))
+                item.setSizeHint(QSize(0, 95)) # Increased height for new layout
                 
                 widget = MergeItemWidget(f, duration)
                 widget.removed.connect(lambda w: self.remove_merge_item(w))
                 self.merge_list.setItemWidget(item, widget)
+                
+                # Simple fade in animation for the new item
+                opacity = QGraphicsOpacityEffect(widget)
+                widget.setGraphicsEffect(opacity)
+                anim = QPropertyAnimation(opacity, b"opacity")
+                anim.setDuration(400)
+                anim.setStartValue(0)
+                anim.setEndValue(1)
+                anim.setEasingCurve(QEasingCurve.OutQuad)
+                anim.finished.connect(lambda: widget.setGraphicsEffect(None))
+                anim.start()
+                widget.anim = anim # keep ref
                 
     def remove_merge_item(self, widget):
         for i in range(self.merge_list.count()):
@@ -1003,6 +1137,8 @@ class VideoEditTab(QWidget):
         self.merge_progress.setValue(0)
         self.merge_status.setText("正在合并中...")
         
+        self.main_window.log_to_console(f"开始合并 {len(file_list)} 个视频文件", "info")
+        
         # Use new complex merge
         self.worker = Worker(self.processor.merge_video_files_complex, file_list, output_path, transition)
         self.worker.progress_signal.connect(self.merge_progress.setValue)
@@ -1014,6 +1150,7 @@ class VideoEditTab(QWidget):
         if success:
             self.merge_status.setText(f"✅ 合并成功: {os.path.basename(msg)}")
             self.merge_progress.setValue(100)
+            self.main_window.log_to_console(f"合并成功: {msg}", "success")
             # Open merge folder
             try:
                 os.startfile(merge_dir)
@@ -1021,6 +1158,7 @@ class VideoEditTab(QWidget):
                 self.main_window.log_to_console(f"打开文件夹失败: {e}", "error")
         else:
             self.merge_status.setText(f"❌ 失败: {msg}")
+            self.main_window.log_to_console(f"合并失败: {msg}", "error")
 
     # --- Watermark ---
     def start_watermark(self):
@@ -1038,6 +1176,8 @@ class VideoEditTab(QWidget):
         self.wm_progress.setValue(0)
         self.wm_status.setText("正在去水印...")
         
+        self.main_window.log_to_console(f"开始去水印: {os.path.basename(file_path)} (x={x}, y={y}, w={w}, h={h})", "info")
+        
         self.worker = Worker(self.processor.remove_watermark_custom, file_path, x, y, w, h)
         self.worker.progress_signal.connect(self.wm_progress.setValue)
         self.worker.finished_signal.connect(self.on_wm_finished)
@@ -1048,8 +1188,10 @@ class VideoEditTab(QWidget):
         if success:
             self.wm_status.setText(f"✅ 去水印成功: {os.path.basename(msg)}")
             self.wm_progress.setValue(100)
+            self.main_window.log_to_console(f"去水印成功: {msg}", "success")
         else:
             self.wm_status.setText(f"❌ 失败: {msg}")
+            self.main_window.log_to_console(f"去水印失败: {msg}", "error")
 
     # --- Compress ---
     def start_compress(self):
@@ -1068,6 +1210,8 @@ class VideoEditTab(QWidget):
         self.compress_progress.setValue(0)
         self.compress_status.setText("正在压缩中...")
         
+        self.main_window.log_to_console(f"开始压缩视频: {os.path.basename(file_path)} (Res={res}, CRF={crf})", "info")
+        
         self.worker = Worker(self.processor.compress_video, file_path, res, crf, fade_in, fade_out)
         self.worker.progress_signal.connect(self.compress_progress.setValue)
         self.worker.finished_signal.connect(self.on_compress_finished)
@@ -1078,5 +1222,7 @@ class VideoEditTab(QWidget):
         if success:
             self.compress_status.setText(f"✅ 压缩成功: {os.path.basename(msg)}")
             self.compress_progress.setValue(100)
+            self.main_window.log_to_console(f"压缩成功: {msg}", "success")
         else:
             self.compress_status.setText(f"❌ 失败: {msg}")
+            self.main_window.log_to_console(f"压缩失败: {msg}", "error")

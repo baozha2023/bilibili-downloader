@@ -414,6 +414,8 @@ class DownloadTab(QWidget):
             self.cancel_btn.setEnabled(False)
             self.download_status.setText("下载已取消")
             self.main_window.log_to_console("下载已取消", "warning")
+            # 重置UI状态
+            self.reset_progress_bars()
 
     def reset_progress_bars(self):
         self.video_progress.setMaximum(100)

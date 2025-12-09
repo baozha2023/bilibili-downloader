@@ -3,12 +3,31 @@
 本项目使用了以下开源技术和工具，特此致谢：
 
 1. Python (https://www.python.org/)
-2. PyQt5 / PySide6 - GUI框架
-3. FFmpeg (https://ffmpeg.org/) - 强大的音视频处理工具
-4. Requests - HTTP库
-5. Qrcode - 二维码生成
+   - 核心编程语言
+
+2. PyQt5 (https://pypi.org/project/PyQt5/)
+   - 强大的跨平台GUI框架
+
+3. FFmpeg (https://ffmpeg.org/)
+   - 强大的音视频处理工具 (视频合并、剪辑、转换等)
+
+4. Requests (https://requests.readthedocs.io/)
+   - 优雅而简单的HTTP库
+
+5. Qrcode (https://pypi.org/project/qrcode/)
+   - 纯Python实现的二维码生成库
+
+6. Pillow (https://python-pillow.org/)
+   - Python图像处理库
+
+7. fake-useragent (https://pypi.org/project/fake-useragent/)
+   - 随机User-Agent生成库，用于爬虫反检测
+
+8. PyInstaller (https://pyinstaller.org/)
+   - 将Python应用打包成独立可执行文件的工具
 
 本软件作者：zxj
+作者首页：https://space.bilibili.com/451133247
 
 免责声明：
 本软件仅供学习和交流使用，不得用于任何商业用途。

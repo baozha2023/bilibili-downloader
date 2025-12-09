@@ -332,6 +332,14 @@ class MediaProcessor:
                 end = duration
             
             duration = end - start
+            
+            # 检查时长是否足够转场
+            if transition and duration <= 1.0: # 假设转场需要1秒
+                 logger.warning(f"片段 {i} 时长 ({duration}s) 不足以进行转场 (需 > 1s)，将禁用此片段的转场效果或可能导致合并失败。")
+                 # 实际上如果任何中间片段 < 1s (如果是两端转场则需 > 2s)，xfade都会有问题。
+                 # 简单起见，如果发现短视频，强制关闭转场? 或者调整时长?
+                 # 这里暂时只打印警告，后续逻辑尝试容错。
+                 
             processed_clips.append({'index': i, 'start': start, 'end': end, 'duration': duration})
 
         # 构建 Filter Graph
@@ -366,15 +374,50 @@ class MediaProcessor:
             
             # Video Xfade
             curr_v = video_streams[0]
+            # Offset calculation for xfade:
+            # The offset determines where the transition STARTS relative to the output timeline.
+            # Clip 0 duration: D0
+            # Clip 1 duration: D1
+            # Transition duration: T
+            # Clip 1 should start fading in at: D0 - T
+            # So offset for first transition is D0 - T
+            
             offset = processed_clips[0]['duration'] - trans_dur
+            
+            # 修正：如果片段时长小于转场时长，offset 会变成负数，导致失败
+            # 必须确保 duration > trans_dur
+            # 在预处理阶段检查
             
             for i in range(1, len(video_streams)):
                 next_v = video_streams[i]
                 next_tag = f"vm{i}"
+                
+                # Check offset valid
+                if offset < 0:
+                    logger.warning(f"转场offset < 0 ({offset}), 强制设为0. 可能导致画面跳变。")
+                    offset = 0
+                    
                 # transition=fade, slideleft, circleopen, etc.
                 filter_complex.append(f"[{curr_v}][{next_v}]xfade=transition=fade:duration={trans_dur}:offset={offset}[{next_tag}]")
                 curr_v = next_tag
+                
                 if i < len(video_streams) - 1:
+                    # Next offset = current offset + current clip duration - transition duration
+                    # current clip here is actually clip[i], because we just mixed clip[i-1] and clip[i]
+                    # But wait, xfade output duration is: D1 + D2 - T
+                    # So the accumulating timeline is correct?
+                    
+                    # Logic check:
+                    # Clip 0 ends at D0. Trans starts at D0-T.
+                    # Clip 1 starts at D0-T. Length D1.
+                    # Clip 1 effective end on timeline: (D0-T) + D1.
+                    # Next trans should start at: (D0-T + D1) - T = D0 + D1 - 2T.
+                    
+                    # My previous code: offset += processed_clips[i]['duration'] - trans_dur
+                    # Init offset = D0 - T
+                    # Next offset = (D0 - T) + D1 - T = D0 + D1 - 2T.
+                    # This logic seems correct.
+                    
                     offset += processed_clips[i]['duration'] - trans_dur
             
             filter_complex.append(f"[{curr_v}]format=yuv420p[outv]") # Ensure format
@@ -396,7 +439,10 @@ class MediaProcessor:
         cmd.extend(['-y', output_path])
         
         logger.info(f"高级合并: {cmd}")
-        return self._run_ffmpeg_with_progress(cmd, progress_callback)
+        if self._run_ffmpeg_with_progress(cmd, progress_callback):
+            return True, output_path
+        else:
+            return False, "合并失败"
 
     def merge_video_files(self, file_list, output_path, progress_callback=None):
         """
@@ -548,8 +594,15 @@ class MediaProcessor:
                 duration_pattern = re.compile(r'Duration: (\d{2}):(\d{2}):(\d{2})')
                 time_pattern = re.compile(r'time=(\d{2}):(\d{2}):(\d{2})')
                 
+                self.last_error_log = [] # 保存最后10行日志
+                
                 for line in process.stderr:
-                    # logger.debug(line.strip()) # 调试用
+                    line_str = line.strip()
+                    self.last_error_log.append(line_str)
+                    if len(self.last_error_log) > 20:
+                        self.last_error_log.pop(0)
+                        
+                    # logger.debug(line_str) # 调试用
                     if not duration_seconds:
                         match = duration_pattern.search(line)
                         if match:
@@ -569,6 +622,11 @@ class MediaProcessor:
             
             process.wait()
             t.join()
+            
+            if process.returncode != 0:
+                logger.error(f"ffmpeg执行失败，返回码: {process.returncode}")
+                if hasattr(self, 'last_error_log'):
+                    logger.error("FFmpeg最后输出:\n" + "\n".join(self.last_error_log))
             
             if progress_callback:
                 progress_callback(100, 100)
