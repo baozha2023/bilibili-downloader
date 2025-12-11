@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
 from PyQt5.QtGui import QDesktopServices
 from PyQt5.QtCore import Qt, QUrl
 import sys
+import re
 from ui.message_box import BilibiliMessageBox
 from ui.widgets.card_widget import CardWidget
 from PyQt5.QtCore import Qt
@@ -488,19 +489,25 @@ class SettingsTab(QWidget):
             if os.path.exists(credits_path):
                 with open(credits_path, 'r', encoding='utf-8') as f:
                     content = f.read()
-                    # 简单处理：将特定URL转换为HTML链接，保留换行
-                    # 这里针对作者首页进行特殊处理，其他URL如果需要也可以正则替换
-                    html_content = content.replace('\n', '<br>')
-                    # 替换作者首页链接
-                    homepage_url = "https://space.bilibili.com/451133247"
-                    if homepage_url in html_content:
-                        link_html = f'<a href="{homepage_url}" style="color: #fb7299; text-decoration: none;">{homepage_url}</a>'
-                        html_content = html_content.replace(homepage_url, link_html)
                     
-                    # 也可以尝试自动链接化其他URL (简单正则)
-                    # import re
-                    # url_pattern = re.compile(r'(https?://[^\s<]+)')
-                    # ... (略，为防止破坏格式，仅针对明确要求的作者首页做处理，或者手动维护的credits.txt格式比较固定)
+                    # 1. 先进行HTML转义 (防止原文中包含 < > 等字符被误解析)
+                    import html
+                    content = html.escape(content)
+                    
+                    # 2. 将换行符转换为 <br>
+                    html_content = content.replace('\n', '<br>')
+                    
+                    # 3. 正则匹配URL并转换为HTML链接
+                    # 匹配 http:// 或 https:// 开头的链接
+                    url_pattern = re.compile(r'(https?://[^\s<]+)')
+                    
+                    def replace_url(match):
+                        url = match.group(1)
+                        # 去除可能的末尾标点 (如括号、句号等，视具体情况调整，这里简单处理)
+                        clean_url = url.rstrip(').,;]') 
+                        return f'<a href="{clean_url}" style="color: #fb7299; text-decoration: none;">{clean_url}</a>'
+                    
+                    html_content = url_pattern.sub(replace_url, html_content)
                     
                     text_browser.setHtml(html_content)
             else:

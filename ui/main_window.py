@@ -63,18 +63,29 @@ class BilibiliDesktop(QMainWindow):
         """关闭窗口事件"""
         event.accept()
         
+    def resource_path(self, relative_path):
+        """获取资源文件的绝对路径"""
+        if hasattr(sys, '_MEIPASS'):
+            # PyInstaller打包后的路径
+            return os.path.join(sys._MEIPASS, relative_path)
+        return os.path.join(os.path.abspath("."), relative_path)
+
     def init_ui(self):
         """初始化UI"""
         self.setWindowTitle("哔哩哔哩视频下载器 v4.0")
         self.setMinimumSize(1000, 700)
         
         # 设置应用图标
-        if os.path.exists("resource/icon.ico"):
-            self.setWindowIcon(QIcon("resource/icon.ico"))
-        elif os.path.exists("resource/logo.jpg"):
-            self.setWindowIcon(QIcon("resource/logo.jpg"))
-        elif os.path.exists("resource/logo.png"):
-            self.setWindowIcon(QIcon("resource/logo.png"))
+        icon_path = self.resource_path("resource/icon.ico")
+        logo_jpg = self.resource_path("resource/logo.jpg")
+        logo_png = self.resource_path("resource/logo.png")
+        
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+        elif os.path.exists(logo_jpg):
+            self.setWindowIcon(QIcon(logo_jpg))
+        elif os.path.exists(logo_png):
+            self.setWindowIcon(QIcon(logo_png))
         
         # 主布局
         central_widget = QWidget()

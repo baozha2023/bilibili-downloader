@@ -42,6 +42,7 @@ def build_executable():
         '--clean',      # 清理缓存
         '--add-data=README.md;.',  # 添加说明文件
         '--add-data=credits.txt;.',  # 添加致谢文件
+        '--add-data=resource;resource',  # 添加资源文件夹
         '--hidden-import=core.crawler',
         '--hidden-import=core.network',
         '--hidden-import=core.api',
