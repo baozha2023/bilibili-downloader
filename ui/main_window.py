@@ -17,14 +17,11 @@ from ui.tabs.popular_tab import PopularTab
 from ui.tabs.account_tab import AccountTab
 from ui.tabs.settings_tab import SettingsTab
 from ui.tabs.video_edit_tab import VideoEditTab
+from ui.qt_logger import QtLogHandler
 
 # 配置日志
 logger = logging.getLogger('bilibili_desktop')
-handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
+# 移除旧的配置，将在 init_ui 中统一配置
 
 class BilibiliDesktop(QMainWindow):
     """哔哩哔哩桌面端主窗口"""
@@ -34,30 +31,11 @@ class BilibiliDesktop(QMainWindow):
         self.crawler = BilibiliCrawler()
         self.download_history = self.load_download_history()
         
-        # Load scale setting
-        self.ui_scale = 1.0
-        self.load_ui_scale()
-        
         self.init_ui()
         self.set_style()
         
         # 显示更新公告
         QTimer.singleShot(500, self.show_update_dialog)
-
-    def load_ui_scale(self):
-        try:
-            config_path = os.path.join(self.crawler.data_dir, 'config', 'settings.json')
-            if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                    scale_str = config.get('ui_scale', "100%")
-                    if "125%" in scale_str: self.ui_scale = 1.25
-                    elif "150%" in scale_str: self.ui_scale = 1.5
-                    elif "175%" in scale_str: self.ui_scale = 1.75
-                    elif "200%" in scale_str: self.ui_scale = 2.0
-                    else: self.ui_scale = 1.0
-        except:
-            self.ui_scale = 1.0
 
     def closeEvent(self, event):
         """关闭窗口事件"""
@@ -72,7 +50,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v4.0")
+        self.setWindowTitle("哔哩哔哩视频下载器 v4.2")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -125,10 +103,61 @@ class BilibiliDesktop(QMainWindow):
         log_layout.addLayout(log_ctrl_layout)
         
         # ---------------------------------------------------------------
+        # 1.1 初始化日志系统
+        # ---------------------------------------------------------------
+        # 配置根日志，使其包含控制台输出和UI输出
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+        
+        # 清除现有的处理器
+        root_logger.handlers = []
+        
+        # 控制台处理器
+        console_handler = logging.StreamHandler()
+        console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(console_formatter)
+        root_logger.addHandler(console_handler)
+        
+        # Qt UI 处理器
+        self.qt_log_handler = QtLogHandler()
+        # 这里只保留消息内容，因为颜色和图标会在 log_to_console 中添加
+        qt_formatter = logging.Formatter('%(message)s') 
+        self.qt_log_handler.setFormatter(qt_formatter)
+        self.qt_log_handler.log_signal.connect(self.log_to_console)
+        root_logger.addHandler(self.qt_log_handler)
+        
+        # ---------------------------------------------------------------
         # 2. 标签页
         # ---------------------------------------------------------------
         self.tabs = QTabWidget()
-        # 移除硬编码的样式表，使用set_style中的全局样式
+        # 优化Tab样式，减小Padding以防文字截断
+        self.tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #e7e7e7;
+                background: white;
+                border-radius: 5px;
+            }
+            QTabBar::tab {
+                background: #f4f5f7;
+                border: 1px solid #e7e7e7;
+                padding: 8px 15px; /* 减小内边距 */
+                margin-right: 2px;
+                border-top-left-radius: 4px;
+                border-top-right-radius: 4px;
+                color: #61666d;
+                font-size: 14px;
+                min-width: 80px;
+            }
+            QTabBar::tab:selected {
+                background: white;
+                border-bottom: 1px solid white;
+                color: #fb7299;
+                font-weight: bold;
+            }
+            QTabBar::tab:hover {
+                color: #fb7299;
+            }
+        """)
         main_layout.addWidget(self.tabs)
         
         # 创建各个标签页
@@ -157,201 +186,196 @@ class BilibiliDesktop(QMainWindow):
         # 添加日志组件到主布局 (在标签页下方)
         main_layout.addWidget(log_group)
         
-        # 欢迎信息
-        self.log_to_console("欢迎使用哔哩哔哩视频下载器 v4.1！", "info")
-        self.log_to_console(f"数据存储目录: {self.crawler.data_dir}", "system")
+        # 欢迎信息 (通过logger输出)
+        logger.info("欢迎使用哔哩哔哩视频下载器 v4.2！")
+        logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
         if self.crawler.ffmpeg_available:
-            self.log_to_console(f"ffmpeg检测成功: {self.crawler.ffmpeg_path}", "system")
+            logger.info(f"ffmpeg检测成功: {self.crawler.ffmpeg_path}")
         else:
-            self.log_to_console("未检测到ffmpeg，视频合并功能将不可用", "warning")
+            logger.warning("未检测到ffmpeg，视频合并功能将不可用")
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v4.1"
+        version = "v4.2"
         updates = (
-            "1. 精简优化：移除冗余的视频特效和去水印工具页，使软件更轻量。\n"
-            "2. 右键菜单：热门视频和收藏夹新增右键菜单，支持'下载'和'实时观看'。\n"
-            "3. 实时观看：新增视频播放弹窗，支持在线预览视频内容。\n"
-            "4. 代码优化：清理底层冗余代码，提升运行效率。\n"
-            "5. 体验升级：UI细节调整，更加贴合使用习惯。"
+            "1. 核心升级：视频实时观看功能改用B站官方嵌入式播放器接口，实现纯净播放体验，支持原生弹幕与清晰度切换。\n"
+            "2. 界面优化：优化主界面Tab样式，调整内边距与字体，防止文字截断；重新调整视频编辑界面布局比例，优化空间利用。\n"
+            "3. 功能增强：热门视频与收藏夹列表新增封面悬停预览功能；收藏夹弹窗新增分页条数选择与数据导出功能（支持Excel/CSV）。\n"
+            "4. 代码优化：重构日志系统，统一控制台与UI输出，移除冗余日志代码，提升可维护性。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
 
     def set_style(self):
         """设置应用样式"""
-        # 计算缩放后的字体大小
-        def s(px):
-            return int(px * self.ui_scale)
-            
         # 全局样式表
-        style = f"""
-        QMainWindow {{
+        style = """
+        QMainWindow {
             background-color: #f6f7f8;
             font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
-            font-size: {s(22)}px;
-        }}
-        QTabWidget {{
+            font-size: 22px;
+        }
+        QTabWidget {
             background-color: #ffffff;
             border: none;
-        }}
-        QTabWidget::pane {{
+        }
+        QTabWidget::pane {
             border: 1px solid #e7e7e7;
             background-color: #ffffff;
             border-radius: 8px;
             top: -1px; 
-        }}
-        QTabBar::tab {{
+        }
+        QTabBar::tab {
             background-color: #f6f7f8;
             color: #61666d;
-            padding: {s(10)}px {s(15)}px;
+            padding: 10px 15px;
             border: 1px solid #e7e7e7;
             border-bottom: none;
             border-top-left-radius: 8px;
             border-top-right-radius: 8px;
             margin-right: 4px;
-            font-size: {s(20)}px;
-            min-width: {s(80)}px;
-        }}
-        QTabBar::tab:selected {{
+            font-size: 20px;
+            min-width: 80px;
+        }
+        QTabBar::tab:selected {
             background-color: #ffffff;
             color: #fb7299;
             font-weight: bold;
             border-bottom: 1px solid #ffffff;
-        }}
-        QTabBar::tab:hover:!selected {{
+        }
+        QTabBar::tab:hover:!selected {
             background-color: #ffffff;
             color: #fb7299;
-        }}
-        QLabel {{
+        }
+        QLabel {
             color: #18191c;
             font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
-            font-size: {s(14)}px;
-        }}
-        QPushButton {{
+            font-size: 14px;
+        }
+        QPushButton {
             background-color: #fb7299;
             color: white;
             border: none;
-            padding: {s(10)}px {s(20)}px;
+            padding: 10px 20px;
             border-radius: 4px;
-            font-size: {s(14)}px;
+            font-size: 14px;
             font-weight: bold;
-        }}
-        QPushButton:hover {{
+        }
+        QPushButton:hover {
             background-color: #fc8bab;
-        }}
-        QPushButton:pressed {{
+        }
+        QPushButton:pressed {
             background-color: #e45c84;
-        }}
-        QPushButton:disabled {{
+        }
+        QPushButton:disabled {
             background-color: #e7e7e7;
             color: #999999;
-        }}
-        QLineEdit {{
+        }
+        QLineEdit {
             border: 1px solid #e7e7e7;
-            padding: {s(10)}px;
+            padding: 10px;
             border-radius: 4px;
             background-color: #ffffff;
             selection-background-color: #fb7299;
-            font-size: {s(14)}px;
-        }}
-        QLineEdit:focus {{
+            font-size: 14px;
+        }
+        QLineEdit:focus {
             border: 1px solid #fb7299;
-        }}
-        QProgressBar {{
+        }
+        QProgressBar {
             border: none;
             border-radius: 4px;
             background-color: #e7e7e7;
             text-align: center;
-            font-size: {s(14)}px;
+            font-size: 14px;
             color: #333333;
             min-height: 20px;
-        }}
-        QProgressBar::chunk {{
+        }
+        QProgressBar::chunk {
             background-color: #fb7299;
             border-radius: 4px;
-        }}
-        QTableWidget {{
+        }
+        QTableWidget {
             border: 1px solid #e7e7e7;
             border-radius: 6px;
             background-color: #ffffff;
             selection-background-color: #fef0f5;
             selection-color: #fb7299;
             gridline-color: #f0f0f0;
-            font-size: {s(14)}px;
-        }}
-        QTableWidget::item {{
+            font-size: 14px;
+        }
+        QTableWidget::item {
             padding: 8px;
-        }}
-        QHeaderView::section {{
+        }
+        QHeaderView::section {
             background-color: #f6f7f8;
             color: #61666d;
-            padding: {s(10)}px;
+            padding: 10px;
             border: none;
             border-bottom: 1px solid #e7e7e7;
             border-right: 1px solid #e7e7e7;
             font-weight: bold;
-            font-size: {s(14)}px;
-        }}
-        QGroupBox {{
+            font-size: 14px;
+        }
+        QGroupBox {
             border: 1px solid #e7e7e7;
             border-radius: 6px;
             margin-top: 25px;
             font-weight: bold;
             padding-top: 20px;
-            font-size: {s(15)}px;
-        }}
-        QGroupBox::title {{
+            font-size: 15px;
+        }
+        QGroupBox::title {
             subcontrol-origin: margin;
             subcontrol-position: top left;
             padding: 0 10px;
             color: #333333;
-        }}
-        QCheckBox {{
+        }
+        QCheckBox {
             spacing: 8px;
             color: #61666d;
-            font-size: {s(14)}px;
-        }}
-        QCheckBox::indicator {{
+            font-size: 14px;
+        }
+        QCheckBox::indicator {
             width: 20px;
             height: 20px;
             border: 1px solid #cccccc;
             border-radius: 3px;
             background-color: white;
-        }}
-        QCheckBox::indicator:unchecked:hover {{
+        }
+        QCheckBox::indicator:unchecked:hover {
             border-color: #fb7299;
-        }}
-        QCheckBox::indicator:checked {{
+        }
+        QCheckBox::indicator:checked {
             background-color: #fb7299;
             border-color: #fb7299;
             image: url(resource/checkbox_checked.png); /* 如果没有图片会显示纯色 */
-        }}
-        QComboBox {{
+        }
+        QComboBox {
             border: 1px solid #e7e7e7;
             border-radius: 4px;
             padding: 8px 12px;
             min-width: 6em;
-            font-size: {s(14)}px;
-        }}
-        QComboBox:hover {{
+            font-size: 14px;
+        }
+        QComboBox:hover {
             border-color: #c0c0c0;
-        }}
-        QComboBox::drop-down {{
+        }
+        QComboBox::drop-down {
             subcontrol-origin: padding;
             subcontrol-position: top right;
             width: 25px;
             border-left-width: 0px;
             border-top-right-radius: 3px;
             border-bottom-right-radius: 3px;
-        }}
-        QTextEdit {{
+        }
+        QTextEdit {
             border: 1px solid #e7e7e7;
             border-radius: 4px;
-            font-size: {s(13)}px;
-        }}
+            font-size: 13px;
+        }
         """
         self.setStyleSheet(style)
 
@@ -398,8 +422,9 @@ class BilibiliDesktop(QMainWindow):
                 self.console_log.verticalScrollBar().maximum()
             )
         
-        # 同时记录到系统日志
-        logger.info(message)
+        # 同时记录到系统日志 (避免递归调用)
+        # logger.info(message) # 已由QtLogHandler处理，这里不需要再调用
+
 
     def clear_console_log(self):
         """清除控制台日志"""

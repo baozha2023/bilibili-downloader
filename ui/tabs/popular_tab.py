@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QSpinBox, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QMenu, QAction)
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtGui import QCursor, QPixmap
 from ui.workers import WorkerThread
 from ui.widgets.video_player_window import VideoPlayerWindow
 
@@ -76,16 +77,78 @@ class PopularTab(QWidget):
         self.popular_table.cellDoubleClicked.connect(self.on_popular_video_clicked)
         self.popular_table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.popular_table.customContextMenuRequested.connect(self.show_context_menu)
+        # 启用鼠标跟踪，用于显示悬停封面
+        self.popular_table.setMouseTracking(True)
+        self.popular_table.cellEntered.connect(self.on_cell_entered)
         layout.addWidget(self.popular_table)
         
-        # 状态区域
-        self.popular_status = QLabel("就绪")
-        layout.addWidget(self.popular_status)
+        # 状态区域 (Removed as per user request)
+        # self.popular_status = QLabel("就绪")
+        # layout.addWidget(self.popular_status)
+
+        # 封面预览Label (悬浮显示)
+        self.cover_label = QLabel(self)
+        self.cover_label.setWindowFlags(Qt.ToolTip)
+        self.cover_label.setStyleSheet("border: 2px solid white; border-radius: 4px;")
+        self.cover_label.setScaledContents(True)
+        self.cover_label.resize(320, 200)
+        self.cover_label.hide()
+
+    def on_cell_entered(self, row, column):
+        """鼠标移入单元格显示封面"""
+        if row < 0:
+            self.cover_label.hide()
+            return
+            
+        # 获取BV号item，从中获取封面URL
+        bvid_item = self.popular_table.item(row, 4)
+        if bvid_item:
+            cover_url = bvid_item.data(Qt.UserRole)
+            if cover_url:
+                self.show_cover_preview(cover_url)
+                
+    def show_cover_preview(self, url):
+        from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
+        
+        if not hasattr(self, 'network_manager'):
+            self.network_manager = QNetworkAccessManager(self)
+            self.network_manager.finished.connect(self.on_cover_downloaded)
+            
+        # 检查缓存
+        if not hasattr(self, 'cover_cache'):
+            self.cover_cache = {}
+            
+        if url in self.cover_cache:
+            self.display_cover(self.cover_cache[url])
+        else:
+            self.network_manager.get(QNetworkRequest(QUrl(url)))
+            
+    def on_cover_downloaded(self, reply):
+        url = reply.url().toString()
+        if reply.error():
+            return
+        data = reply.readAll()
+        pixmap = QPixmap()
+        pixmap.loadFromData(data)
+        self.cover_cache[url] = pixmap
+        self.display_cover(pixmap)
+        
+    def display_cover(self, pixmap):
+        self.cover_label.setPixmap(pixmap)
+        # 显示在鼠标附近
+        cursor_pos = QCursor.pos()
+        self.cover_label.move(cursor_pos.x() + 20, cursor_pos.y() + 20)
+        self.cover_label.show()
+        
+    def leaveEvent(self, event):
+        self.cover_label.hide()
+        super().leaveEvent(event)
 
     def get_popular_videos(self):
         """获取热门视频"""
         self.popular_btn.setEnabled(False)
-        self.popular_status.setText("正在获取热门视频...")
+        # self.popular_status.setText("正在获取热门视频...") # Removed
+        self.main_window.log_to_console("正在获取热门视频...", "info")
         
         pages = self.popular_pages.value()
         
@@ -106,23 +169,35 @@ class PopularTab(QWidget):
         self.current_thread.start()
     
     def update_popular_status(self, data):
-        self.popular_status.setText(data.get("message", ""))
         self.main_window.statusBar().showMessage(data.get("message", ""))
     
     def on_popular_finished(self, result):
         self.popular_btn.setEnabled(True)
         if result["status"] == "success":
             videos = result.get("data", [])
-            self.popular_status.setText(result["message"])
+            self.main_window.log_to_console(f"成功获取 {len(videos)} 个热门视频", "success")
             self.popular_table.setRowCount(len(videos))
             for i, video in enumerate(videos):
-                self.popular_table.setItem(i, 0, QTableWidgetItem(video.get("title", "")))
-                self.popular_table.setItem(i, 1, QTableWidgetItem(video.get("owner", {}).get("name", "")))
-                self.popular_table.setItem(i, 2, QTableWidgetItem(str(video.get("stat", {}).get("view", 0))))
-                self.popular_table.setItem(i, 3, QTableWidgetItem(str(video.get("stat", {}).get("like", 0))))
-                self.popular_table.setItem(i, 4, QTableWidgetItem(video.get("bvid", "")))
+                title = video.get("title", "")
+                upper = video.get("owner", {}).get("name", "")
+                play = video.get("stat", {}).get("view", 0)
+                like = video.get("stat", {}).get("like", 0)
+                bvid = video.get("bvid", "")
+                cover = video.get("pic", "")
+                
+                title_item = QTableWidgetItem(title)
+                title_item.setToolTip(title)
+                
+                self.popular_table.setItem(i, 0, title_item)
+                self.popular_table.setItem(i, 1, QTableWidgetItem(upper))
+                self.popular_table.setItem(i, 2, QTableWidgetItem(str(play)))
+                self.popular_table.setItem(i, 3, QTableWidgetItem(str(like)))
+                
+                bvid_item = QTableWidgetItem(bvid)
+                bvid_item.setData(Qt.UserRole, cover)
+                self.popular_table.setItem(i, 4, bvid_item)
         else:
-            self.popular_status.setText(result["message"])
+            self.main_window.log_to_console(f"获取热门视频失败: {result['message']}", "error")
             QMessageBox.warning(self, "获取失败", result["message"])
     
     def on_popular_video_clicked(self, row, column):

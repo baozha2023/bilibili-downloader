@@ -429,6 +429,8 @@ class VideoEditTab(QWidget):
         self.cut_file_list.setToolTip("支持拖拽视频文件到此处")
         self.cut_file_list.file_dropped.connect(lambda p: self.on_cut_file_dropped(p))
         self.cut_file_list.clicked.connect(lambda: self.select_single_file(self.cut_file_list, None, callback=self.on_cut_file_dropped))
+        # Reduce size of file list area
+        self.cut_file_list.setMaximumHeight(150)
         layout.addWidget(self.cut_file_list)
         
         # Controls Group
@@ -495,10 +497,14 @@ class VideoEditTab(QWidget):
         
         settings_layout.addLayout(range_layout)
         
-        layout.addWidget(settings_group)
+        # Make settings group larger by giving it stretch in main layout
+        # But here we are inside create_cut_page.
+        
+        layout.addWidget(settings_group, 1) # Add stretch factor 1 to settings
         
         # Controls
         controls_frame = self.create_control_frame()
+        controls_frame.setMaximumHeight(80) # Reduce height of controls
         controls_layout = QHBoxLayout(controls_frame)
         
         controls_layout.addStretch()
@@ -527,7 +533,10 @@ class VideoEditTab(QWidget):
         
         # Update limits if file loaded
         if self.cut_file_list.count() > 0:
-            file_path = self.cut_file_list.item(0).text()
+            file_path = self.cut_file_list.item(0).data(Qt.UserRole)
+            if not file_path: # Fallback if data is missing
+                 file_path = self.cut_file_list.item(0).text()
+                 
             if is_frame:
                 # Update frame limits
                 fps = self.processor.get_video_fps(file_path)
@@ -663,6 +672,8 @@ class VideoEditTab(QWidget):
         self.compress_file_list = DragDropListWidget()
         self.compress_file_list.file_dropped.connect(lambda p: self.set_single_file(p, self.compress_file_list, self.compress_btn))
         self.compress_file_list.clicked.connect(lambda: self.select_single_file(self.compress_file_list, self.compress_btn))
+        # Reduce size of file list area
+        self.compress_file_list.setMaximumHeight(150)
         layout.addWidget(self.compress_file_list)
         
         # Settings
@@ -688,10 +699,11 @@ class VideoEditTab(QWidget):
         params_layout.addWidget(self.crf_spin)
         settings_layout.addLayout(params_layout)
         
-        layout.addWidget(settings_group)
+        layout.addWidget(settings_group, 1) # Add stretch
         
         # Controls
         controls_frame = self.create_control_frame()
+        controls_frame.setMaximumHeight(80)
         controls_layout = QHBoxLayout(controls_frame)
         
         controls_layout.addStretch()
@@ -841,7 +853,42 @@ class VideoEditTab(QWidget):
         
     def set_single_file(self, file_path, list_widget, btn):
         list_widget.clear()
-        list_widget.addItem(file_path)
+        # Create item with filename as text, but store full path
+        item = QListWidgetItem(os.path.basename(file_path))
+        # Store full path in UserRole or just keep it as text?
+        # The previous implementation was: list_widget.addItem(file_path)
+        # But this shows full path which might be long.
+        # However, start_conversion reads item(0).text() as file path.
+        # So if we change text to basename, we must store full path in data.
+        
+        # Let's check how it's used.
+        # start_conversion: file_path = self.convert_file_list.item(0).text()
+        # start_cut: file_path = self.cut_file_list.item(0).text()
+        # start_compress: file_path = self.compress_file_list.item(0).text()
+        
+        # So we MUST store the full path in text OR update all usage sites.
+        # To fix "not showing video name", wait, previous code was:
+        # list_widget.addItem(file_path)
+        # This should show the full path. Maybe the user means it's empty?
+        
+        # In reset_list:
+        # item = QListWidgetItem(text) ... list_widget.addItem(item)
+        # In set_single_file:
+        # list_widget.clear()
+        # list_widget.addItem(file_path)
+        
+        # If file_path is valid, it should show up.
+        # Maybe the font color is white on white? Or the item height is too small?
+        # The user says "不显示视频名", maybe they mean only the name, not full path?
+        # Or maybe nothing is shown?
+        
+        # Let's try to set item text to basename, and store full path in UserRole.
+        # And update get methods.
+        
+        item.setData(Qt.UserRole, file_path)
+        item.setTextAlignment(Qt.AlignCenter)
+        list_widget.addItem(item)
+        
         if btn:
             btn.setEnabled(True)
         return file_path
@@ -865,7 +912,10 @@ class VideoEditTab(QWidget):
         if self.convert_file_list.count() == 0 or not self.convert_file_list.item(0).flags() & Qt.ItemIsEnabled:
             return
         
-        file_path = self.convert_file_list.item(0).text()
+        file_path = self.convert_file_list.item(0).data(Qt.UserRole)
+        if not file_path:
+             file_path = self.convert_file_list.item(0).text()
+             
         fmt = self.format_combo.currentText()
         
         self.convert_btn.setEnabled(False)
@@ -901,7 +951,10 @@ class VideoEditTab(QWidget):
         self.end_time_spin.setValue(duration)
         
     def start_cut(self):
-        file_path = self.cut_file_list.item(0).text()
+        file_path = self.cut_file_list.item(0).data(Qt.UserRole)
+        if not file_path:
+             file_path = self.cut_file_list.item(0).text()
+             
         start = self.start_time_spin.value()
         end = self.end_time_spin.value()
         
@@ -1032,7 +1085,10 @@ class VideoEditTab(QWidget):
         if self.compress_file_list.count() == 0 or not self.compress_file_list.item(0).flags() & Qt.ItemIsEnabled:
             return
             
-        file_path = self.compress_file_list.item(0).text()
+        file_path = self.compress_file_list.item(0).data(Qt.UserRole)
+        if not file_path:
+             file_path = self.compress_file_list.item(0).text()
+             
         res = self.res_combo.currentText()
         crf = self.crf_spin.value()
         

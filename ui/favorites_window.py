@@ -1,8 +1,14 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QSpinBox, QMenu, QAction)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
+                             QLabel, QTableWidget, QTableWidgetItem, QHeaderView, 
+                             QSpinBox, QMenu, QAction, QComboBox, QFileDialog)
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl
+from PyQt5.QtGui import QCursor, QPixmap
 from ui.message_box import BilibiliMessageBox
 from ui.widgets.video_player_window import VideoPlayerWindow
+import csv
+import logging
+
+logger = logging.getLogger('bilibili_desktop')
 
 class FavoriteWorker(QThread):
     finished_signal = pyqtSignal(list, str) # videos, error_message
@@ -15,7 +21,8 @@ class FavoriteWorker(QThread):
 
     def run(self):
         try:
-            videos = self.crawler.get_favorite_resources(self.media_id, self.page)
+            # Use api directly
+            videos = self.crawler.api.get_favorite_resources(self.media_id, self.page)
             self.finished_signal.emit(videos, "")
         except Exception as e:
             self.finished_signal.emit([], str(e))
@@ -51,7 +58,7 @@ class FavoritesWindow(QDialog):
         self.page_spin.setFixedWidth(80)
         self.page_spin.setStyleSheet("font-size: 16px; padding: 5px;")
         control_layout.addWidget(self.page_spin)
-        
+
         self.refresh_btn = QPushButton("刷新/跳转")
         self.refresh_btn.clicked.connect(self.on_refresh_clicked)
         self.refresh_btn.setCursor(Qt.PointingHandCursor)
@@ -74,6 +81,25 @@ class FavoritesWindow(QDialog):
         """)
         control_layout.addWidget(self.refresh_btn)
         
+        self.export_btn = QPushButton("导出本页")
+        self.export_btn.clicked.connect(self.export_current_page)
+        self.export_btn.setCursor(Qt.PointingHandCursor)
+        self.export_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #409eff;
+                color: white;
+                border-radius: 5px;
+                padding: 8px 20px;
+                font-weight: bold;
+                font-size: 16px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #66b1ff;
+            }
+        """)
+        control_layout.addWidget(self.export_btn)
+        
         control_layout.addStretch()
         layout.addLayout(control_layout)
         
@@ -90,8 +116,11 @@ class FavoritesWindow(QDialog):
         self.table.cellDoubleClicked.connect(self.on_video_double_clicked)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.show_context_menu)
+        # Enable mouse tracking for hover
+        self.table.setMouseTracking(True)
+        self.table.cellEntered.connect(self.on_cell_entered)
         layout.addWidget(self.table)
-        
+
         # Status
         self.status_label = QLabel("就绪")
         layout.addWidget(self.status_label)
@@ -101,6 +130,107 @@ class FavoritesWindow(QDialog):
         tip.setStyleSheet("color: #888; font-size: 14px;")
         tip.setAlignment(Qt.AlignRight)
         layout.addWidget(tip)
+
+        # 封面预览Label
+        self.cover_label = QLabel(self)
+        self.cover_label.setWindowFlags(Qt.ToolTip)
+        self.cover_label.setStyleSheet("border: 2px solid white; border-radius: 4px;")
+        self.cover_label.setScaledContents(True)
+        self.cover_label.resize(320, 200)
+        self.cover_label.hide()
+
+    def on_cell_entered(self, row, column):
+        if row < 0:
+            self.cover_label.hide()
+            return
+        bvid_item = self.table.item(row, 4)
+        if bvid_item:
+            cover_url = bvid_item.data(Qt.UserRole)
+            if cover_url:
+                self.show_cover_preview(cover_url)
+
+    def show_cover_preview(self, url):
+        from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
+        
+        if not hasattr(self, 'network_manager'):
+            self.network_manager = QNetworkAccessManager(self)
+            self.network_manager.finished.connect(self.on_cover_downloaded)
+            
+        if not hasattr(self, 'cover_cache'):
+            self.cover_cache = {}
+            
+        if url in self.cover_cache:
+            self.display_cover(self.cover_cache[url])
+        else:
+            self.network_manager.get(QNetworkRequest(QUrl(url)))
+            
+    def on_cover_downloaded(self, reply):
+        url = reply.url().toString()
+        if reply.error():
+            return
+        data = reply.readAll()
+        pixmap = QPixmap()
+        pixmap.loadFromData(data)
+        self.cover_cache[url] = pixmap
+        self.display_cover(pixmap)
+        
+    def display_cover(self, pixmap):
+        self.cover_label.setPixmap(pixmap)
+        cursor_pos = QCursor.pos()
+        self.cover_label.move(cursor_pos.x() + 20, cursor_pos.y() + 20)
+        self.cover_label.show()
+        
+    def leaveEvent(self, event):
+        self.cover_label.hide()
+        super().leaveEvent(event)
+        
+    def export_current_page(self):
+        """导出当前页数据到Excel (CSV)"""
+        count = self.table.rowCount()
+        if count == 0:
+            BilibiliMessageBox.warning(self, "提示", "当前没有数据可导出")
+            return
+            
+        import time
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        default_name = f"favorites_page_{self.page}_{timestamp}.xlsx" # User asked for Excel
+        
+        path, _ = QFileDialog.getSaveFileName(self, "导出数据", default_name, "Excel Files (*.xlsx);;CSV Files (*.csv)")
+        
+        if not path:
+            return
+            
+        try:
+            data = []
+            headers = ["标题", "UP主", "时长", "播放量", "BV号"]
+            data.append(headers)
+            
+            for row in range(count):
+                row_data = []
+                for col in range(5):
+                    item = self.table.item(row, col)
+                    row_data.append(item.text() if item else "")
+                data.append(row_data)
+                
+            if path.endswith('.xlsx'):
+                import openpyxl
+                wb = openpyxl.Workbook()
+                ws = wb.active
+                for r_idx, row in enumerate(data, 1):
+                    for c_idx, val in enumerate(row, 1):
+                        ws.cell(row=r_idx, column=c_idx, value=val)
+                wb.save(path)
+            else:
+                # Fallback to CSV
+                with open(path, 'w', encoding='utf-8-sig', newline='') as f:
+                    writer = csv.writer(f)
+                    writer.writerows(data)
+                    
+            BilibiliMessageBox.info(self, "成功", f"数据已导出到: {path}")
+            
+        except Exception as e:
+            logger.error(f"导出失败: {e}")
+            BilibiliMessageBox.error(self, "错误", f"导出失败: {str(e)}")
 
     def on_refresh_clicked(self):
         self.page = self.page_spin.value()
@@ -142,7 +272,12 @@ class FavoritesWindow(QDialog):
             self.table.setItem(i, 1, QTableWidgetItem(upper))
             self.table.setItem(i, 2, QTableWidgetItem(duration))
             self.table.setItem(i, 3, QTableWidgetItem(str(play)))
-            self.table.setItem(i, 4, QTableWidgetItem(bvid))
+            
+            bvid_item = QTableWidgetItem(bvid)
+            # Add cover url to UserRole for tooltip
+            cover = v.get("cover", "")
+            bvid_item.setData(Qt.UserRole, cover)
+            self.table.setItem(i, 4, bvid_item)
 
     def format_duration(self, seconds):
         try:

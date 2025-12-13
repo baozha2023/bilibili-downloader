@@ -132,28 +132,6 @@ class SettingsTab(QWidget):
         """)
         basic_layout.addWidget(self.retry_count, 1, 1)
 
-        # 界面缩放
-        scale_label = QLabel("界面缩放 (重启生效):")
-        scale_label.setStyleSheet("font-size: 20px; color: #555;")
-        basic_layout.addWidget(scale_label, 2, 0)
-
-        self.scale_combo = NoScrollComboBox()
-        self.scale_combo.addItems(["100% (默认/1k)", "125%", "150% (2k)", "175%", "200% (4k)"])
-        self.scale_combo.setStyleSheet("""
-            QComboBox {
-                padding: 8px 12px;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-                font-size: 19px;
-                background-color: #fafafa;
-                min-width: 200px;
-            }
-            QComboBox:hover {
-                border-color: #fb7299;
-            }
-        """)
-        basic_layout.addWidget(self.scale_combo, 2, 1)
-        
         basic_card.add_layout(basic_layout)
         self.content_layout.addWidget(basic_card)
         
@@ -403,7 +381,6 @@ class SettingsTab(QWidget):
         config = {
             'data_dir': self.data_dir_input.text().strip(),
             'max_retries': self.retry_count.value(),
-            'ui_scale': self.scale_combo.currentText(),
             'merge_video': self.merge_check.isChecked(),
             'delete_original': self.delete_original_check.isChecked(),
             'remove_watermark': self.remove_watermark_check.isChecked(),
@@ -439,8 +416,6 @@ class SettingsTab(QWidget):
                     self.crawler.download_dir = os.path.join(config['data_dir'], 'downloads')
                 if 'max_retries' in config:
                     self.retry_count.setValue(config['max_retries'])
-                if 'ui_scale' in config:
-                    self.scale_combo.setCurrentText(config['ui_scale'])
                 if 'merge_video' in config:
                     self.merge_check.setChecked(config['merge_video'])
                 if 'delete_original' in config:

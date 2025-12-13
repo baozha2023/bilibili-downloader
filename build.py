@@ -142,7 +142,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v4.1_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v4.2_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -186,7 +186,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  哔哩哔哩视频下载器打包工具 v4.1")
+    print("  哔哩哔哩视频下载器打包工具 v4.2")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -211,12 +211,11 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v4.1 更新内容:")
-    print("- 精简优化：移除冗余的视频特效和去水印工具页")
-    print("- 右键菜单：热门视频和收藏夹新增右键菜单，支持'下载'和'实时观看'")
-    print("- 实时观看：新增视频播放弹窗，支持在线预览视频内容")
-    print("- 代码优化：清理底层冗余代码，提升运行效率")
-    print("- 体验升级：UI细节调整，更加贴合使用习惯")
+    print("\n新版本 v4.2 更新内容:")
+    print("- 核心升级：视频实时观看功能改用B站官方嵌入式播放器接口，实现纯净播放体验，支持原生弹幕与清晰度切换")
+    print("- 界面优化：优化主界面Tab样式，调整内边距与字体，防止文字截断；重新调整视频编辑界面布局比例，优化空间利用")
+    print("- 功能增强：热门视频与收藏夹列表新增封面悬停预览功能；收藏夹弹窗新增分页条数选择与数据导出功能（支持Excel/CSV）")
+    print("- 代码优化：重构日志系统，统一控制台与UI输出，移除冗余日志代码，提升可维护性")
 
 if __name__ == "__main__":
     main() 
