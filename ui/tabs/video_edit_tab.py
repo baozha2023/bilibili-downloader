@@ -281,7 +281,7 @@ class VideoEditTab(QWidget):
         sidebar_layout.setSpacing(5)
         
         self.nav_btns = []
-        nav_items = [("格式转换", "convert"), ("视频剪辑", "cut"), ("视频合并", "merge"), ("去水印", "watermark"), ("视频压缩", "compress")]
+        nav_items = [("格式转换", "convert"), ("视频剪辑", "cut"), ("视频合并", "merge"), ("视频压缩", "compress")]
         
         for text, tag in nav_items:
             btn = QPushButton(text)
@@ -303,7 +303,6 @@ class VideoEditTab(QWidget):
         self.pages['convert'] = self.create_convert_page()
         self.pages['cut'] = self.create_cut_page()
         self.pages['merge'] = self.create_merge_page()
-        self.pages['watermark'] = self.create_watermark_page()
         self.pages['compress'] = self.create_compress_page()
         
         for tag, page in self.pages.items():
@@ -496,26 +495,6 @@ class VideoEditTab(QWidget):
         
         settings_layout.addLayout(range_layout)
         
-        # Effects Row
-        effects_layout = QHBoxLayout()
-        effects_layout.addWidget(QLabel("特效:"))
-        self.fade_in_chk = QCheckBox("淡入 (Fade In)")
-        self.fade_out_chk = QCheckBox("淡出 (Fade Out)")
-        # Style checkboxes
-        chk_style = """
-            QCheckBox { font-size: 14px; color: #555; spacing: 5px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ccc; }
-            QCheckBox::indicator:checked { background-color: #fb7299; border-color: #fb7299; image: url(:/icons/check.png); }
-        """
-        self.fade_in_chk.setStyleSheet(chk_style)
-        self.fade_out_chk.setStyleSheet(chk_style)
-        
-        effects_layout.addWidget(self.fade_in_chk)
-        effects_layout.addWidget(self.fade_out_chk)
-        effects_layout.addStretch()
-        
-        settings_layout.addLayout(effects_layout)
-        
         layout.addWidget(settings_group)
         
         # Controls
@@ -576,7 +555,7 @@ class VideoEditTab(QWidget):
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
         
-        self.setup_header(layout, "视频合并", "将多个视频拼接为一个文件，支持片段剪辑与转场")
+        self.setup_header(layout, "视频合并", "将多个视频拼接为一个文件，支持片段剪辑")
         
         # Tip
         tip_label = QLabel("💡 提示：支持拖拽调整视频顺序")
@@ -602,20 +581,6 @@ class VideoEditTab(QWidget):
             }
         """)
         layout.addWidget(self.merge_list)
-        
-        # Options
-        options_layout = QHBoxLayout()
-        self.merge_transition_chk = QCheckBox("开启转场动画 (Crossfade)")
-        self.merge_transition_chk.setChecked(True)
-        self.merge_transition_chk.setToolTip("开启后，视频片段之间会有1秒的淡入淡出效果")
-        self.merge_transition_chk.setStyleSheet("""
-            QCheckBox { font-size: 16px; color: #555; spacing: 5px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ccc; }
-            QCheckBox::indicator:checked { background-color: #fb7299; border-color: #fb7299; image: url(:/icons/check.png); }
-        """)
-        options_layout.addWidget(self.merge_transition_chk)
-        options_layout.addStretch()
-        layout.addLayout(options_layout)
         
         # Controls
         controls_frame = self.create_control_frame()
@@ -685,85 +650,6 @@ class VideoEditTab(QWidget):
                 self.merge_list.clear()
 
     # ==========================================
-    # 4. Watermark Page
-    # ==========================================
-    def create_watermark_page(self):
-        page = QWidget()
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(40, 30, 40, 30)
-        layout.setSpacing(20)
-        
-        self.setup_header(layout, "去水印", "自定义区域去除视频水印")
-        
-        self.wm_file_list = DragDropListWidget()
-        self.wm_file_list.setToolTip("支持拖拽视频文件到此处")
-        self.wm_file_list.file_dropped.connect(lambda p: self.set_single_file(p, self.wm_file_list, self.wm_btn))
-        self.wm_file_list.clicked.connect(lambda: self.select_single_file(self.wm_file_list, self.wm_btn))
-        layout.addWidget(self.wm_file_list)
-        
-        # Area Selection
-        area_group = QGroupBox("水印区域设置 (像素)")
-        area_group.setStyleSheet("QGroupBox { font-size: 20px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
-        area_layout = QHBoxLayout(area_group)
-        
-        self.wm_x = QSpinBox()
-        self.wm_y = QSpinBox()
-        self.wm_w = QSpinBox()
-        self.wm_h = QSpinBox()
-        
-        # Helper for tooltip
-        tip_x = "水印左上角距离视频左边缘的距离 (像素)"
-        tip_y = "水印左上角距离视频上边缘的距离 (像素)"
-        tip_w = "水印区域的宽度 (像素)"
-        tip_h = "水印区域的高度 (像素)"
-
-        for label, spin, tip in [("X坐标:", self.wm_x, tip_x), ("Y坐标:", self.wm_y, tip_y), ("宽度:", self.wm_w, tip_w), ("高度:", self.wm_h, tip_h)]:
-            lbl = QLabel(label)
-            lbl.setToolTip(tip)
-            area_layout.addWidget(lbl)
-            
-            spin.setRange(0, 9999)
-            spin.setToolTip(tip)
-            self.style_spinbox(spin)
-            area_layout.addWidget(spin)
-            
-        # Default values
-        self.wm_x.setValue(10)
-        self.wm_y.setValue(10)
-        self.wm_w.setValue(200)
-        self.wm_h.setValue(60)
-            
-        layout.addWidget(area_group)
-        
-        # Tip label
-        tip_label = QLabel("💡 提示：请根据视频实际分辨率调整坐标和大小，建议先截图测量")
-        tip_label.setStyleSheet("color: #999; font-size: 16px; font-style: italic;")
-        layout.addWidget(tip_label)
-        
-        # Controls
-        controls_frame = self.create_control_frame()
-        controls_layout = QHBoxLayout(controls_frame)
-        
-        controls_layout.addStretch()
-        
-        self.wm_btn = self.create_primary_button("开始去水印", self.start_watermark)
-        self.wm_btn.setEnabled(False)
-        controls_layout.addWidget(self.wm_btn)
-        
-        layout.addWidget(controls_frame)
-        
-        self.wm_progress = self.create_progress_bar()
-        layout.addWidget(self.wm_progress)
-        
-        self.wm_status = QLabel("")
-        self.wm_status.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.wm_status)
-        
-        layout.addStretch()
-        self.reset_list(self.wm_file_list, "👇 拖拽视频文件到此处")
-        return page
-
-    # ==========================================
     # 5. Video Compress Page
     # ==========================================
     def create_compress_page(self):
@@ -772,7 +658,7 @@ class VideoEditTab(QWidget):
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
         
-        self.setup_header(layout, "视频压缩", "调整分辨率和画质以减小体积，支持淡入淡出")
+        self.setup_header(layout, "视频压缩", "调整分辨率和画质以减小体积")
         
         self.compress_file_list = DragDropListWidget()
         self.compress_file_list.file_dropped.connect(lambda p: self.set_single_file(p, self.compress_file_list, self.compress_btn))
@@ -801,23 +687,6 @@ class VideoEditTab(QWidget):
         self.style_spinbox(self.crf_spin)
         params_layout.addWidget(self.crf_spin)
         settings_layout.addLayout(params_layout)
-        
-        # Effects
-        effects_layout = QHBoxLayout()
-        effects_layout.addWidget(QLabel("特效:"))
-        self.compress_fade_in_chk = QCheckBox("淡入 (Fade In)")
-        self.compress_fade_out_chk = QCheckBox("淡出 (Fade Out)")
-        chk_style = """
-            QCheckBox { font-size: 16px; color: #555; spacing: 5px; }
-            QCheckBox::indicator { width: 18px; height: 18px; border-radius: 4px; border: 1px solid #ccc; }
-            QCheckBox::indicator:checked { background-color: #fb7299; border-color: #fb7299; image: url(:/icons/check.png); }
-        """
-        self.compress_fade_in_chk.setStyleSheet(chk_style)
-        self.compress_fade_out_chk.setStyleSheet(chk_style)
-        effects_layout.addWidget(self.compress_fade_in_chk)
-        effects_layout.addWidget(self.compress_fade_out_chk)
-        effects_layout.addStretch()
-        settings_layout.addLayout(effects_layout)
         
         layout.addWidget(settings_group)
         
@@ -1130,8 +999,6 @@ class VideoEditTab(QWidget):
             output_path = os.path.join(merge_dir, f"{base_name}_merged_{counter}.mp4")
             counter += 1
             
-        transition = self.merge_transition_chk.isChecked()
-            
         self.merge_btn.setEnabled(False)
         self.merge_progress.setVisible(True)
         self.merge_progress.setValue(0)
@@ -1140,7 +1007,7 @@ class VideoEditTab(QWidget):
         self.main_window.log_to_console(f"开始合并 {len(file_list)} 个视频文件", "info")
         
         # Use new complex merge
-        self.worker = Worker(self.processor.merge_video_files_complex, file_list, output_path, transition)
+        self.worker = Worker(self.processor.merge_video_files_complex, file_list, output_path, False)
         self.worker.progress_signal.connect(self.merge_progress.setValue)
         self.worker.finished_signal.connect(lambda s, m: self.on_merge_finished(s, m, merge_dir))
         self.worker.start()
@@ -1160,39 +1027,6 @@ class VideoEditTab(QWidget):
             self.merge_status.setText(f"❌ 失败: {msg}")
             self.main_window.log_to_console(f"合并失败: {msg}", "error")
 
-    # --- Watermark ---
-    def start_watermark(self):
-        if self.wm_file_list.count() == 0 or not self.wm_file_list.item(0).flags() & Qt.ItemIsEnabled:
-            return
-            
-        file_path = self.wm_file_list.item(0).text()
-        x = self.wm_x.value()
-        y = self.wm_y.value()
-        w = self.wm_w.value()
-        h = self.wm_h.value()
-        
-        self.wm_btn.setEnabled(False)
-        self.wm_progress.setVisible(True)
-        self.wm_progress.setValue(0)
-        self.wm_status.setText("正在去水印...")
-        
-        self.main_window.log_to_console(f"开始去水印: {os.path.basename(file_path)} (x={x}, y={y}, w={w}, h={h})", "info")
-        
-        self.worker = Worker(self.processor.remove_watermark_custom, file_path, x, y, w, h)
-        self.worker.progress_signal.connect(self.wm_progress.setValue)
-        self.worker.finished_signal.connect(self.on_wm_finished)
-        self.worker.start()
-        
-    def on_wm_finished(self, success, msg):
-        self.wm_btn.setEnabled(True)
-        if success:
-            self.wm_status.setText(f"✅ 去水印成功: {os.path.basename(msg)}")
-            self.wm_progress.setValue(100)
-            self.main_window.log_to_console(f"去水印成功: {msg}", "success")
-        else:
-            self.wm_status.setText(f"❌ 失败: {msg}")
-            self.main_window.log_to_console(f"去水印失败: {msg}", "error")
-
     # --- Compress ---
     def start_compress(self):
         if self.compress_file_list.count() == 0 or not self.compress_file_list.item(0).flags() & Qt.ItemIsEnabled:
@@ -1202,9 +1036,6 @@ class VideoEditTab(QWidget):
         res = self.res_combo.currentText()
         crf = self.crf_spin.value()
         
-        fade_in = self.compress_fade_in_chk.isChecked()
-        fade_out = self.compress_fade_out_chk.isChecked()
-        
         self.compress_btn.setEnabled(False)
         self.compress_progress.setVisible(True)
         self.compress_progress.setValue(0)
@@ -1212,7 +1043,7 @@ class VideoEditTab(QWidget):
         
         self.main_window.log_to_console(f"开始压缩视频: {os.path.basename(file_path)} (Res={res}, CRF={crf})", "info")
         
-        self.worker = Worker(self.processor.compress_video, file_path, res, crf, fade_in, fade_out)
+        self.worker = Worker(self.processor.compress_video, file_path, res, crf, False, False)
         self.worker.progress_signal.connect(self.compress_progress.setValue)
         self.worker.finished_signal.connect(self.on_compress_finished)
         self.worker.start()

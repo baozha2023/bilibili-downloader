@@ -367,70 +367,12 @@ class MediaProcessor:
             filter_complex.append(f"{v_concat}concat=n={len(file_list)}:v=1:a=0[outv]")
             filter_complex.append(f"{a_concat}concat=n={len(file_list)}:v=0:a=1[outa]")
         else:
-            # 使用 xfade
-            # Offset calculation:
-            # Offset for clip N = sum(duration of 0..N-1) - N * transition_duration
-            trans_dur = 1 # 1秒转场
-            
-            # Video Xfade
-            curr_v = video_streams[0]
-            # Offset calculation for xfade:
-            # The offset determines where the transition STARTS relative to the output timeline.
-            # Clip 0 duration: D0
-            # Clip 1 duration: D1
-            # Transition duration: T
-            # Clip 1 should start fading in at: D0 - T
-            # So offset for first transition is D0 - T
-            
-            offset = processed_clips[0]['duration'] - trans_dur
-            
-            # 修正：如果片段时长小于转场时长，offset 会变成负数，导致失败
-            # 必须确保 duration > trans_dur
-            # 在预处理阶段检查
-            
-            for i in range(1, len(video_streams)):
-                next_v = video_streams[i]
-                next_tag = f"vm{i}"
-                
-                # Check offset valid
-                if offset < 0:
-                    logger.warning(f"转场offset < 0 ({offset}), 强制设为0. 可能导致画面跳变。")
-                    offset = 0
-                    
-                # transition=fade, slideleft, circleopen, etc.
-                filter_complex.append(f"[{curr_v}][{next_v}]xfade=transition=fade:duration={trans_dur}:offset={offset}[{next_tag}]")
-                curr_v = next_tag
-                
-                if i < len(video_streams) - 1:
-                    # Next offset = current offset + current clip duration - transition duration
-                    # current clip here is actually clip[i], because we just mixed clip[i-1] and clip[i]
-                    # But wait, xfade output duration is: D1 + D2 - T
-                    # So the accumulating timeline is correct?
-                    
-                    # Logic check:
-                    # Clip 0 ends at D0. Trans starts at D0-T.
-                    # Clip 1 starts at D0-T. Length D1.
-                    # Clip 1 effective end on timeline: (D0-T) + D1.
-                    # Next trans should start at: (D0-T + D1) - T = D0 + D1 - 2T.
-                    
-                    # My previous code: offset += processed_clips[i]['duration'] - trans_dur
-                    # Init offset = D0 - T
-                    # Next offset = (D0 - T) + D1 - T = D0 + D1 - 2T.
-                    # This logic seems correct.
-                    
-                    offset += processed_clips[i]['duration'] - trans_dur
-            
-            filter_complex.append(f"[{curr_v}]format=yuv420p[outv]") # Ensure format
-
-            # Audio Crossfade
-            curr_a = audio_streams[0]
-            for i in range(1, len(audio_streams)):
-                next_a = audio_streams[i]
-                next_tag = f"am{i}"
-                filter_complex.append(f"[{curr_a}][{next_a}]acrossfade=d={trans_dur}[{next_tag}]")
-                curr_a = next_tag
-            
-            filter_complex.append(f"[{curr_a}]anull[outa]")
+            # Transition logic removed as requested
+            # Fallback to direct concat
+            v_concat = "".join([f"[{v}]" for v in video_streams])
+            a_concat = "".join([f"[{a}]" for a in audio_streams])
+            filter_complex.append(f"{v_concat}concat=n={len(file_list)}:v=1:a=0[outv]")
+            filter_complex.append(f"{a_concat}concat=n={len(file_list)}:v=0:a=1[outa]")
 
         cmd = [self.ffmpeg_path] + inputs + ['-filter_complex', ";".join(filter_complex)]
         cmd.extend(['-map', '[outv]', '-map', '[outa]'])
@@ -514,17 +456,6 @@ class MediaProcessor:
             logger.error(f"合并出错: {e}")
             return False, str(e)
 
-    def remove_watermark_custom(self, input_path, x, y, w, h, output_path=None, progress_callback=None):
-        """
-        自定义区域去水印
-        """
-        if not self.ffmpeg_available:
-            return False, "ffmpeg未安装"
-            
-        return self.watermark_remover.remove_watermark_delogo(
-            input_path, output_path, rect=(x, y, w, h), progress_callback=progress_callback
-        )
-
     def compress_video(self, input_path, target_resolution, crf=23, fade_in=False, fade_out=False, output_path=None, progress_callback=None):
         """
         压缩视频
@@ -542,13 +473,6 @@ class MediaProcessor:
             
         # Filters
         filters = [f'scale={target_resolution}:force_original_aspect_ratio=decrease']
-        
-        if fade_in or fade_out:
-            duration = self.get_video_duration(input_path)
-            if fade_in:
-                filters.append("fade=t=in:st=0:d=1")
-            if fade_out and duration > 1:
-                filters.append(f"fade=t=out:st={duration-1}:d=1")
         
         cmd = [
             self.ffmpeg_path,

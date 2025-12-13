@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-                             QSpinBox, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox)
+                             QSpinBox, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QMenu, QAction)
 from PyQt5.QtCore import Qt
 from ui.workers import WorkerThread
+from ui.widgets.video_player_window import VideoPlayerWindow
 
 class PopularTab(QWidget):
     def __init__(self, main_window):
@@ -73,6 +74,8 @@ class PopularTab(QWidget):
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         self.popular_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.popular_table.cellDoubleClicked.connect(self.on_popular_video_clicked)
+        self.popular_table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.popular_table.customContextMenuRequested.connect(self.show_context_menu)
         layout.addWidget(self.popular_table)
         
         # 状态区域
@@ -135,3 +138,51 @@ class PopularTab(QWidget):
             if title:
                 download_tab.bvid_input.setToolTip(title)
             download_tab.download_video(title)
+
+    def show_context_menu(self, pos):
+        item = self.popular_table.itemAt(pos)
+        if not item:
+            return
+            
+        row = item.row()
+        bvid_item = self.popular_table.item(row, 4)
+        title_item = self.popular_table.item(row, 0)
+        
+        if not bvid_item:
+            return
+            
+        bvid = bvid_item.text()
+        title = title_item.text() if title_item else ""
+        
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: white;
+                border: 1px solid #eee;
+                border-radius: 8px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-size: 16px;
+            }
+            QMenu::item:selected {
+                background-color: #f0f0f0;
+                color: #fb7299;
+            }
+        """)
+        
+        download_action = QAction("📥 下载视频", self)
+        download_action.triggered.connect(lambda: self.on_popular_video_clicked(row, 0))
+        menu.addAction(download_action)
+        
+        watch_action = QAction("📺 实时观看", self)
+        watch_action.triggered.connect(lambda: self.watch_live(bvid, title))
+        menu.addAction(watch_action)
+        
+        menu.exec_(self.popular_table.viewport().mapToGlobal(pos))
+        
+    def watch_live(self, bvid, title):
+        self.player_window = VideoPlayerWindow(bvid, title)
+        self.player_window.show()

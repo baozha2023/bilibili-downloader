@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 哔哩哔哩视频下载器主程序入口
-v4.0
+v4.1
 """
 
 import ctypes

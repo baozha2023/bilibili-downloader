@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
-                             QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QSpinBox)
+                             QLabel, QTableWidget, QTableWidgetItem, QHeaderView, QSpinBox, QMenu, QAction)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from ui.message_box import BilibiliMessageBox
+from ui.widgets.video_player_window import VideoPlayerWindow
 
 class FavoriteWorker(QThread):
     finished_signal = pyqtSignal(list, str) # videos, error_message
@@ -87,6 +88,8 @@ class FavoritesWindow(QDialog):
         """)
         self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.cellDoubleClicked.connect(self.on_video_double_clicked)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self.show_context_menu)
         layout.addWidget(self.table)
         
         # Status
@@ -168,3 +171,51 @@ class FavoritesWindow(QDialog):
             
             # Jump to download
             download_tab.download_video(title)
+
+    def show_context_menu(self, pos):
+        item = self.table.itemAt(pos)
+        if not item:
+            return
+            
+        row = item.row()
+        bvid_item = self.table.item(row, 4)
+        title_item = self.table.item(row, 0)
+        
+        if not bvid_item:
+            return
+            
+        bvid = bvid_item.text()
+        title = title_item.text() if title_item else ""
+        
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: white;
+                border: 1px solid #eee;
+                border-radius: 8px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-size: 16px;
+            }
+            QMenu::item:selected {
+                background-color: #f0f0f0;
+                color: #fb7299;
+            }
+        """)
+        
+        download_action = QAction("📥 下载视频", self)
+        download_action.triggered.connect(lambda: self.on_video_double_clicked(row, 0))
+        menu.addAction(download_action)
+        
+        watch_action = QAction("📺 实时观看", self)
+        watch_action.triggered.connect(lambda: self.watch_live(bvid, title))
+        menu.addAction(watch_action)
+        
+        menu.exec_(self.table.viewport().mapToGlobal(pos))
+        
+    def watch_live(self, bvid, title):
+        self.player_window = VideoPlayerWindow(bvid, title)
+        self.player_window.show()

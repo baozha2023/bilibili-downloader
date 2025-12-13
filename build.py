@@ -3,7 +3,7 @@
 
 """
 哔哩哔哩视频下载器打包脚本
-版本: 4.0
+版本: 4.1
 """
 
 import os
@@ -142,7 +142,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v4.0_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v4.1_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -186,7 +186,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  哔哩哔哩视频下载器打包工具 v4.0")
+    print("  哔哩哔哩视频下载器打包工具 v4.1")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -211,12 +211,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v4.0 更新内容:")
-    print("- 日志系统：视频编辑功能新增详细日志输出，覆盖转换、剪辑、合并、去水印等操作")
-    print("- 交互体验：优化视频剪辑和去水印功能的交互体验，增加状态反馈和更清晰的指引")
-    print("- 下载优化：优化视频下载取消逻辑，取消后自动重置进度条和UI状态")
-    print("- 作者声明：设置界面新增'作者声明'按钮，详细列出致谢名单和开源技术")
-    print("- 完善文档：更新Credits文件，补全所有使用到的工具和库的声明")
+    print("\n新版本 v4.1 更新内容:")
+    print("- 精简优化：移除冗余的视频特效和去水印工具页")
+    print("- 右键菜单：热门视频和收藏夹新增右键菜单，支持'下载'和'实时观看'")
+    print("- 实时观看：新增视频播放弹窗，支持在线预览视频内容")
+    print("- 代码优化：清理底层冗余代码，提升运行效率")
+    print("- 体验升级：UI细节调整，更加贴合使用习惯")
 
 if __name__ == "__main__":
     main() 
