@@ -17,6 +17,7 @@ from ui.tabs.popular_tab import PopularTab
 from ui.tabs.account_tab import AccountTab
 from ui.tabs.settings_tab import SettingsTab
 from ui.tabs.video_edit_tab import VideoEditTab
+from ui.tabs.analysis_tab import AnalysisTab
 from ui.qt_logger import QtLogHandler
 
 # 配置日志
@@ -50,7 +51,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v4.2")
+        self.setWindowTitle("哔哩哔哩视频下载器 v4.3")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -168,9 +169,11 @@ class BilibiliDesktop(QMainWindow):
         self.popular_tab = PopularTab(self)
         self.account_tab = AccountTab(self)
         self.video_edit_tab = VideoEditTab(self)
+        self.analysis_tab = AnalysisTab(self)
         
         self.tabs.addTab(self.download_tab, "视频下载")
         self.tabs.addTab(self.popular_tab, "热门视频")
+        self.tabs.addTab(self.analysis_tab, "视频分析")
         self.tabs.addTab(self.account_tab, "我的账号")
         self.tabs.addTab(self.video_edit_tab, "视频编辑")
         self.tabs.addTab(self.settings_tab, "设置")
@@ -187,7 +190,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用哔哩哔哩视频下载器 v4.2！")
+        logger.info("欢迎使用哔哩哔哩视频下载器 v4.3！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
@@ -198,12 +201,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v4.2"
+        version = "v4.3"
         updates = (
-            "1. 核心升级：视频实时观看功能改用B站官方嵌入式播放器接口，实现纯净播放体验，支持原生弹幕与清晰度切换。\n"
-            "2. 界面优化：优化主界面Tab样式，调整内边距与字体，防止文字截断；重新调整视频编辑界面布局比例，优化空间利用。\n"
-            "3. 功能增强：热门视频与收藏夹列表新增封面悬停预览功能；收藏夹弹窗新增分页条数选择与数据导出功能（支持Excel/CSV）。\n"
-            "4. 代码优化：重构日志系统，统一控制台与UI输出，移除冗余日志代码，提升可维护性。\n"
+            "1. 核心升级：实时观看功能全面升级，引入HTML5播放器(WebView2)，解决浏览器不兼容问题。\n"
+            "2. 功能新增：新增'视频分析'Tab，支持查看视频数据统计和评论词云分析。\n"
+            "3. 导出增强：收藏夹导出Excel支持展示全部列字段。\n"
+            "4. 界面优化：移除设置选项的阴影背景，视觉更清爽。\n"
+            "5. 修复：修复导出收藏夹后弹窗报错的Bug。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QSpinBox, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QMenu, QAction)
-from PyQt5.QtCore import Qt, QUrl
+from PyQt5.QtCore import Qt, QUrl, QEvent
 from PyQt5.QtGui import QCursor, QPixmap
 from ui.workers import WorkerThread
 from ui.widgets.video_player_window import VideoPlayerWindow
@@ -80,6 +80,7 @@ class PopularTab(QWidget):
         # 启用鼠标跟踪，用于显示悬停封面
         self.popular_table.setMouseTracking(True)
         self.popular_table.cellEntered.connect(self.on_cell_entered)
+        self.popular_table.installEventFilter(self)
         layout.addWidget(self.popular_table)
         
         # 状态区域 (Removed as per user request)
@@ -143,6 +144,11 @@ class PopularTab(QWidget):
     def leaveEvent(self, event):
         self.cover_label.hide()
         super().leaveEvent(event)
+
+    def eventFilter(self, source, event):
+        if source == self.popular_table and event.type() == QEvent.Leave:
+            self.cover_label.hide()
+        return super().eventFilter(source, event)
 
     def get_popular_videos(self):
         """获取热门视频"""

@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QHeaderView, 
                              QSpinBox, QMenu, QAction, QComboBox, QFileDialog)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl
+from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl, QEvent
 from PyQt5.QtGui import QCursor, QPixmap
 from ui.message_box import BilibiliMessageBox
 from ui.widgets.video_player_window import VideoPlayerWindow
@@ -119,6 +119,7 @@ class FavoritesWindow(QDialog):
         # Enable mouse tracking for hover
         self.table.setMouseTracking(True)
         self.table.cellEntered.connect(self.on_cell_entered)
+        self.table.installEventFilter(self)
         layout.addWidget(self.table)
 
         # Status
@@ -184,16 +185,20 @@ class FavoritesWindow(QDialog):
         self.cover_label.hide()
         super().leaveEvent(event)
         
+    def eventFilter(self, source, event):
+        if source == self.table and event.type() == QEvent.Leave:
+            self.cover_label.hide()
+        return super().eventFilter(source, event)
+        
     def export_current_page(self):
         """导出当前页数据到Excel (CSV)"""
-        count = self.table.rowCount()
-        if count == 0:
+        if not hasattr(self, 'current_videos') or not self.current_videos:
             BilibiliMessageBox.warning(self, "提示", "当前没有数据可导出")
             return
             
         import time
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        default_name = f"favorites_page_{self.page}_{timestamp}.xlsx" # User asked for Excel
+        default_name = f"favorites_page_{self.page}_{timestamp}.xlsx"
         
         path, _ = QFileDialog.getSaveFileName(self, "导出数据", default_name, "Excel Files (*.xlsx);;CSV Files (*.csv)")
         
@@ -201,15 +206,66 @@ class FavoritesWindow(QDialog):
             return
             
         try:
+            # 准备数据：导出所有字段
             data = []
-            headers = ["标题", "UP主", "时长", "播放量", "BV号"]
+            
+            # 获取所有可能的键作为表头
+            # 为了保证顺序，我们先放已知的常用字段，然后放其他的
+            known_headers = ["title", "upper", "duration", "play", "bvid", "intro", "pubtime", "fav_time"]
+            all_keys = set()
+            for v in self.current_videos:
+                all_keys.update(v.keys())
+                # 展平嵌套字典 (simple flattening for commonly used nested fields)
+                if 'upper' in v and isinstance(v['upper'], dict):
+                    all_keys.update([f"upper_{k}" for k in v['upper'].keys()])
+                if 'cnt_info' in v and isinstance(v['cnt_info'], dict):
+                    all_keys.update([f"cnt_info_{k}" for k in v['cnt_info'].keys()])
+
+            # 构建最终表头
+            headers = []
+            # 1. 常用字段 (重命名为中文)
+            header_map = {
+                "title": "标题",
+                "upper_name": "UP主",
+                "duration": "时长(秒)",
+                "cnt_info_play": "播放量",
+                "bvid": "BV号",
+                "intro": "简介",
+                "pubtime": "发布时间",
+                "fav_time": "收藏时间"
+            }
+            
+            # 添加常用字段
+            for k in ["title", "upper_name", "duration", "cnt_info_play", "bvid", "intro", "pubtime", "fav_time"]:
+                headers.append(header_map.get(k, k))
+            
+            # 添加其他字段 (不翻译)
+            processed_keys = set(["title", "upper", "duration", "cnt_info", "bvid", "intro", "pubtime", "fav_time"])
+            
+            extra_keys = sorted([k for k in all_keys if k not in processed_keys and not k.startswith("upper_") and not k.startswith("cnt_info_")])
+            headers.extend(extra_keys)
+            
             data.append(headers)
             
-            for row in range(count):
+            for v in self.current_videos:
                 row_data = []
-                for col in range(5):
-                    item = self.table.item(row, col)
-                    row_data.append(item.text() if item else "")
+                # 常用字段
+                row_data.append(v.get("title", ""))
+                row_data.append(v.get("upper", {}).get("name", "") if isinstance(v.get("upper"), dict) else "")
+                row_data.append(v.get("duration", ""))
+                row_data.append(v.get("cnt_info", {}).get("play", "") if isinstance(v.get("cnt_info"), dict) else "")
+                row_data.append(v.get("bvid", ""))
+                row_data.append(v.get("intro", ""))
+                row_data.append(v.get("pubtime", ""))
+                row_data.append(v.get("fav_time", ""))
+                
+                # 其他字段
+                for k in extra_keys:
+                    val = v.get(k, "")
+                    if isinstance(val, (dict, list)):
+                        import json
+                        val = json.dumps(val, ensure_ascii=False)
+                    row_data.append(str(val))
                 data.append(row_data)
                 
             if path.endswith('.xlsx'):
@@ -218,7 +274,11 @@ class FavoritesWindow(QDialog):
                 ws = wb.active
                 for r_idx, row in enumerate(data, 1):
                     for c_idx, val in enumerate(row, 1):
-                        ws.cell(row=r_idx, column=c_idx, value=val)
+                        # 处理非法字符
+                        val_str = str(val)
+                        # 移除非法字符 (Excel 不支持的控制字符)
+                        val_str = "".join(ch for ch in val_str if (0x20 <= ord(ch) <= 0xD7FF) or (0xE000 <= ord(ch) <= 0xFFFD) or ch in "\t\r\n")
+                        ws.cell(row=r_idx, column=c_idx, value=val_str)
                 wb.save(path)
             else:
                 # Fallback to CSV
@@ -226,7 +286,7 @@ class FavoritesWindow(QDialog):
                     writer = csv.writer(f)
                     writer.writerows(data)
                     
-            BilibiliMessageBox.info(self, "成功", f"数据已导出到: {path}")
+            BilibiliMessageBox.information(self, "成功", f"数据已导出到: {path}")
             
         except Exception as e:
             logger.error(f"导出失败: {e}")
@@ -252,6 +312,7 @@ class FavoritesWindow(QDialog):
             BilibiliMessageBox.warning(self, "错误", f"获取数据失败: {error}")
             return
             
+        self.current_videos = videos # 保存数据用于导出
         self.status_label.setText(f"成功获取 {len(videos)} 个视频")
         self.table.setRowCount(len(videos))
         

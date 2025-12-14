@@ -186,7 +186,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  哔哩哔哩视频下载器打包工具 v4.2")
+    print("  哔哩哔哩视频下载器打包工具 v4.3")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -211,11 +211,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v4.2 更新内容:")
-    print("- 核心升级：视频实时观看功能改用B站官方嵌入式播放器接口，实现纯净播放体验，支持原生弹幕与清晰度切换")
-    print("- 界面优化：优化主界面Tab样式，调整内边距与字体，防止文字截断；重新调整视频编辑界面布局比例，优化空间利用")
-    print("- 功能增强：热门视频与收藏夹列表新增封面悬停预览功能；收藏夹弹窗新增分页条数选择与数据导出功能（支持Excel/CSV）")
-    print("- 代码优化：重构日志系统，统一控制台与UI输出，移除冗余日志代码，提升可维护性")
+    print("\n新版本 v4.3 更新内容:")
+    print("- 核心升级：实时观看功能全面升级，引入HTML5播放器(WebView2)，解决浏览器不兼容问题")
+    print("- 功能新增：新增'视频分析'Tab，支持查看视频数据统计和评论词云分析")
+    print("- 导出增强：收藏夹导出Excel支持展示全部列字段")
+    print("- 界面优化：移除设置选项的阴影背景")
+    print("- 修复：修复导出收藏夹后弹窗报错的Bug")
 
 if __name__ == "__main__":
     main() 
