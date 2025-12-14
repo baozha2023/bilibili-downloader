@@ -1,4 +1,4 @@
-# Bilibili Downloader (哔哩哔哩视频下载器)
+# Bilibili Downloader
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -65,6 +65,15 @@ python build.py
 构建完成后，可执行文件将位于 `dist/bilibili_downloader/` 目录。
 
 ## 📝 版本历史
+
+### v4.4
+
+* **隐私**: 新增"隐私锁"功能，进入"我的账号"需点击解锁，更好保护隐私。
+* **功能**: 热门视频、收藏夹、历史记录表格右键菜单新增"复制BV号"。
+* **功能**: 历史记录表格新增右键菜单（下载、观看、复制BV号）。
+* **观看**: 实时观看功能支持登录态，自动应用大会员画质（需在设置中登录）。
+* **分析**: 视频分析Tab全新升级，新增封面预览、互动率图表，界面更美观。
+* **架构**: 代码结构优化，提升稳定性。
 
 ### v4.3
 

@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QHeaderView, 
-                             QSpinBox, QMenu, QAction, QComboBox, QFileDialog)
+                             QSpinBox, QMenu, QAction, QComboBox, QFileDialog, QApplication)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl, QEvent
 from PyQt5.QtGui import QCursor, QPixmap
 from ui.message_box import BilibiliMessageBox
@@ -409,9 +409,14 @@ class FavoritesWindow(QDialog):
         watch_action = QAction("📺 实时观看", self)
         watch_action.triggered.connect(lambda: self.watch_live(bvid, title))
         menu.addAction(watch_action)
+
+        copy_bv_action = QAction("📋 复制BV号", self)
+        copy_bv_action.triggered.connect(lambda: QApplication.clipboard().setText(bvid))
+        menu.addAction(copy_bv_action)
         
         menu.exec_(self.table.viewport().mapToGlobal(pos))
         
     def watch_live(self, bvid, title):
-        self.player_window = VideoPlayerWindow(bvid, title)
+        cookies = self.crawler.cookies
+        self.player_window = VideoPlayerWindow(bvid, title, cookies)
         self.player_window.show()

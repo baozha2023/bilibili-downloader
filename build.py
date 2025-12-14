@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-哔哩哔哩视频下载器打包脚本
-版本: 4.1
+bilibiliDownloader打包脚本
+版本: 4.4
 """
 
 import os
@@ -186,7 +186,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  哔哩哔哩视频下载器打包工具 v4.3")
+    print("  bilibiliDownloader打包工具 v4.3")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录

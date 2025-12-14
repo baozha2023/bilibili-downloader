@@ -288,6 +288,20 @@ class SettingsTab(QWidget):
         download_card.add_layout(action_layout)
         self.content_layout.addWidget(download_card)
         
+        # --- 4. 隐私与安全卡片 ---
+        privacy_card = CardWidget("隐私与安全")
+        privacy_layout = QGridLayout()
+        privacy_layout.setVerticalSpacing(20)
+        
+        self.always_lock_check = QCheckBox("每次进入'我的账号'都需要点击解锁")
+        self.always_lock_check.setChecked(False) # 默认不开启
+        self.always_lock_check.setStyleSheet(checkbox_style)
+        self.always_lock_check.setToolTip("开启后，每次切换到'我的账号'页面时，收藏夹和历史记录都会被隐藏，直到点击解锁")
+        privacy_layout.addWidget(self.always_lock_check, 0, 0)
+        
+        privacy_card.add_layout(privacy_layout)
+        self.content_layout.addWidget(privacy_card)
+        
         self.content_layout.addStretch()
         
         # 设置滚动区域内容
@@ -389,7 +403,8 @@ class SettingsTab(QWidget):
             'complete_action': self.complete_action.currentIndex(),
             'video_quality': self.quality_combo.currentText(),
             'video_codec': self.codec_combo.currentText(),
-            'audio_quality': self.audio_quality_combo.currentText()
+            'audio_quality': self.audio_quality_combo.currentText(),
+            'always_lock_account': self.always_lock_check.isChecked()
         }
         try:
             config_dir = os.path.join(self.crawler.data_dir, 'config')
@@ -434,6 +449,8 @@ class SettingsTab(QWidget):
                     self.codec_combo.setCurrentText(config['video_codec'])
                 if 'audio_quality' in config:
                     self.audio_quality_combo.setCurrentText(config['audio_quality'])
+                if 'always_lock_account' in config:
+                    self.always_lock_check.setChecked(config['always_lock_account'])
             except Exception as e:
                 logger.error(f"加载配置文件时出错: {e}")
 

@@ -51,7 +51,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("哔哩哔哩视频下载器 v4.3")
+        self.setWindowTitle("bilibiliDownloader v4.4")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -190,7 +190,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用哔哩哔哩视频下载器 v4.3！")
+        logger.info("欢迎使用bilibiliDownloader v4.3！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
@@ -201,13 +201,14 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v4.3"
+        version = "v4.4"
         updates = (
-            "1. 核心升级：实时观看功能全面升级，引入HTML5播放器(WebView2)，解决浏览器不兼容问题。\n"
-            "2. 功能新增：新增'视频分析'Tab，支持查看视频数据统计和评论词云分析。\n"
-            "3. 导出增强：收藏夹导出Excel支持展示全部列字段。\n"
-            "4. 界面优化：移除设置选项的阴影背景，视觉更清爽。\n"
-            "5. 修复：修复导出收藏夹后弹窗报错的Bug。\n"
+            "1. 隐私升级：新增'隐私锁'功能，进入'我的账号'需点击解锁，更好保护隐私。\n"
+            "2. 功能新增：热门视频、收藏夹、历史记录表格右键菜单新增'复制BV号'。\n"
+            "3. 功能增强：历史记录表格新增右键菜单（下载、观看、复制BV号）。\n"
+            "4. 体验优化：实时观看功能支持登录态，自动应用大会员画质。\n"
+            "5. 界面美化：视频分析Tab全新升级，新增封面预览、互动率图表，布局更美观。\n"
+            "6. 架构优化：代码结构优化，提升稳定性。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

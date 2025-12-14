@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-                             QSpinBox, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QMenu, QAction)
+                             QSpinBox, QTableWidget, QTableWidgetItem, QHeaderView, QMessageBox, QMenu, QAction, QApplication)
 from PyQt5.QtCore import Qt, QUrl, QEvent
 from PyQt5.QtGui import QCursor, QPixmap
 from ui.workers import WorkerThread
@@ -261,9 +261,14 @@ class PopularTab(QWidget):
         watch_action = QAction("📺 实时观看", self)
         watch_action.triggered.connect(lambda: self.watch_live(bvid, title))
         menu.addAction(watch_action)
+
+        copy_bv_action = QAction("📋 复制BV号", self)
+        copy_bv_action.triggered.connect(lambda: QApplication.clipboard().setText(bvid))
+        menu.addAction(copy_bv_action)
         
         menu.exec_(self.popular_table.viewport().mapToGlobal(pos))
         
     def watch_live(self, bvid, title):
-        self.player_window = VideoPlayerWindow(bvid, title)
+        cookies = self.crawler.cookies
+        self.player_window = VideoPlayerWindow(bvid, title, cookies)
         self.player_window.show()

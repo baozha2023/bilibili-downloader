@@ -4,12 +4,14 @@ import subprocess
 import sys
 import os
 import signal
+import json
 
 class VideoPlayerWindow(QMainWindow):
-    def __init__(self, bvid, title=""):
+    def __init__(self, bvid, title="", cookies=None):
         super().__init__()
         self.bvid = bvid
         self.video_title = title
+        self.cookies = cookies or {}
         self.player_process = None
         self.init_ui()
         self.start_player()
@@ -74,6 +76,9 @@ class VideoPlayerWindow(QMainWindow):
             
             # Command
             cmd = [sys.executable, loader_path, "--url", url, "--title", f"{self.video_title} - {self.bvid}"]
+            
+            if self.cookies:
+                cmd.extend(["--cookies", json.dumps(self.cookies)])
             
             # Launch
             # CREATE_NO_WINDOW to hide console on Windows

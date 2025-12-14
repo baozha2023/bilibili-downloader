@@ -4,7 +4,8 @@ import time
 import logging
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QStackedWidget, QGroupBox, QTableWidget, QTableWidgetItem, 
-                             QHeaderView, QTabWidget, QMessageBox, QGraphicsOpacityEffect)
+                             QHeaderView, QTabWidget, QMessageBox, QGraphicsOpacityEffect,
+                             QMenu, QAction, QApplication)
 from PyQt5.QtGui import QPixmap, QPainter, QBrush, QDesktopServices, QCursor
 from PyQt5.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
@@ -12,6 +13,7 @@ from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkRepl
 from ui.workers import AccountInfoThread
 from ui.login_dialog import BilibiliLoginWindow
 from ui.favorites_window import FavoritesWindow
+from ui.widgets.video_player_window import VideoPlayerWindow
 
 logger = logging.getLogger('bilibili_desktop')
 
@@ -175,6 +177,8 @@ class AccountTab(QWidget):
         self.history_list.setEditTriggers(QTableWidget.NoEditTriggers)
         self.history_list.setFrameShape(QTableWidget.NoFrame) # 去除边框
         self.history_list.cellDoubleClicked.connect(self.on_history_video_clicked)
+        self.history_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.history_list.customContextMenuRequested.connect(self.show_history_context_menu)
         self.history_list.setStyleSheet("""
             QTableWidget { 
                 font-size: 18px; 
@@ -190,7 +194,53 @@ class AccountTab(QWidget):
         """)
         self.content_tabs.addTab(self.history_list, "历史记录")
         
-        logged_layout.addWidget(self.content_tabs)
+        # --- Privacy Lock Implementation ---
+        self.privacy_stack = QStackedWidget()
+        
+        # 1. Lock Screen
+        self.lock_widget = QWidget()
+        lock_layout = QVBoxLayout(self.lock_widget)
+        lock_layout.setAlignment(Qt.AlignCenter)
+        
+        lock_icon = QLabel("🔒")
+        lock_icon.setStyleSheet("font-size: 64px; margin-bottom: 20px;")
+        lock_icon.setAlignment(Qt.AlignCenter)
+        lock_layout.addWidget(lock_icon)
+        
+        lock_msg = QLabel("为了保护您的隐私，内容已隐藏")
+        lock_msg.setStyleSheet("font-size: 24px; color: #666; margin-bottom: 30px;")
+        lock_msg.setAlignment(Qt.AlignCenter)
+        lock_layout.addWidget(lock_msg)
+        
+        unlock_btn = QPushButton("点击解锁")
+        unlock_btn.setCursor(Qt.PointingHandCursor)
+        unlock_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fb7299;
+                color: white;
+                font-size: 20px;
+                font-weight: bold;
+                padding: 10px 40px;
+                border-radius: 25px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #fc8bab;
+            }
+        """)
+        unlock_btn.clicked.connect(self.unlock_content)
+        lock_layout.addWidget(unlock_btn)
+        
+        self.privacy_stack.addWidget(self.lock_widget)
+        
+        # 2. Content
+        self.privacy_stack.addWidget(self.content_tabs)
+        
+        # Initial state: Locked
+        self.is_unlocked_once = False
+        self.privacy_stack.setCurrentIndex(0)
+        
+        logged_layout.addWidget(self.privacy_stack)
         
         self.account_stack.addWidget(logged_widget)
         
@@ -474,3 +524,83 @@ class AccountTab(QWidget):
             # 打开收藏夹窗口
             self.fav_window = FavoritesWindow(self.main_window, media_id, title)
             self.fav_window.show()
+
+    def show_history_context_menu(self, pos):
+        item = self.history_list.itemAt(pos)
+        if not item:
+            return
+            
+        row = item.row()
+        bvid_item = self.history_list.item(row, 3)
+        title_item = self.history_list.item(row, 0)
+        
+        if not bvid_item:
+            return
+            
+        bvid = bvid_item.text()
+        title = title_item.text() if title_item else ""
+        
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: white;
+                border: 1px solid #eee;
+                border-radius: 8px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-size: 16px;
+            }
+            QMenu::item:selected {
+                background-color: #f0f0f0;
+                color: #fb7299;
+            }
+        """)
+        
+        download_action = QAction("📥 下载视频", self)
+        download_action.triggered.connect(lambda: self.on_history_video_clicked(row, 0))
+        menu.addAction(download_action)
+        
+        watch_action = QAction("📺 实时观看", self)
+        watch_action.triggered.connect(lambda: self.watch_live(bvid, title))
+        menu.addAction(watch_action)
+
+        copy_bv_action = QAction("📋 复制BV号", self)
+        copy_bv_action.triggered.connect(lambda: QApplication.clipboard().setText(bvid))
+        menu.addAction(copy_bv_action)
+        
+        menu.exec_(self.history_list.viewport().mapToGlobal(pos))
+        
+    def watch_live(self, bvid, title):
+        # 获取cookies
+        cookies = {}
+        if hasattr(self.crawler, 'cookies'):
+            cookies = self.crawler.cookies
+            
+        self.player_window = VideoPlayerWindow(bvid, title, cookies)
+        self.player_window.show()
+
+    def unlock_content(self):
+        self.privacy_stack.setCurrentIndex(1)
+        self.is_unlocked_once = True
+
+    def showEvent(self, event):
+        # Check settings
+        if hasattr(self.main_window, 'settings_tab'):
+            settings = self.main_window.settings_tab
+            always_lock = settings.always_lock_check.isChecked()
+            
+            if always_lock:
+                # Always lock when showing tab
+                self.privacy_stack.setCurrentIndex(0)
+            else:
+                # If not always lock, check if already unlocked once
+                if self.is_unlocked_once:
+                    self.privacy_stack.setCurrentIndex(1)
+                else:
+                    self.privacy_stack.setCurrentIndex(0)
+        
+        super().showEvent(event)
+
