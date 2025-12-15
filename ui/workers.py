@@ -51,6 +51,13 @@ class WorkerThread(QThread):
         
         # 设置超时时间
         self.timeout = 30  # 秒
+        
+        # Task mapping
+        self.task_map = {
+            "popular_videos": self._get_popular_videos,
+            "video_info": self._get_video_info,
+            "download_video": self._download_video
+        }
     
     def run(self):
         """线程主函数，根据任务类型执行不同操作"""
@@ -67,12 +74,9 @@ class WorkerThread(QThread):
             self.timeout_timer.start(1000)  # 每秒检查一次
             
             # 根据任务类型执行不同操作
-            if self.task_type == "popular_videos":
-                result = self._get_popular_videos()
-            elif self.task_type == "video_info":
-                result = self._get_video_info()
-            elif self.task_type == "download_video":
-                result = self._download_video()
+            task_func = self.task_map.get(self.task_type)
+            if task_func:
+                result = task_func()
             else:
                 result = {"status": "error", "message": f"未知任务类型: {self.task_type}"}
             
@@ -259,23 +263,26 @@ class WorkerThread(QThread):
                 start_time = time.time()
                 self.update_signal.emit({"status": "download", "message": f"开始下载: {title}"})
                 
-                download_result = self.crawler.download_video(
-                    bvid, 
-                    video_progress_callback=video_progress_callback, 
-                    audio_progress_callback=audio_progress_callback,
-                    merge_progress_callback=merge_progress_callback,
-                    danmaku_progress_callback=danmaku_progress_callback,
-                    comments_progress_callback=comments_progress_callback,
-                    should_merge=should_merge,
-                    delete_original=delete_original,
-                    remove_watermark=remove_watermark,
-                    download_danmaku=download_danmaku,
-                    download_comments=download_comments,
-                    video_quality=video_quality,
-                    video_codec=video_codec,
-                    audio_quality=audio_quality,
-                    stop_event=self.stop_event
-                )
+                # Construct kwargs for download_video
+                download_kwargs = {
+                    'bvid': bvid,
+                    'video_progress_callback': video_progress_callback,
+                    'audio_progress_callback': audio_progress_callback,
+                    'merge_progress_callback': merge_progress_callback,
+                    'danmaku_progress_callback': danmaku_progress_callback,
+                    'comments_progress_callback': comments_progress_callback,
+                    'should_merge': should_merge,
+                    'delete_original': delete_original,
+                    'remove_watermark': remove_watermark,
+                    'download_danmaku': download_danmaku,
+                    'download_comments': download_comments,
+                    'video_quality': video_quality,
+                    'video_codec': video_codec,
+                    'audio_quality': audio_quality,
+                    'stop_event': self.stop_event
+                }
+
+                download_result = self.crawler.download_video(**download_kwargs)
                 
                 if download_result["download_success"]:
                     download_dir = os.path.abspath(self.crawler.download_dir)

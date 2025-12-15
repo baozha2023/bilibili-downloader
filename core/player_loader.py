@@ -20,27 +20,31 @@ def main():
 
     def init_window(window):
         if cookies:
-            # Wait a bit for window to be ready
-            time.sleep(1)
+            # Load a page on the main domain first to set cookies effectively
+            # window.load_url("https://www.bilibili.com/robots.txt")
+            # time.sleep(1)
+            
             # Inject cookies
-            # Note: We are on player.bilibili.com, so we can set cookies for .bilibili.com
             for k, v in cookies.items():
-                # Basic sanitation
                 k = k.replace('"', '\\"')
                 v = v.replace('"', '\\"')
+                # Set cookie for .bilibili.com
                 js = f'document.cookie = "{k}={v}; domain=.bilibili.com; path=/; expires=Fri, 31 Dec 9999 23:59:59 GMT";'
                 try:
                     window.evaluate_js(js)
                 except:
                     pass
             
-            # Reload to apply cookies to the request
-            # We add a timestamp to force reload if needed, but load_url should be enough
-            window.load_url(args.url)
+            # Force reload to apply cookies
+            # time.sleep(0.5)
+            
+        # Load the actual video URL
+        window.load_url(args.url)
 
     # Create a window
-    # width=1280, height=720
-    window = webview.create_window(args.title, args.url, width=1280, height=720)
+    # Start with a dummy page on bilibili.com to allow cookie setting
+    # Then init_window will load the actual URL
+    window = webview.create_window(args.title, "https://www.bilibili.com/robots.txt", width=1280, height=720)
     webview.start(init_window, window)
 
 if __name__ == "__main__":

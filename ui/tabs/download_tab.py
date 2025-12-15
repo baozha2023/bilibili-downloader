@@ -31,7 +31,7 @@ class DownloadTab(QWidget):
         
         input_layout.addWidget(QLabel("视频BV号:"))
         self.bvid_input = QLineEdit()
-        self.bvid_input.setPlaceholderText("请输入视频BV号，例如: BV1xx411c7mD")
+        self.bvid_input.setPlaceholderText("请输入视频BV号或视频地址，例如: BV1xx411c7mD")
         input_layout.addWidget(self.bvid_input)
         
         self.download_btn = QPushButton("开始下载")
@@ -181,16 +181,23 @@ class DownloadTab(QWidget):
 
     def download_video(self, title=None):
         """下载视频"""
-        bvid = self.bvid_input.text().strip()
-        if not bvid:
-            BilibiliMessageBox.warning(self, "警告", "请输入视频BV号")
+        raw_input = self.bvid_input.text().strip()
+        if not raw_input:
+            BilibiliMessageBox.warning(self, "警告", "请输入视频BV号或链接")
             return
+            
+        # Extract BV from URL or use as is
+        import re
+        bvid = raw_input
+        bv_match = re.search(r'(BV\w{10})', raw_input, re.IGNORECASE)
+        if bv_match:
+            bvid = bv_match.group(1)
         
         # 检查BV号格式
         if not bvid.startswith("BV") or len(bvid) < 10:
             reply = BilibiliMessageBox.question(
                 self, "BV号格式可能不正确", 
-                f"输入的BV号 '{bvid}' 格式可能不正确，是否继续？"
+                f"提取/输入的BV号 '{bvid}' 格式可能不正确，是否继续？"
             )
             if reply == QDialog.Rejected:
                 return
@@ -351,12 +358,14 @@ class DownloadTab(QWidget):
         bvid = self.bvid_input.text().strip()
         title = data.get("title", "未知视频")
         
-        # 确保所有进度条都显示100%
-        self.video_progress.setValue(100)
-        self.audio_progress.setValue(100)
-        self.merge_progress.setValue(100)
-        self.danmaku_progress.setValue(100)
-        self.comments_progress.setValue(100)
+        # 只有在非取消状态下才将进度条设为100%
+        if result["status"] != "cancelled":
+            # 确保所有进度条都显示100%
+            self.video_progress.setValue(100)
+            self.audio_progress.setValue(100)
+            self.merge_progress.setValue(100)
+            self.danmaku_progress.setValue(100)
+            self.comments_progress.setValue(100)
         
         if result["status"] == "success" or result["status"] == "warning":
             success_message = f"下载完成！用时: {formatted_time}"

@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 4.4
+版本: 4.5
 """
 
 import os
@@ -60,6 +60,8 @@ def build_executable():
         '--hidden-import=ui.tabs.account_tab',
         '--hidden-import=ui.tabs.video_edit_tab',
         '--hidden-import=ui.tabs.settings_tab',
+        '--hidden-import=ui.tabs.bangumi_tab',
+        '--hidden-import=ui.tabs.analysis_tab',
         'main.py'
     ]
     

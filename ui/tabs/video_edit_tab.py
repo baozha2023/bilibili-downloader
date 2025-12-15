@@ -469,7 +469,6 @@ class VideoEditTab(QWidget):
         self.end_time_spin.setDecimals(1)
         self.style_spinbox(self.end_time_spin)
         time_layout.addWidget(self.end_time_spin)
-        range_layout.addWidget(self.time_widget)
         
         # Frame Inputs (Hidden by default)
         self.frame_widget = QWidget()
@@ -486,8 +485,12 @@ class VideoEditTab(QWidget):
         self.end_frame_spin.setRange(0, 999999)
         self.style_spinbox(self.end_frame_spin)
         frame_layout.addWidget(self.end_frame_spin)
-        self.frame_widget.setVisible(False)
-        range_layout.addWidget(self.frame_widget)
+        
+        # Use QStackedWidget to prevent UI shifting
+        self.input_stack = QStackedWidget()
+        self.input_stack.addWidget(self.time_widget)
+        self.input_stack.addWidget(self.frame_widget)
+        range_layout.addWidget(self.input_stack)
         
         range_layout.addStretch()
         
@@ -498,7 +501,6 @@ class VideoEditTab(QWidget):
         settings_layout.addLayout(range_layout)
         
         # Make settings group larger by giving it stretch in main layout
-        # But here we are inside create_cut_page.
         
         layout.addWidget(settings_group, 1) # Add stretch factor 1 to settings
         
@@ -528,8 +530,7 @@ class VideoEditTab(QWidget):
 
     def update_cut_inputs(self):
         is_frame = self.unit_combo.currentIndex() == 1
-        self.time_widget.setVisible(not is_frame)
-        self.frame_widget.setVisible(is_frame)
+        self.input_stack.setCurrentIndex(1 if is_frame else 0)
         
         # Update limits if file loaded
         if self.cut_file_list.count() > 0:

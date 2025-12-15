@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 bilibiliDownloader主程序入口
-v4.4
+v4.5
 """
 
 import ctypes

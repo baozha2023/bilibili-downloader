@@ -6,13 +6,14 @@ import logging
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QPushButton, QLabel, QTabWidget, QGroupBox, 
                              QTextEdit, QCheckBox, QFileDialog, QDialog, 
-                             QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox)
+                             QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox, QAction)
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import QTimer, Qt
 
 from core.crawler import BilibiliCrawler
 from ui.update_dialog import UpdateDialog
 from ui.tabs.download_tab import DownloadTab
+from ui.tabs.bangumi_tab import BangumiTab
 from ui.tabs.popular_tab import PopularTab
 from ui.tabs.account_tab import AccountTab
 from ui.tabs.settings_tab import SettingsTab
@@ -51,7 +52,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v4.4")
+        self.setWindowTitle("bilibiliDownloader v4.5")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -166,12 +167,14 @@ class BilibiliDesktop(QMainWindow):
         # 所以先创建SettingsTab
         self.settings_tab = SettingsTab(self)
         self.download_tab = DownloadTab(self)
+        self.bangumi_tab = BangumiTab(self)
         self.popular_tab = PopularTab(self)
         self.account_tab = AccountTab(self)
         self.video_edit_tab = VideoEditTab(self)
         self.analysis_tab = AnalysisTab(self)
         
         self.tabs.addTab(self.download_tab, "视频下载")
+        self.tabs.addTab(self.bangumi_tab, "番剧下载")
         self.tabs.addTab(self.popular_tab, "热门视频")
         self.tabs.addTab(self.analysis_tab, "视频分析")
         self.tabs.addTab(self.account_tab, "我的账号")

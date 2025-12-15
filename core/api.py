@@ -30,6 +30,11 @@ class BilibiliAPI:
         """获取视频详细信息"""
         url = f'https://api.bilibili.com/x/web-interface/view?bvid={bvid}'
         return self.network.make_request(url)
+
+    def get_bangumi_info(self, ep_id):
+        """获取番剧/影视详细信息"""
+        url = f"https://api.bilibili.com/pgc/view/web/season?ep_id={ep_id}"
+        return self.network.make_request(url)
     
     def get_video_download_url(self, bvid, quality_preference='1080p', codec_preference='H.264/AVC', audio_quality_preference='高音质 (Hi-Res/Dolby)'):
         """
@@ -98,6 +103,28 @@ class BilibiliAPI:
         audio_streams = dash_data.get('audio', [])
         
         if not video_streams:
+            # Try PGC API if UGC fails (for Bangumi)
+            logger.info(f"UGC PlayURL failed, trying PGC PlayURL for {bvid}")
+            download_url_api = f'https://api.bilibili.com/pgc/player/web/playurl?bvid={bvid}&cid={cid}&qn={target_qn}&fnval={fnval}&fourk={fourk}'
+            download_info = self.network.make_request(download_url_api)
+            
+            if not download_info or ('data' not in download_info and 'result' not in download_info):
+                logger.error(f"无法获取视频 {bvid} 的下载链接 (PGC)")
+                return None
+                
+            # PGC returns 'result' instead of 'data'
+            data_block = download_info.get('result') or download_info.get('data')
+            dash_data = data_block.get('dash')
+            
+            if not dash_data:
+                logger.error(f"视频 {bvid} 不支持DASH格式下载 (PGC)")
+                return None
+                
+            video_streams = dash_data.get('video', [])
+            audio_streams = dash_data.get('audio', [])
+            
+        if not video_streams:
+            logger.error(f"未找到符合要求的视频流")
             return None
             
         # 编码映射
