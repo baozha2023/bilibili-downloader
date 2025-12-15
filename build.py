@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 4.5
+版本: 4.6
 """
 
 import os

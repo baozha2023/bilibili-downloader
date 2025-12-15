@@ -1,12 +1,50 @@
 import time
 import os
 import re
+import json
+import subprocess
+from datetime import datetime
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QLineEdit, QGroupBox, QProgressBar, QMessageBox, QListWidget, 
-                             QListWidgetItem, QCheckBox)
+                             QListWidgetItem, QCheckBox, QDialog, QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEasingCurve, QRect, QTimer
 from ui.workers import WorkerThread
 from ui.message_box import BilibiliMessageBox
+
+class HistoryDialog(QDialog):
+    def __init__(self, history_file, parent=None):
+        super().__init__(parent)
+        self.history_file = history_file
+        self.setWindowTitle("下载历史")
+        self.resize(600, 400)
+        self.init_ui()
+        
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        
+        self.table = QTableWidget()
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["时间", "标题", "路径"])
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        layout.addWidget(self.table)
+        
+        self.load_history()
+        
+    def load_history(self):
+        if not os.path.exists(self.history_file):
+            return
+            
+        try:
+            with open(self.history_file, 'r', encoding='utf-8') as f:
+                history = json.load(f)
+                
+            self.table.setRowCount(len(history))
+            for i, item in enumerate(reversed(history)): # Show latest first
+                self.table.setItem(i, 0, QTableWidgetItem(item.get('time', '')))
+                self.table.setItem(i, 1, QTableWidgetItem(item.get('title', '')))
+                self.table.setItem(i, 2, QTableWidgetItem(item.get('path', '')))
+        except Exception as e:
+            pass
 
 class BangumiInfoThread(QThread):
     finished_signal = pyqtSignal(dict)
@@ -34,6 +72,8 @@ class BangumiTab(QWidget):
         super().__init__()
         self.main_window = main_window
         self.crawler = main_window.crawler
+        self.current_series_title = ""
+        self.history_file = os.path.join(os.getcwd(), "bangumi_history.json")
         self.init_ui()
         
     def init_ui(self):
@@ -56,6 +96,22 @@ class BangumiTab(QWidget):
         input_layout.addWidget(self.parse_btn)
         
         layout.addWidget(input_group)
+
+        # 1.5 Extra Controls
+        extra_layout = QHBoxLayout()
+        
+        self.history_btn = QPushButton("查看下载历史")
+        self.history_btn.setStyleSheet("padding: 5px 10px;")
+        self.history_btn.clicked.connect(self.show_history)
+        extra_layout.addWidget(self.history_btn)
+        
+        self.open_dir_btn = QPushButton("打开下载目录")
+        self.open_dir_btn.setStyleSheet("padding: 5px 10px;")
+        self.open_dir_btn.clicked.connect(self.open_download_dir)
+        extra_layout.addWidget(self.open_dir_btn)
+        
+        extra_layout.addStretch()
+        layout.addLayout(extra_layout)
         
         # 2. Episode List Area
         self.list_group = QGroupBox("剧集列表")
@@ -184,6 +240,7 @@ class BangumiTab(QWidget):
     def on_info_fetched(self, result):
         self.parse_btn.setEnabled(True)
         title = result.get('title', '未知番剧')
+        self.current_series_title = title
         season_title = result.get('season_title', '')
         
         self.info_label.setText(f"📺 {title} {season_title}")
@@ -261,6 +318,13 @@ class BangumiTab(QWidget):
         
         # Configure download
         settings_tab = self.main_window.settings_tab
+        
+        # Calculate download directory
+        base_dir = settings_tab.data_dir_input.text().strip()
+        series_title = self.current_series_title or "其他番剧"
+        safe_series_title = re.sub(r'[\\/:*?"<>|]', '_', series_title)
+        bangumi_dir = os.path.join(base_dir, 'bangumi', safe_series_title)
+        
         params = {
             "bvid": bvid, 
             "title": title,
@@ -276,7 +340,8 @@ class BangumiTab(QWidget):
         
         config = {
             'cookies': self.crawler.cookies,
-            'data_dir': settings_tab.data_dir_input.text().strip(),
+            'data_dir': base_dir,
+            'download_dir': bangumi_dir,
             'max_retries': settings_tab.retry_count.value()
         }
         
@@ -293,12 +358,73 @@ class BangumiTab(QWidget):
             
     def on_single_download_finished(self, result):
         if result['status'] == 'success':
-            self.main_window.log_to_console(f"下载完成: {result['data']['title']}", "success")
+            title = result['data']['title']
+            self.main_window.log_to_console(f"下载完成: {title}", "success")
+            
+            # Save history
+            try:
+                output_path = result.get('data', {}).get('output_path', '')
+                if not output_path:
+                    # Fallback if output_path is not returned
+                    settings_tab = self.main_window.settings_tab
+                    base_dir = settings_tab.data_dir_input.text().strip()
+                    series_title = self.current_series_title or "其他番剧"
+                    safe_series_title = re.sub(r'[\\/:*?"<>|]', '_', series_title)
+                    bangumi_dir = os.path.join(base_dir, 'bangumi', safe_series_title)
+                    output_path = bangumi_dir
+                    
+                self.save_history(title, output_path)
+            except Exception as e:
+                print(f"Failed to save history: {e}")
+                
         else:
             self.main_window.log_to_console(f"下载失败: {result.get('message')}", "error")
             
         # Next
         self.process_next_download()
+        
+    def save_history(self, title, path):
+        entry = {
+            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "title": title,
+            "path": path
+        }
+        
+        history = []
+        if os.path.exists(self.history_file):
+            try:
+                with open(self.history_file, 'r', encoding='utf-8') as f:
+                    history = json.load(f)
+            except:
+                pass
+        
+        history.append(entry)
+        
+        try:
+            with open(self.history_file, 'w', encoding='utf-8') as f:
+                json.dump(history, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            pass
+            
+    def show_history(self):
+        dialog = HistoryDialog(self.history_file, self)
+        dialog.exec_()
+        
+    def open_download_dir(self):
+        settings_tab = self.main_window.settings_tab
+        base_dir = settings_tab.data_dir_input.text().strip()
+        bangumi_dir = os.path.join(base_dir, 'bangumi')
+        
+        if not os.path.exists(bangumi_dir):
+            try:
+                os.makedirs(bangumi_dir)
+            except:
+                pass
+                
+        try:
+            os.startfile(bangumi_dir)
+        except Exception as e:
+            BilibiliMessageBox.error(self, "错误", f"无法打开文件夹: {str(e)}")
         
     def finish_batch_download(self):
         self.is_downloading = False

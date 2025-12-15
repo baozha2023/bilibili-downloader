@@ -28,6 +28,7 @@ class AnalysisWorker(QThread):
             
             video_data = info['data']
             aid = video_data.get('aid')
+            cid = video_data.get('cid')
             
             # 2. Get comments for word cloud
             comments = []
@@ -39,6 +40,14 @@ class AnalysisWorker(QThread):
                         if content:
                             comments.append(content)
             
+            # 2.5 Get Danmaku
+            danmaku = []
+            if cid:
+                try:
+                    danmaku = self.crawler.get_video_danmaku(cid)
+                except Exception as e:
+                    logger.error(f"Failed to get danmaku: {e}")
+
             # 3. Get cover image
             cover_data = None
             pic_url = video_data.get('pic', '')
@@ -81,6 +90,7 @@ class AnalysisWorker(QThread):
             result = {
                 'info': video_data,
                 'comments': comments,
+                'danmaku': danmaku,
                 'cover_data': cover_data,
                 'sentiment': sentiment_score,
                 'keywords': keywords
@@ -101,9 +111,13 @@ class AnalysisTab(QWidget):
         line.setFrameShape(QFrame.HLine)
         line.setFrameShadow(QFrame.Sunken)
         line.setStyleSheet("background-color: #e0e0e0; margin: 10px 0;")
+        line.hide() # Hide by default
         layout.addWidget(line)
+        self.separators.append(line)
+        return line
 
     def init_ui(self):
+        self.separators = [] # Track separators
         layout = QVBoxLayout(self)
         
         # Input Area
@@ -201,6 +215,20 @@ class AnalysisTab(QWidget):
         self.stats_card.hide()
         self.content_layout.addWidget(self.stats_card)
         
+        self.add_separator(self.content_layout)
+
+        # 2.5 Danmaku Analysis Card
+        self.danmaku_card = CardWidget("弹幕趋势分析")
+        self.danmaku_layout = QVBoxLayout()
+        self.danmaku_label = QLabel()
+        self.danmaku_label.setAlignment(Qt.AlignCenter)
+        self.danmaku_layout.addWidget(self.danmaku_label)
+        self.danmaku_card.add_layout(self.danmaku_layout)
+        self.danmaku_card.hide()
+        self.content_layout.addWidget(self.danmaku_card)
+        
+        self.add_separator(self.content_layout)
+        
         # 3. Sentiment Card
         self.sentiment_card = CardWidget("情感倾向分析")
         self.sentiment_layout = QVBoxLayout()
@@ -257,8 +285,13 @@ class AnalysisTab(QWidget):
         self.show_results(result)
 
     def show_results(self, result):
+        # Show all separators
+        for sep in self.separators:
+            sep.show()
+
         info = result.get('info', {})
         comments = result.get('comments', [])
+        danmaku = result.get('danmaku', [])
         cover_data = result.get('cover_data')
         
         # 1. Basic Info
@@ -287,6 +320,11 @@ class AnalysisTab(QWidget):
         self.generate_ratio_chart(stat)
         self.stats_card.show()
         
+        # 2.5 Danmaku Chart
+        duration = info.get('duration', 0)
+        self.generate_danmaku_chart(danmaku, duration)
+        self.danmaku_card.show()
+        
         # 3. Sentiment
         sentiment_score = result.get('sentiment', 0.5)
         self.generate_sentiment_chart(sentiment_score)
@@ -306,6 +344,50 @@ class AnalysisTab(QWidget):
             self.cloud_card.show()
         else:
             self.cloud_card.hide()
+
+    def generate_danmaku_chart(self, danmaku_list, duration=None):
+        if not danmaku_list:
+            self.danmaku_label.setText("无弹幕数据")
+            return
+            
+        try:
+            # danmaku_list items have 'time' (float, seconds from start)
+            times = [d.get('time', 0) for d in danmaku_list]
+            if not times:
+                self.danmaku_label.setText("弹幕数据格式错误")
+                return
+                
+            max_time = max(times)
+            if duration and duration > max_time:
+                max_time = duration
+                
+            # Binning
+            bin_size = 30 if max_time < 600 else 60
+            bins = range(0, int(max_time) + bin_size, bin_size)
+            
+            plt.figure(figsize=(8, 4))
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            plt.rcParams['axes.unicode_minus'] = False
+            
+            plt.hist(times, bins=bins, color='#fb7299', alpha=0.7, edgecolor='white')
+            plt.title('弹幕时间分布 (密度)')
+            plt.xlabel('时间 (秒)')
+            plt.ylabel('弹幕数量')
+            plt.grid(axis='y', linestyle='--', alpha=0.5)
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=100)
+            buf.seek(0)
+            plt.close()
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+            self.danmaku_label.setPixmap(pixmap)
+            
+        except Exception as e:
+            logger.error(f"Generate danmaku chart error: {e}")
+            self.danmaku_label.setText(f"图表生成失败: {e}")
+
 
     def generate_stats_chart(self, stat):
         try:

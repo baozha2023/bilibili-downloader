@@ -38,6 +38,9 @@
 12. Matplotlib (https://matplotlib.org/)
     - Python绘图库，用于生成数据统计图表
 
+13. SnowNLP (https://github.com/isnowfy/snownlp)
+    - Python中文文本情感分析库
+
 本软件作者：zxj
 作者B站首页：https://space.bilibili.com/451133247
 作者gitee首页：https://gitee.com/bzJAVA/bilibili-downloader

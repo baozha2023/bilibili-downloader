@@ -63,7 +63,8 @@ class VideoPlayerWindow(QMainWindow):
     def start_player(self):
         try:
             # Construct URL
-            url = f"https://player.bilibili.com/player.html?bvid={self.bvid}&high_quality=1&autoplay=1"
+            # Use full video page for better compatibility and quality selection
+            url = f"https://www.bilibili.com/video/{self.bvid}"
             
             # Path to loader script
             # Handle frozen env (PyInstaller) if needed, but for now assuming source or standard structure

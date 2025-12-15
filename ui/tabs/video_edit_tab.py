@@ -118,14 +118,14 @@ class MergeItemWidget(QWidget):
 
     def style_spinbox(self, spin):
         spin.setStyleSheet("""
-            QDoubleSpinBox {
+            QDoubleSpinBox, QSpinBox {
                 border: 1px solid #ddd;
                 border-radius: 4px;
                 padding: 2px 5px;
                 background: white;
                 selection-background-color: #fb7299;
             }
-            QDoubleSpinBox:focus {
+            QDoubleSpinBox:focus, QSpinBox:focus {
                 border-color: #fb7299;
             }
         """)

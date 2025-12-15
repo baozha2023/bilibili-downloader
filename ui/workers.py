@@ -45,6 +45,12 @@ class WorkerThread(QThread):
             if not os.path.exists(self.crawler.download_dir):
                 os.makedirs(self.crawler.download_dir)
         
+        # Allow overriding download_dir directly
+        if 'download_dir' in self.config and self.config['download_dir']:
+            self.crawler.download_dir = self.config['download_dir']
+            if not os.path.exists(self.crawler.download_dir):
+                os.makedirs(self.crawler.download_dir)
+        
         # 设置重试次数
         self.max_retries = self.config.get('max_retries', 3)
         self.retry_delay = 2  # 秒

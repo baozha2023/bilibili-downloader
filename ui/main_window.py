@@ -52,7 +52,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v4.5")
+        self.setWindowTitle("bilibiliDownloader v4.6")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标

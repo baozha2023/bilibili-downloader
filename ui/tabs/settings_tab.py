@@ -36,7 +36,7 @@ class SettingsTab(QWidget):
         scroll_area.setFrameShape(QScrollArea.NoFrame)
         scroll_area.setStyleSheet("""
             QScrollArea {
-                background-color: #f9f9f9;
+                background-color: #ffffff;
                 border: none;
             }
             QScrollBar:vertical {
@@ -57,7 +57,7 @@ class SettingsTab(QWidget):
         
         # 滚动内容容器
         content_widget = QWidget()
-        content_widget.setStyleSheet("background-color: #f9f9f9;")
+        content_widget.setStyleSheet("background-color: #ffffff;")
         self.content_layout = QVBoxLayout(content_widget)
         self.content_layout.setSpacing(25)
         self.content_layout.setContentsMargins(30, 30, 30, 30)

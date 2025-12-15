@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 bilibiliDownloader主程序入口
-v4.5
+v4.6
 """
 
 import ctypes
@@ -69,7 +69,7 @@ def run_interactive_cli():
     crawler = BilibiliCrawler()
     
     while True:
-        print("\nbilibiliDownloader v4.4 - 命令行模式")
+        print("\nbilibiliDownloader v4.6 - 命令行模式")
         print("1. 爬取热门视频")
         print("2. 爬取指定视频详情")
         print("3. 下载视频")
