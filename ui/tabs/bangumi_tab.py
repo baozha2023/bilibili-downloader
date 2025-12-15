@@ -73,7 +73,7 @@ class BangumiTab(QWidget):
         self.main_window = main_window
         self.crawler = main_window.crawler
         self.current_series_title = ""
-        self.history_file = os.path.join(os.getcwd(), "bangumi_history.json")
+        self.history_file = os.path.join(self.crawler.data_dir, "bangumi_history.json")
         self.init_ui()
         
     def init_ui(self):
