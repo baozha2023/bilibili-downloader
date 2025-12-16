@@ -28,9 +28,20 @@ class HistoryDialog(QDialog):
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         layout.addWidget(self.table)
         
+        # Button layout
+        btn_layout = QHBoxLayout()
+        self.clear_btn = QPushButton("清空历史")
+        self.clear_btn.setStyleSheet("background-color: #f56c6c; color: white; padding: 5px 15px; border-radius: 4px;")
+        self.clear_btn.clicked.connect(self.clear_history)
+        btn_layout.addWidget(self.clear_btn)
+        btn_layout.addStretch()
+        
+        layout.addLayout(btn_layout)
+        
         self.load_history()
         
     def load_history(self):
+        self.table.setRowCount(0) # Clear table
         if not os.path.exists(self.history_file):
             return
             
@@ -45,6 +56,17 @@ class HistoryDialog(QDialog):
                 self.table.setItem(i, 2, QTableWidgetItem(item.get('path', '')))
         except Exception as e:
             pass
+
+    def clear_history(self):
+        confirm = QMessageBox.question(self, "确认", "确定要清空所有下载历史吗？", 
+                                     QMessageBox.Yes | QMessageBox.No)
+        if confirm == QMessageBox.Yes:
+            try:
+                with open(self.history_file, 'w', encoding='utf-8') as f:
+                    f.write('[]')
+                self.load_history()
+            except Exception as e:
+                QMessageBox.warning(self, "错误", f"清空失败: {str(e)}")
 
 class BangumiInfoThread(QThread):
     finished_signal = pyqtSignal(dict)
@@ -81,16 +103,17 @@ class BangumiTab(QWidget):
         
         # 1. Input Area
         input_group = QGroupBox("番剧/影视链接")
-        input_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 18px; }")
+        input_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 18px; padding-top: 5px; margin-top: 5px; }")
         input_layout = QHBoxLayout(input_group)
+        input_layout.setContentsMargins(10, 20, 10, 10) # Reduced margins
         
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("请输入番剧播放页地址，例如: https://www.bilibili.com/bangumi/play/ep2474435/")
-        self.url_input.setStyleSheet("font-size: 16px; padding: 5px;")
+        self.url_input.setStyleSheet("font-size: 16px; padding: 8px;")
         input_layout.addWidget(self.url_input)
         
         self.parse_btn = QPushButton("获取剧集")
-        self.parse_btn.setStyleSheet("background-color: #fb7299; color: white; font-weight: bold; padding: 8px 15px; font-size: 16px;")
+        self.parse_btn.setStyleSheet("background-color: #fb7299; color: white; font-weight: bold; padding: 8px 15px; font-size: 16px; border-radius: 4px;")
         self.parse_btn.setCursor(Qt.PointingHandCursor)
         self.parse_btn.clicked.connect(self.parse_bangumi)
         input_layout.addWidget(self.parse_btn)
@@ -99,14 +122,19 @@ class BangumiTab(QWidget):
 
         # 1.5 Extra Controls
         extra_layout = QHBoxLayout()
+        extra_layout.setContentsMargins(5, 0, 5, 0)
+        
+        btn_style = "background-color: #f1f2f3; color: #333; font-weight: bold; padding: 8px 15px; font-size: 16px; border: 1px solid #ddd; border-radius: 4px;"
         
         self.history_btn = QPushButton("查看下载历史")
-        self.history_btn.setStyleSheet("padding: 5px 10px;")
+        self.history_btn.setStyleSheet(btn_style)
+        self.history_btn.setCursor(Qt.PointingHandCursor)
         self.history_btn.clicked.connect(self.show_history)
         extra_layout.addWidget(self.history_btn)
         
         self.open_dir_btn = QPushButton("打开下载目录")
-        self.open_dir_btn.setStyleSheet("padding: 5px 10px;")
+        self.open_dir_btn.setStyleSheet(btn_style)
+        self.open_dir_btn.setCursor(Qt.PointingHandCursor)
         self.open_dir_btn.clicked.connect(self.open_download_dir)
         extra_layout.addWidget(self.open_dir_btn)
         
@@ -351,10 +379,23 @@ class BangumiTab(QWidget):
         self.current_thread.start()
         
     def update_progress(self, p_type, current, total):
-        # We only show a combined progress or just video progress for simplicity
-        if p_type == "video" and total > 0:
-            percent = int(current * 100 / total)
+        if total <= 0: return
+        
+        percent = int(current * 100 / total)
+        
+        if p_type == "video":
+            self.current_task_label.setText(f"正在下载视频... {percent}%")
             self.progress_bar.setValue(percent)
+        elif p_type == "audio":
+            self.current_task_label.setText(f"正在下载音频... {percent}%")
+            self.progress_bar.setValue(percent)
+        elif p_type == "merge":
+            self.current_task_label.setText(f"正在合并音视频... {percent}%")
+            self.progress_bar.setValue(percent)
+        elif p_type == "danmaku":
+             self.current_task_label.setText(f"正在下载弹幕... {percent}%")
+        elif p_type == "comments":
+             self.current_task_label.setText(f"正在下载评论... {percent}%")
             
     def on_single_download_finished(self, result):
         if result['status'] == 'success':

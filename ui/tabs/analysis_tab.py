@@ -161,6 +161,7 @@ class AnalysisTab(QWidget):
         scroll.setFrameShape(QFrame.NoFrame)
         
         self.content_widget = QWidget()
+        self.content_widget.setStyleSheet("background-color: white;") # Set white background
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setAlignment(Qt.AlignTop)
         
@@ -173,24 +174,28 @@ class AnalysisTab(QWidget):
         self.cover_label.setFixedSize(320, 200)
         self.cover_label.setScaledContents(True)
         self.cover_label.setStyleSheet("background-color: #eee; border-radius: 5px;")
-        self.info_layout.addWidget(self.cover_label, 0, 0, 4, 1)
+        self.info_layout.addWidget(self.cover_label, 0, 0, 5, 1) # Spanning 5 rows
         
         # Details
         self.title_label = QLabel("标题: --")
         self.title_label.setWordWrap(True)
-        self.title_label.setStyleSheet("font-size: 18px; font-weight: bold;")
+        self.title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #333;")
         self.info_layout.addWidget(self.title_label, 0, 1)
         
         self.owner_label = QLabel("UP主: --")
+        self.owner_label.setStyleSheet("color: #fb7299; font-weight: bold;")
         self.info_layout.addWidget(self.owner_label, 1, 1)
         
         self.time_label = QLabel("发布时间: --")
         self.info_layout.addWidget(self.time_label, 2, 1)
         
+        self.zone_label = QLabel("分区: --")
+        self.info_layout.addWidget(self.zone_label, 3, 1)
+        
         self.desc_label = QLabel("简介: --")
         self.desc_label.setWordWrap(True)
         self.desc_label.setStyleSheet("color: #666;")
-        self.info_layout.addWidget(self.desc_label, 3, 1)
+        self.info_layout.addWidget(self.desc_label, 4, 1)
         
         self.info_card.add_layout(self.info_layout)
         self.info_card.hide()
@@ -298,6 +303,7 @@ class AnalysisTab(QWidget):
         title = info.get('title', '')
         desc = info.get('desc', '')
         owner = info.get('owner', {}).get('name', '')
+        tname = info.get('tname', '未知分区')
         pubdate = info.get('pubdate', 0)
         import time
         pub_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(pubdate))
@@ -305,6 +311,7 @@ class AnalysisTab(QWidget):
         self.title_label.setText(f"标题: {title}")
         self.owner_label.setText(f"UP主: {owner}")
         self.time_label.setText(f"发布时间: {pub_time}")
+        self.zone_label.setText(f"分区: {tname}")
         self.desc_label.setText(f"简介: {desc[:100]}..." if len(desc) > 100 else f"简介: {desc}")
         
         if cover_data:

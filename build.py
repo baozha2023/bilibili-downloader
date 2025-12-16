@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 4.6
+版本: 4.7
 """
 
 import os
@@ -37,12 +37,13 @@ def build_executable():
     cmd = [
         sys.executable, '-m', 'PyInstaller',
         '--name=bilibili_downloader',
-        '--windowed',  # 无控制台窗口 (如果是调试模式可以去掉此行)
+        '--windowed',  # 无控制台窗口
         '--noconfirm',  # 不确认覆盖
         '--clean',      # 清理缓存
         '--add-data=README.md;.',  # 添加说明文件
         '--add-data=credits.txt;.',  # 添加致谢文件
         '--add-data=resource;resource',  # 添加资源文件夹
+        '--collect-data=snownlp',  # 收集snownlp数据文件
         '--hidden-import=core.crawler',
         '--hidden-import=core.network',
         '--hidden-import=core.api',
@@ -51,7 +52,7 @@ def build_executable():
         '--hidden-import=ui.main_window',
         '--hidden-import=ui.workers',
         '--hidden-import=ui.login_dialog',
-        '--hidden-import=ui.message_box', # 添加新模块
+        '--hidden-import=ui.message_box',
         '--hidden-import=ui.widgets.custom_combobox',
         '--hidden-import=core.watermark',
         '--hidden-import=ui.update_dialog',
@@ -144,7 +145,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v4.2_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v4.7_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -188,7 +189,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  bilibiliDownloader打包工具 v4.3")
+    print("  bilibiliDownloader打包工具 v4.7")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -213,12 +214,11 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v4.3 更新内容:")
-    print("- 核心升级：实时观看功能全面升级，引入HTML5播放器(WebView2)，解决浏览器不兼容问题")
-    print("- 功能新增：新增'视频分析'Tab，支持查看视频数据统计和评论词云分析")
-    print("- 导出增强：收藏夹导出Excel支持展示全部列字段")
-    print("- 界面优化：移除设置选项的阴影背景")
-    print("- 修复：修复导出收藏夹后弹窗报错的Bug")
+    print("\n新版本 v4.7 更新内容:")
+    print("- 番剧：优化UI布局，新增清空下载历史功能；任务进度显示优化")
+    print("- 分析：界面全新升级，白色背景更清爽；图表与布局优化；新增视频分区显示")
+    print("- 播放：优化实时观看体验，支持自动网页全屏")
+    print("- 核心：代码深度优化与重构，清理冗余逻辑")
 
 if __name__ == "__main__":
     main() 
