@@ -340,6 +340,10 @@ class DownloadTab(QWidget):
                 
                 self.download_speed_label.setText(f"速度: {formatted_speed}")
                 
+                # 更新悬浮窗
+                if hasattr(self.main_window, 'floating_window'):
+                    self.main_window.floating_window.update_status(progress, formatted_speed)
+                
                 if speed > 0:
                     remaining_bytes = total - current
                     eta_seconds = int(remaining_bytes / speed)
@@ -373,6 +377,10 @@ class DownloadTab(QWidget):
             self.main_window.log_to_console(success_message, "success")
             self.main_window.add_download_history(bvid, title, "成功")
             
+            # Hide floating window
+            if hasattr(self.main_window, 'floating_window'):
+                self.main_window.floating_window.reset()
+            
             # 完成后操作
             try:
                 settings_tab = self.main_window.settings_tab
@@ -396,9 +404,17 @@ class DownloadTab(QWidget):
             self.download_status.setText("下载已取消")
             self.main_window.log_to_console("下载已取消", "warning")
             
+            # Hide floating window
+            if hasattr(self.main_window, 'floating_window'):
+                self.main_window.floating_window.reset()
+            
         else:
             error_message = f"下载失败: {result.get('message', '未知错误')}"
             self.download_status.setText(error_message)
+            
+            # Hide floating window
+            if hasattr(self.main_window, 'floating_window'):
+                self.main_window.floating_window.reset()
             
             # Log error with traceback if available
             if "error_traceback" in result:
@@ -423,6 +439,11 @@ class DownloadTab(QWidget):
             self.cancel_btn.setEnabled(False)
             self.download_status.setText("下载已取消")
             self.main_window.log_to_console("下载已取消", "warning")
+            
+            # Hide floating window
+            if hasattr(self.main_window, 'floating_window'):
+                self.main_window.floating_window.reset()
+            
             # 重置UI状态
             self.reset_progress_bars()
 

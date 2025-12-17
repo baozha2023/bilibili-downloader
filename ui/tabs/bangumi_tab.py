@@ -23,8 +23,9 @@ class HistoryDialog(QDialog):
         layout = QVBoxLayout(self)
         
         self.table = QTableWidget()
-        self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels(["时间", "标题", "路径"])
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["番剧名", "集名", "BV号", "下载时间", "状态"])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
         layout.addWidget(self.table)
         
@@ -51,9 +52,17 @@ class HistoryDialog(QDialog):
                 
             self.table.setRowCount(len(history))
             for i, item in enumerate(reversed(history)): # Show latest first
-                self.table.setItem(i, 0, QTableWidgetItem(item.get('time', '')))
+                self.table.setItem(i, 0, QTableWidgetItem(item.get('series_title', '')))
                 self.table.setItem(i, 1, QTableWidgetItem(item.get('title', '')))
-                self.table.setItem(i, 2, QTableWidgetItem(item.get('path', '')))
+                self.table.setItem(i, 2, QTableWidgetItem(item.get('bvid', '')))
+                self.table.setItem(i, 3, QTableWidgetItem(item.get('time', '')))
+                
+                status_item = QTableWidgetItem(item.get('status', ''))
+                if item.get('status') == '成功':
+                    status_item.setForeground(Qt.green)
+                else:
+                    status_item.setForeground(Qt.red)
+                self.table.setItem(i, 4, status_item)
         except Exception as e:
             pass
 
@@ -327,6 +336,9 @@ class BangumiTab(QWidget):
             BilibiliMessageBox.warning(self, "提示", "请选择要下载的剧集")
             return
             
+        self.total_batch_count = len(self.download_queue)
+        self.current_batch_index = 0
+            
         self.is_downloading = True
         self.download_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
@@ -338,11 +350,13 @@ class BangumiTab(QWidget):
             return
             
         ep_data = self.download_queue.pop(0)
+        self.current_batch_index += 1
         bvid = ep_data.get('bvid')
         title = f"{ep_data.get('title')} {ep_data.get('long_title')}"
         
-        self.current_task_label.setText(f"正在下载: {title}")
+        self.current_task_label.setText(f"正在下载 ({self.current_batch_index}/{self.total_batch_count}): {title}")
         self.progress_bar.setValue(0)
+        self.download_start_time = time.time()
         
         # Configure download
         settings_tab = self.main_window.settings_tab
@@ -383,23 +397,44 @@ class BangumiTab(QWidget):
         
         percent = int(current * 100 / total)
         
+        # Calculate speed
+        elapsed = time.time() - self.download_start_time
+        speed_str = ""
+        if elapsed > 0:
+            speed = current / elapsed
+            if speed < 1024:
+                speed_str = f"{speed:.2f} B/s"
+            elif speed < 1024**2:
+                speed_str = f"{speed/1024:.2f} KB/s"
+            elif speed < 1024**3:
+                speed_str = f"{speed/1024**2:.2f} MB/s"
+            else:
+                speed_str = f"{speed/1024**3:.2f} GB/s"
+        
+        # Update Floating Window
+        if hasattr(self.main_window, 'floating_window'):
+            self.main_window.floating_window.update_status(percent, speed_str)
+
+        prefix = f"({self.current_batch_index}/{self.total_batch_count})"
+        
         if p_type == "video":
-            self.current_task_label.setText(f"正在下载视频... {percent}%")
+            self.current_task_label.setText(f"正在下载视频 {prefix}... {percent}%  速度: {speed_str}")
             self.progress_bar.setValue(percent)
         elif p_type == "audio":
-            self.current_task_label.setText(f"正在下载音频... {percent}%")
+            self.current_task_label.setText(f"正在下载音频 {prefix}... {percent}%  速度: {speed_str}")
             self.progress_bar.setValue(percent)
         elif p_type == "merge":
-            self.current_task_label.setText(f"正在合并音视频... {percent}%")
+            self.current_task_label.setText(f"正在合并音视频 {prefix}... {percent}%")
             self.progress_bar.setValue(percent)
         elif p_type == "danmaku":
-             self.current_task_label.setText(f"正在下载弹幕... {percent}%")
+             self.current_task_label.setText(f"正在下载弹幕 {prefix}... {percent}%")
         elif p_type == "comments":
-             self.current_task_label.setText(f"正在下载评论... {percent}%")
+             self.current_task_label.setText(f"正在下载评论 {prefix}... {percent}%")
             
     def on_single_download_finished(self, result):
         if result['status'] == 'success':
             title = result['data']['title']
+            bvid = result['data'].get('bvid', '')
             self.main_window.log_to_console(f"下载完成: {title}", "success")
             
             # Save history
@@ -414,20 +449,43 @@ class BangumiTab(QWidget):
                     bangumi_dir = os.path.join(base_dir, 'bangumi', safe_series_title)
                     output_path = bangumi_dir
                     
-                self.save_history(title, output_path)
+                self.save_history(self.current_series_title, title, bvid, "成功", output_path)
             except Exception as e:
                 print(f"Failed to save history: {e}")
                 
         else:
             self.main_window.log_to_console(f"下载失败: {result.get('message')}", "error")
+            # Save failed history
+            try:
+                # Try to get data from result first
+                data = result.get('data', {})
+                if data:
+                    title = data.get('title', '未知')
+                    bvid = data.get('bvid', '')
+                else:
+                    # Fallback to current episode data if result has no data
+                    # This happens if download failed before even starting properly or returning data
+                    # But since we process one by one, we might not have easy access to 'ep_data' here
+                    # unless we stored it in self.current_ep_data or similar.
+                    # However, we can't easily access the local variable 'ep_data' from process_next_download.
+                    # Let's check if the worker returns it now.
+                    title = '未知'
+                    bvid = ''
+                
+                self.save_history(self.current_series_title, title, bvid, "失败", "")
+            except:
+                pass
             
         # Next
         self.process_next_download()
         
-    def save_history(self, title, path):
+    def save_history(self, series_title, title, bvid, status, path):
         entry = {
             "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "series_title": series_title,
             "title": title,
+            "bvid": bvid,
+            "status": status,
             "path": path
         }
         
@@ -473,6 +531,11 @@ class BangumiTab(QWidget):
         self.stop_btn.setEnabled(False)
         self.current_task_label.setText("批量下载完成")
         self.progress_bar.setValue(100)
+        
+        # Hide floating window
+        if hasattr(self.main_window, 'floating_window'):
+            self.main_window.floating_window.reset()
+            
         BilibiliMessageBox.information(self, "完成", "批量下载任务已完成")
         
     def stop_download(self):
@@ -484,3 +547,7 @@ class BangumiTab(QWidget):
             self.current_task_label.setText("下载已停止")
             self.download_btn.setEnabled(True)
             self.stop_btn.setEnabled(False)
+            
+            # Hide floating window
+            if hasattr(self.main_window, 'floating_window'):
+                self.main_window.floating_window.reset()

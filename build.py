@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 4.7
+版本: 4.8
 """
 
 import os
@@ -145,7 +145,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v4.7_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v4.8_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -189,7 +189,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  bilibiliDownloader打包工具 v4.7")
+    print("  bilibiliDownloader打包工具 v4.8")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -214,11 +214,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v4.7 更新内容:")
-    print("- 番剧：优化UI布局，新增清空下载历史功能；任务进度显示优化")
-    print("- 分析：界面全新升级，白色背景更清爽；图表与布局优化；新增视频分区显示")
-    print("- 播放：优化实时观看体验，支持自动网页全屏")
-    print("- 核心：代码深度优化与重构，清理冗余逻辑")
+    print("\n新版本 v4.8 更新内容:")
+    print("- 番剧：新增下载历史查看（含状态、BV号等）；下载进度新增速度与集数显示")
+    print("- 分析：界面升级，新增评论用户等级分布、评论时间趋势图表；优化布局")
+    print("- 编辑：视频合并支持按帧截取，精度更高")
+    print("- 交互：新增桌面悬浮窗，实时显示下载进度与速度（可在设置中开启）")
+    print("- 核心：优化重试机制，确保设置生效；代码深度优化")
 
 if __name__ == "__main__":
     main() 

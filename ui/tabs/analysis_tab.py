@@ -30,8 +30,11 @@ class AnalysisWorker(QThread):
             aid = video_data.get('aid')
             cid = video_data.get('cid')
             
-            # 2. Get comments for word cloud
+            # 2. Get comments for word cloud and other analysis
             comments = []
+            comment_dates = []
+            user_levels = []
+            
             if aid:
                 replies = self.crawler.api.get_video_comments(aid)
                 if replies:
@@ -39,6 +42,15 @@ class AnalysisWorker(QThread):
                         content = r.get('content', {}).get('message', '')
                         if content:
                             comments.append(content)
+                            
+                        # Extract date
+                        ctime = r.get('ctime', 0)
+                        if ctime:
+                            comment_dates.append(ctime)
+                            
+                        # Extract level
+                        level = r.get('member', {}).get('level_info', {}).get('current_level', 0)
+                        user_levels.append(level)
             
             # 2.5 Get Danmaku
             danmaku = []
@@ -90,6 +102,8 @@ class AnalysisWorker(QThread):
             result = {
                 'info': video_data,
                 'comments': comments,
+                'comment_dates': comment_dates,
+                'user_levels': user_levels,
                 'danmaku': danmaku,
                 'cover_data': cover_data,
                 'sentiment': sentiment_score,
@@ -203,46 +217,50 @@ class AnalysisTab(QWidget):
         
         self.add_separator(self.content_layout)
         
-        # 2. Stats Chart Card
-        self.stats_card = CardWidget("数据统计分析")
-        self.stats_layout = QVBoxLayout() # Changed to VBox to display charts vertically
-        self.stats_layout.setSpacing(20) # Add spacing between charts
+        # 2. Charts Grid
+        self.charts_card = CardWidget("深度数据分析")
+        self.charts_layout = QGridLayout()
+        self.charts_layout.setVerticalSpacing(30)
+        self.charts_layout.setHorizontalSpacing(20)
         
+        # Row 1: Stats & Ratio
         self.stats_label = QLabel()
         self.stats_label.setAlignment(Qt.AlignCenter)
-        self.stats_layout.addWidget(self.stats_label)
+        self.stats_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.charts_layout.addWidget(self.stats_label, 0, 0)
         
         self.ratio_label = QLabel()
         self.ratio_label.setAlignment(Qt.AlignCenter)
-        self.stats_layout.addWidget(self.ratio_label)
+        self.ratio_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.charts_layout.addWidget(self.ratio_label, 0, 1)
         
-        self.stats_card.add_layout(self.stats_layout)
-        self.stats_card.hide()
-        self.content_layout.addWidget(self.stats_card)
-        
-        self.add_separator(self.content_layout)
-
-        # 2.5 Danmaku Analysis Card
-        self.danmaku_card = CardWidget("弹幕趋势分析")
-        self.danmaku_layout = QVBoxLayout()
+        # Row 2: Danmaku & Date
         self.danmaku_label = QLabel()
         self.danmaku_label.setAlignment(Qt.AlignCenter)
-        self.danmaku_layout.addWidget(self.danmaku_label)
-        self.danmaku_card.add_layout(self.danmaku_layout)
-        self.danmaku_card.hide()
-        self.content_layout.addWidget(self.danmaku_card)
+        self.danmaku_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.charts_layout.addWidget(self.danmaku_label, 1, 0)
         
-        self.add_separator(self.content_layout)
+        self.date_label = QLabel()
+        self.date_label.setAlignment(Qt.AlignCenter)
+        self.date_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.charts_layout.addWidget(self.date_label, 1, 1)
         
-        # 3. Sentiment Card
-        self.sentiment_card = CardWidget("情感倾向分析")
-        self.sentiment_layout = QVBoxLayout()
+        # Row 3: Level & Sentiment
+        self.level_label = QLabel()
+        self.level_label.setAlignment(Qt.AlignCenter)
+        self.level_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.charts_layout.addWidget(self.level_label, 2, 0)
+        
         self.sentiment_label = QLabel()
         self.sentiment_label.setAlignment(Qt.AlignCenter)
-        self.sentiment_layout.addWidget(self.sentiment_label)
-        self.sentiment_card.add_layout(self.sentiment_layout)
-        self.sentiment_card.hide()
-        self.content_layout.addWidget(self.sentiment_card)
+        self.sentiment_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.charts_layout.addWidget(self.sentiment_label, 2, 1)
+        
+        self.charts_card.add_layout(self.charts_layout)
+        self.charts_card.hide()
+        self.content_layout.addWidget(self.charts_card)
+        
+        self.add_separator(self.content_layout)
 
         # 4. Keywords Card
         self.keyword_card = CardWidget("评论关键词")
@@ -321,21 +339,22 @@ class AnalysisTab(QWidget):
         
         self.info_card.show()
         
-        # 2. Stats Chart
+        # 2. Charts Grid
         stat = info.get('stat', {})
         self.generate_stats_chart(stat)
         self.generate_ratio_chart(stat)
-        self.stats_card.show()
         
-        # 2.5 Danmaku Chart
+        # Danmaku & Date
         duration = info.get('duration', 0)
         self.generate_danmaku_chart(danmaku, duration)
-        self.danmaku_card.show()
+        self.generate_date_chart(result.get('comment_dates', []))
         
-        # 3. Sentiment
+        # Level & Sentiment
+        self.generate_level_chart(result.get('user_levels', []))
         sentiment_score = result.get('sentiment', 0.5)
         self.generate_sentiment_chart(sentiment_score)
-        self.sentiment_card.show()
+        
+        self.charts_card.show()
         
         # 4. Keywords
         keywords = result.get('keywords', [])
@@ -520,6 +539,76 @@ class AnalysisTab(QWidget):
         except Exception as e:
              logger.error(f"Generate sentiment chart error: {e}")
              self.sentiment_label.setText("情感分析图表生成失败")
+
+    def generate_level_chart(self, levels):
+        try:
+            if not levels:
+                self.level_label.setText("无用户等级数据")
+                return
+
+            # Count levels
+            from collections import Counter
+            counts = Counter(levels)
+            labels = sorted(counts.keys())
+            values = [counts[l] for l in labels]
+            labels_str = [f"Lv{l}" for l in labels]
+            
+            plt.figure(figsize=(6, 4))
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            
+            # Pie chart
+            plt.pie(values, labels=labels_str, autopct='%1.1f%%', startangle=90, 
+                   colors=['#c0c4cc', '#909399', '#67c23a', '#409eff', '#e6a23c', '#f56c6c', '#ff0000'])
+            plt.title('评论用户等级分布')
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=100)
+            buf.seek(0)
+            plt.close()
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+            self.level_label.setPixmap(pixmap)
+        except Exception as e:
+            logger.error(f"Generate level chart error: {e}")
+            self.level_label.setText(f"图表生成失败")
+
+    def generate_date_chart(self, dates):
+        try:
+            if not dates:
+                self.date_label.setText("无评论时间数据")
+                return
+                
+            import datetime
+            # Convert timestamps to dates
+            date_objs = [datetime.datetime.fromtimestamp(ts).date() for ts in dates]
+            from collections import Counter
+            counts = Counter(date_objs)
+            
+            sorted_dates = sorted(counts.keys())
+            values = [counts[d] for d in sorted_dates]
+            x_labels = [d.strftime("%m-%d") for d in sorted_dates]
+            
+            plt.figure(figsize=(8, 4))
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            
+            plt.plot(x_labels, values, marker='o', linestyle='-', color='#fb7299')
+            plt.title('评论时间趋势')
+            plt.xticks(rotation=45)
+            plt.grid(True, linestyle='--', alpha=0.5)
+            plt.tight_layout()
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=100)
+            buf.seek(0)
+            plt.close()
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+            self.date_label.setPixmap(pixmap)
+        except Exception as e:
+            logger.error(f"Generate date chart error: {e}")
+            self.date_label.setText(f"图表生成失败")
 
     def display_keywords(self, keywords):
         # Clear previous

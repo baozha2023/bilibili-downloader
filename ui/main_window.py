@@ -19,6 +19,7 @@ from ui.tabs.account_tab import AccountTab
 from ui.tabs.settings_tab import SettingsTab
 from ui.tabs.video_edit_tab import VideoEditTab
 from ui.tabs.analysis_tab import AnalysisTab
+from ui.widgets.floating_window import FloatingWindow
 from ui.qt_logger import QtLogHandler
 
 # 配置日志
@@ -33,6 +34,8 @@ class BilibiliDesktop(QMainWindow):
         self.crawler = BilibiliCrawler()
         self.download_history = self.load_download_history()
         
+        self.floating_window = FloatingWindow()
+        
         self.init_ui()
         self.set_style()
         
@@ -41,6 +44,11 @@ class BilibiliDesktop(QMainWindow):
 
     def closeEvent(self, event):
         """关闭窗口事件"""
+        # 移除 QtLogHandler 以避免关闭时出错
+        root_logger = logging.getLogger()
+        if hasattr(self, 'qt_log_handler') and self.qt_log_handler in root_logger.handlers:
+            root_logger.removeHandler(self.qt_log_handler)
+        
         event.accept()
         
     def resource_path(self, relative_path):
@@ -52,7 +60,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v4.7")
+        self.setWindowTitle("bilibiliDownloader v4.8")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -193,7 +201,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用bilibiliDownloader v4.7！")
+        logger.info("欢迎使用bilibiliDownloader v4.8！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
@@ -204,12 +212,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v4.7"
+        version = "v4.8"
         updates = (
-            "1. 番剧: 优化UI布局，新增清空下载历史功能；任务进度显示优化（动态显示视频/音频/合并进度）。\n"
-            "2. 分析: 界面全新升级，白色背景更清爽；图表与布局优化；新增视频分区显示。\n"
-            "3. 播放: 优化实时观看体验，支持自动网页全屏。\n"
-            "4. 核心: 代码深度优化与重构，清理冗余逻辑。\n"
+            "1. 番剧: 新增下载历史查看（含状态、BV号等）；下载进度新增速度与集数显示。\n"
+            "2. 分析: 界面升级，新增评论用户等级分布、评论时间趋势图表；优化布局。\n"
+            "3. 编辑: 视频合并支持按帧截取，精度更高。\n"
+            "4. 交互: 新增桌面悬浮窗，实时显示下载进度与速度（可在设置中开启）。\n"
+            "5. 核心: 优化重试机制，确保设置生效；代码深度优化。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

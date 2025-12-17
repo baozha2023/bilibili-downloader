@@ -307,6 +307,7 @@ class WorkerThread(QThread):
                     if download_result["merge_success"] or (not should_merge):
                         # 如果合并成功或用户选择不合并
                         result_data = {
+                            "bvid": bvid,
                             "title": title, 
                             "download_dir": download_result.get("download_dir", download_dir)
                         }
@@ -339,6 +340,7 @@ class WorkerThread(QThread):
                             return {
                                 "status": "warning", 
                                 "data": {
+                                    "bvid": bvid,
                                     "title": title, 
                                     "download_dir": download_dir,
                                     "video_file": download_result["video_path"],
@@ -360,6 +362,7 @@ class WorkerThread(QThread):
                                 return {
                                     "status": "success", 
                                     "data": {
+                                        "bvid": bvid,
                                         "title": title, 
                                         "download_dir": download_dir,
                                         "merged_file": output_path
@@ -377,6 +380,7 @@ class WorkerThread(QThread):
                                 return {
                                     "status": "success", 
                                     "data": {
+                                        "bvid": bvid,
                                         "title": title, 
                                         "download_dir": download_dir,
                                         "video_file": download_result["video_path"],
@@ -392,6 +396,7 @@ class WorkerThread(QThread):
                             return {
                                 "status": "warning", 
                                 "data": {
+                                    "bvid": bvid,
                                     "title": title, 
                                     "download_dir": download_dir,
                                     "video_file": download_result["video_path"],
@@ -410,6 +415,13 @@ class WorkerThread(QThread):
                         "message": "下载已取消",
                         "execution_time": time.time() - start_time
                     }
+                    
+                # 下载失败，准备重试
+                else:
+                    if retry < self.max_retries - 1:
+                        self.update_signal.emit({"status": "warning", "message": f"下载失败: {download_result.get('message')}，正在重试 ({retry+1}/{self.max_retries})..."})
+                        time.sleep(self.retry_delay)
+                        continue
             except Exception as e:
                 if retry < self.max_retries - 1:
                     self.update_signal.emit({"status": "warning", "message": f"下载出错: {str(e)}，重试中 ({retry+1}/{self.max_retries})..."})
@@ -421,7 +433,12 @@ class WorkerThread(QThread):
                     return {
                         "status": "error", 
                         "message": f"下载失败: {str(e)}",
-                        "error_traceback": error_traceback
+                        "error_traceback": error_traceback,
+                        # Even in error, try to return basic info if available
+                        "data": {
+                            "bvid": bvid,
+                            "title": title
+                        }
                     }
         
         return {"status": "error", "message": "下载失败，请稍后重试"}

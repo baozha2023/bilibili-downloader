@@ -262,6 +262,11 @@ class SettingsTab(QWidget):
         self.download_comments_check.setStyleSheet(checkbox_style)
         checkbox_layout.addWidget(self.download_comments_check, 2, 0)
         
+        self.floating_window_check = QCheckBox("显示桌面悬浮窗")
+        self.floating_window_check.setStyleSheet(checkbox_style)
+        self.floating_window_check.stateChanged.connect(self.toggle_floating_window)
+        checkbox_layout.addWidget(self.floating_window_check, 2, 1)
+        
         download_card.add_layout(checkbox_layout)
         
         # 分割线
@@ -391,6 +396,11 @@ class SettingsTab(QWidget):
         self.main_window.log_to_console("系统设置已保存", "success")
         BilibiliMessageBox.information(self, "设置保存", "设置已保存")
 
+    def toggle_floating_window(self, state):
+        visible = state == Qt.Checked
+        if hasattr(self.main_window, 'floating_window'):
+            self.main_window.floating_window.set_visibility(visible)
+
     def save_config_to_file(self):
         config = {
             'data_dir': self.data_dir_input.text().strip(),
@@ -400,6 +410,7 @@ class SettingsTab(QWidget):
             'remove_watermark': self.remove_watermark_check.isChecked(),
             'download_danmaku': self.download_danmaku_check.isChecked(),
             'download_comments': self.download_comments_check.isChecked(),
+            'floating_window': self.floating_window_check.isChecked(),
             'complete_action': self.complete_action.currentIndex(),
             'video_quality': self.quality_combo.currentText(),
             'video_codec': self.codec_combo.currentText(),
@@ -441,6 +452,10 @@ class SettingsTab(QWidget):
                     self.download_danmaku_check.setChecked(config['download_danmaku'])
                 if 'download_comments' in config:
                     self.download_comments_check.setChecked(config['download_comments'])
+                if 'floating_window' in config:
+                    self.floating_window_check.setChecked(config['floating_window'])
+                    # 触发状态更新
+                    self.toggle_floating_window(Qt.Checked if config['floating_window'] else Qt.Unchecked)
                 if 'complete_action' in config:
                     self.complete_action.setCurrentIndex(config['complete_action'])
                 if 'video_quality' in config:

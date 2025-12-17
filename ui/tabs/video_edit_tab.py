@@ -10,10 +10,11 @@ from ui.widgets.custom_combobox import NoScrollComboBox
 class MergeItemWidget(QWidget):
     removed = pyqtSignal(QWidget)
     
-    def __init__(self, path, duration=0):
+    def __init__(self, path, duration=0, fps=30):
         super().__init__()
         self.path = path
         self.duration = duration
+        self.fps = fps
         self.init_ui()
         
     def init_ui(self):
@@ -60,6 +61,24 @@ class MergeItemWidget(QWidget):
         range_layout.setSpacing(8)
         
         range_layout.addWidget(QLabel("截取:"))
+        
+        # Unit selection
+        self.unit_combo = NoScrollComboBox()
+        self.unit_combo.addItems(["秒", "帧"])
+        self.unit_combo.setFixedWidth(60)
+        self.unit_combo.currentIndexChanged.connect(self.update_inputs)
+        range_layout.addWidget(self.unit_combo)
+        
+        # Input Stack
+        self.input_stack = QStackedWidget()
+        self.input_stack.setFixedHeight(30)
+        
+        # 1. Time Mode
+        self.time_widget = QWidget()
+        time_layout = QHBoxLayout(self.time_widget)
+        time_layout.setContentsMargins(0, 0, 0, 0)
+        time_layout.setSpacing(5)
+        
         self.start_spin = QDoubleSpinBox()
         self.start_spin.setRange(0, 99999)
         self.start_spin.setValue(0)
@@ -67,9 +86,10 @@ class MergeItemWidget(QWidget):
         self.start_spin.setSuffix("s")
         self.start_spin.setFixedWidth(80)
         self.style_spinbox(self.start_spin)
-        range_layout.addWidget(self.start_spin)
+        time_layout.addWidget(self.start_spin)
         
-        range_layout.addWidget(QLabel("-"))
+        time_layout.addWidget(QLabel("-"))
+        
         self.end_spin = QDoubleSpinBox()
         self.end_spin.setRange(0, 99999)
         self.end_spin.setValue(self.duration if self.duration > 0 else 0)
@@ -77,7 +97,35 @@ class MergeItemWidget(QWidget):
         self.end_spin.setSuffix("s")
         self.end_spin.setFixedWidth(80)
         self.style_spinbox(self.end_spin)
-        range_layout.addWidget(self.end_spin)
+        time_layout.addWidget(self.end_spin)
+        
+        # 2. Frame Mode
+        self.frame_widget = QWidget()
+        frame_layout = QHBoxLayout(self.frame_widget)
+        frame_layout.setContentsMargins(0, 0, 0, 0)
+        frame_layout.setSpacing(5)
+        
+        self.start_frame = QSpinBox()
+        self.start_frame.setRange(0, 999999)
+        self.start_frame.setValue(0)
+        self.start_frame.setFixedWidth(80)
+        self.style_spinbox(self.start_frame)
+        frame_layout.addWidget(self.start_frame)
+        
+        frame_layout.addWidget(QLabel("-"))
+        
+        total_frames = int(self.duration * self.fps) if self.fps > 0 else 0
+        self.end_frame = QSpinBox()
+        self.end_frame.setRange(0, 999999)
+        self.end_frame.setValue(total_frames)
+        self.end_frame.setFixedWidth(80)
+        self.style_spinbox(self.end_frame)
+        frame_layout.addWidget(self.end_frame)
+        
+        self.input_stack.addWidget(self.time_widget)
+        self.input_stack.addWidget(self.frame_widget)
+        
+        range_layout.addWidget(self.input_stack)
         
         layout.addWidget(range_group)
         
@@ -115,6 +163,20 @@ class MergeItemWidget(QWidget):
                 background-color: #fffbfc;
             }
         """)
+
+    def update_inputs(self, index):
+        self.input_stack.setCurrentIndex(index)
+        
+    def get_range(self):
+        if self.input_stack.currentIndex() == 0: # Time
+             return self.start_spin.value(), self.end_spin.value()
+        else: # Frame
+             start_f = self.start_frame.value()
+             end_f = self.end_frame.value()
+             # Convert to seconds
+             start = start_f / self.fps if self.fps > 0 else 0
+             end = end_f / self.fps if self.fps > 0 else 0
+             return start, end
 
     def style_spinbox(self, spin):
         spin.setStyleSheet("""
@@ -995,11 +1057,12 @@ class VideoEditTab(QWidget):
             for f in files:
                 # Get duration
                 duration = self.processor.get_video_duration(f)
+                fps = self.processor.get_video_fps(f)
                 
                 item = QListWidgetItem(self.merge_list)
                 item.setSizeHint(QSize(0, 95)) # Increased height for new layout
                 
-                widget = MergeItemWidget(f, duration)
+                widget = MergeItemWidget(f, duration, fps)
                 widget.removed.connect(lambda w: self.remove_merge_item(w))
                 self.merge_list.setItemWidget(item, widget)
                 
@@ -1033,11 +1096,12 @@ class VideoEditTab(QWidget):
             item = self.merge_list.item(i)
             widget = self.merge_list.itemWidget(item)
             if widget:
+                start, end = widget.get_range()
                 file_list.append({
                     'path': widget.path,
-                    'start': widget.start_spin.value(),
-                    'end': widget.end_spin.value(),
-                    'unit': 'time'
+                    'start': start,
+                    'end': end,
+                    'unit': 'time' # Always convert to time for backend
                 })
         
         # Output path
