@@ -192,6 +192,68 @@ class MergeItemWidget(QWidget):
             }
         """)
 
+class VideoFileWidget(QWidget):
+    def __init__(self, path, duration=0, size=0):
+        super().__init__()
+        self.path = path
+        self.duration = duration
+        self.size = size
+        self.init_ui()
+        
+    def init_ui(self):
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(15)
+        
+        # Left colored strip
+        strip = QFrame()
+        strip.setFixedWidth(4)
+        strip.setStyleSheet("background-color: #fb7299; border-radius: 2px;")
+        layout.addWidget(strip)
+        
+        # Icon
+        icon_label = QLabel("🎬")
+        icon_label.setStyleSheet("font-size: 24px; background-color: #f0f0f0; border-radius: 4px; padding: 5px;")
+        icon_label.setAlignment(Qt.AlignCenter)
+        icon_label.setFixedSize(40, 40)
+        layout.addWidget(icon_label)
+        
+        # Info Layout
+        info_layout = QVBoxLayout()
+        info_layout.setSpacing(5)
+        
+        # Filename
+        name_label = QLabel(os.path.basename(self.path))
+        name_label.setStyleSheet("font-size: 15px; font-weight: bold; color: #333;")
+        name_label.setWordWrap(True)
+        info_layout.addWidget(name_label)
+        
+        # Details
+        details_text = []
+        if self.duration > 0:
+            details_text.append(f"时长: {self.duration}s")
+        if self.size > 0:
+            details_text.append(f"大小: {self.size:.2f}MB")
+            
+        det_label = QLabel(" | ".join(details_text))
+        det_label.setStyleSheet("font-size: 12px; color: #888;")
+        info_layout.addWidget(det_label)
+        
+        layout.addLayout(info_layout, 1)
+        
+        # Style
+        self.setStyleSheet("""
+            VideoFileWidget {
+                background-color: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+            }
+            VideoFileWidget:hover {
+                border-color: #fb7299;
+                background-color: #fffbfc;
+            }
+        """)
+
 class Worker(QThread):
     progress_signal = pyqtSignal(int, int)
     finished_signal = pyqtSignal(bool, str)
@@ -916,44 +978,41 @@ class VideoEditTab(QWidget):
         
     def set_single_file(self, file_path, list_widget, btn):
         list_widget.clear()
-        # Create item with filename as text, but store full path
-        item = QListWidgetItem(os.path.basename(file_path))
-        # Store full path in UserRole or just keep it as text?
-        # The previous implementation was: list_widget.addItem(file_path)
-        # But this shows full path which might be long.
-        # However, start_conversion reads item(0).text() as file path.
-        # So if we change text to basename, we must store full path in data.
         
-        # Let's check how it's used.
-        # start_conversion: file_path = self.convert_file_list.item(0).text()
-        # start_cut: file_path = self.cut_file_list.item(0).text()
-        # start_compress: file_path = self.compress_file_list.item(0).text()
+        # Get video info
+        duration = 0
+        size = 0
+        try:
+            duration = self.processor.get_video_duration(file_path)
+            size = os.path.getsize(file_path) / (1024 * 1024)
+        except Exception as e:
+            self.main_window.log_to_console(f"获取视频信息失败: {str(e)}", "warning")
         
-        # So we MUST store the full path in text OR update all usage sites.
-        # To fix "not showing video name", wait, previous code was:
-        # list_widget.addItem(file_path)
-        # This should show the full path. Maybe the user means it's empty?
+        item = QListWidgetItem(list_widget)
+        item.setSizeHint(QSize(0, 80)) 
         
-        # In reset_list:
-        # item = QListWidgetItem(text) ... list_widget.addItem(item)
-        # In set_single_file:
-        # list_widget.clear()
-        # list_widget.addItem(file_path)
+        # Create custom widget
+        widget = VideoFileWidget(file_path, duration, size)
+        list_widget.setItemWidget(item, widget)
         
-        # If file_path is valid, it should show up.
-        # Maybe the font color is white on white? Or the item height is too small?
-        # The user says "不显示视频名", maybe they mean only the name, not full path?
-        # Or maybe nothing is shown?
-        
-        # Let's try to set item text to basename, and store full path in UserRole.
-        # And update get methods.
-        
+        # Store path in item data for easy access
         item.setData(Qt.UserRole, file_path)
-        item.setTextAlignment(Qt.AlignCenter)
-        list_widget.addItem(item)
         
         if btn:
             btn.setEnabled(True)
+            
+        # If this is cut page, update duration label and inputs
+        if list_widget == self.cut_file_list:
+             self.duration_label.setText(f"总时长: {duration}s")
+             self.end_time_spin.setValue(duration)
+             
+             try:
+                 fps = self.processor.get_video_fps(file_path)
+                 total_frames = int(duration * fps)
+                 self.end_frame_spin.setValue(total_frames)
+             except:
+                 pass
+
         return file_path
         
     def select_single_file(self, list_widget, btn, callback=None):

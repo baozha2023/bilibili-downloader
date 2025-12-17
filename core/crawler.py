@@ -151,21 +151,10 @@ class BilibiliCrawler:
         # 3. 下载视频流
         video_url = download_info['video_url']
         video_path = os.path.join(video_dir, f"{safe_title}_video.mp4")
-        print("开始下载视频流...")
         
-        # 检查停止信号
-        if stop_event and stop_event.is_set():
-            return {"download_success": False, "message": "下载已取消"}
-            
-        video_success = self.downloader.download_file(video_url, video_path, f"{safe_title} - 视频", video_progress_callback, stop_event=stop_event)
-        
-        # 如果被中断
-        if not video_success and stop_event and stop_event.is_set():
-            # 清理文件
-            if os.path.exists(video_path):
-                try: os.remove(video_path)
-                except: pass
-            return {"download_success": False, "message": "下载已取消"}
+        video_success = self._download_stream(video_url, video_path, f"{safe_title} - 视频", video_progress_callback, stop_event)
+        if not video_success:
+             return {"download_success": False, "message": "视频流下载失败或已取消"}
 
         # 4. 下载音频流
         audio_url = download_info.get('audio_url')
@@ -173,77 +162,25 @@ class BilibiliCrawler:
         audio_success = True
         if audio_url:
             audio_path = os.path.join(video_dir, f"{safe_title}_audio.m4a")
-            print("开始下载音频流...")
-            audio_success = self.downloader.download_file(audio_url, audio_path, f"{safe_title} - 音频", audio_progress_callback, stop_event=stop_event)
-            
-            # 如果被中断
-            if not audio_success and stop_event and stop_event.is_set():
-                # 清理文件
+            audio_success = self._download_stream(audio_url, audio_path, f"{safe_title} - 音频", audio_progress_callback, stop_event)
+            if not audio_success:
+                # Cleanup video if audio failed
                 if os.path.exists(video_path):
                     try: os.remove(video_path)
                     except: pass
-                if os.path.exists(audio_path):
-                    try: os.remove(audio_path)
-                    except: pass
-                return {"download_success": False, "message": "下载已取消"}
+                return {"download_success": False, "message": "音频流下载失败或已取消"}
 
-        if not video_success or not audio_success:
-            return {"download_success": False, "message": "文件下载失败"}
-            
         # 5. 保存元数据 (Info, Danmaku, Comments)
         cid = download_info['video_info'].get('cid')
         aid = download_info['video_info'].get('aid')
         
         if download_danmaku and cid:
-            # 检查停止信号
-            if stop_event and stop_event.is_set():
+            if not self._save_danmaku(cid, video_dir, safe_title, danmaku_progress_callback, stop_event):
                  return {"download_success": False, "message": "下载已取消"}
-
-            print("正在获取视频弹幕...")
-            if danmaku_progress_callback: danmaku_progress_callback(0, 100)
-            danmaku_list = self.get_video_danmaku(cid)
-            if danmaku_list:
-                danmaku_path = os.path.join(video_dir, f"{safe_title}_danmaku.json")
-                self.save_to_json(danmaku_list, f"{safe_title}_danmaku") # save_to_json会加.json后缀并存在data_dir
-                # 为了保持一致性，我们手动保存到video_dir
-                try:
-                    import json
-                    with open(danmaku_path, 'w', encoding='utf-8') as f:
-                        json.dump(danmaku_list, f, ensure_ascii=False, indent=2)
-                    print(f"弹幕已保存到: {danmaku_path}")
-                except Exception as e:
-                    logger.error(f"保存弹幕失败: {e}")
-            if danmaku_progress_callback: danmaku_progress_callback(100, 100)
             
         if download_comments and aid:
-            # 检查停止信号
-            if stop_event and stop_event.is_set():
+            if not self._save_comments(aid, video_dir, safe_title, comments_progress_callback, stop_event):
                  return {"download_success": False, "message": "下载已取消"}
-
-            print("正在获取视频评论...")
-            if comments_progress_callback: comments_progress_callback(0, 100)
-            # 获取前5页
-            all_comments = []
-            for page in range(1, 6):
-                # 检查停止信号
-                if stop_event and stop_event.is_set():
-                    return {"download_success": False, "message": "下载已取消"}
-                    
-                comments = self.get_video_comments(aid, page)
-                if comments: all_comments.extend(comments)
-                else: break
-                if comments_progress_callback: comments_progress_callback(page*20, 100)
-                
-            if all_comments:
-                comments_path = os.path.join(video_dir, f"{safe_title}_comments.json")
-                try:
-                    import json
-                    with open(comments_path, 'w', encoding='utf-8') as f:
-                        json.dump(all_comments, f, ensure_ascii=False, indent=2)
-                    print(f"评论已保存到: {comments_path}")
-                except Exception as e:
-                    logger.error(f"保存评论失败: {e}")
-            if comments_progress_callback: comments_progress_callback(100, 100)
         
         # 6. 合并/处理
         merge_success = False
@@ -280,6 +217,59 @@ class BilibiliCrawler:
             "download_dir": video_dir,
             "ffmpeg_available": self.processor.ffmpeg_available
         }
+
+    def _download_stream(self, url, path, desc, progress_callback, stop_event):
+        if stop_event and stop_event.is_set(): return False
+        success = self.downloader.download_file(url, path, desc, progress_callback, stop_event=stop_event)
+        if not success and stop_event and stop_event.is_set():
+             if os.path.exists(path):
+                try: os.remove(path)
+                except: pass
+        return success
+
+    def _save_danmaku(self, cid, video_dir, safe_title, progress_callback, stop_event):
+        if stop_event and stop_event.is_set(): return False
+        
+        print("正在获取视频弹幕...")
+        if progress_callback: progress_callback(0, 100)
+        danmaku_list = self.get_video_danmaku(cid)
+        if danmaku_list:
+            danmaku_path = os.path.join(video_dir, f"{safe_title}_danmaku.json")
+            try:
+                import json
+                with open(danmaku_path, 'w', encoding='utf-8') as f:
+                    json.dump(danmaku_list, f, ensure_ascii=False, indent=2)
+                print(f"弹幕已保存到: {danmaku_path}")
+            except Exception as e:
+                logger.error(f"保存弹幕失败: {e}")
+        if progress_callback: progress_callback(100, 100)
+        return True
+
+    def _save_comments(self, aid, video_dir, safe_title, progress_callback, stop_event):
+        if stop_event and stop_event.is_set(): return False
+        
+        print("正在获取视频评论...")
+        if progress_callback: progress_callback(0, 100)
+        
+        all_comments = []
+        for page in range(1, 6):
+            if stop_event and stop_event.is_set(): return False
+            comments = self.get_video_comments(aid, page)
+            if comments: all_comments.extend(comments)
+            else: break
+            if progress_callback: progress_callback(page*20, 100)
+            
+        if all_comments:
+            comments_path = os.path.join(video_dir, f"{safe_title}_comments.json")
+            try:
+                import json
+                with open(comments_path, 'w', encoding='utf-8') as f:
+                    json.dump(all_comments, f, ensure_ascii=False, indent=2)
+                print(f"评论已保存到: {comments_path}")
+            except Exception as e:
+                logger.error(f"保存评论失败: {e}")
+        if progress_callback: progress_callback(100, 100)
+        return True
 
     # 兼容旧方法名
     def download_file(self, *args, **kwargs):

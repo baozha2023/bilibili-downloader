@@ -19,6 +19,9 @@ class FloatingWindow(QWidget):
         self.download_pixmap = None    # Downloading image
         self.rest1_pixmap = None       # Idle image 1
         self.rest2_pixmap = None       # Idle image 2
+        self.rest3_pixmap = None       # Idle image 3
+        self.rest4_pixmap = None       # Idle image 4
+        self.drag_pixmap = None        # Drag image
         self.current_pixmap = None     # Currently displayed image
         
         self.load_resources()
@@ -71,6 +74,9 @@ class FloatingWindow(QWidget):
              
         self.rest1_pixmap = load_and_scale("floating_window_rest1.png")
         self.rest2_pixmap = load_and_scale("floating_window_rest2.png")
+        self.rest3_pixmap = load_and_scale("floating_window_rest3.png")
+        self.rest4_pixmap = load_and_scale("floating_window_rest4.png")
+        self.drag_pixmap = load_and_scale("floating_window_drag.png")
         
         # Fallback for rest images if not found, try to use download image or old idle image
         if not self.rest1_pixmap:
@@ -82,13 +88,17 @@ class FloatingWindow(QWidget):
 
     def switch_idle_image(self):
         """Randomly switch between rest images if in idle mode"""
-        if not self.is_downloading:
+        if not self.is_downloading and not self.is_dragging:
             options = []
             if self.rest1_pixmap: options.append(self.rest1_pixmap)
             if self.rest2_pixmap: options.append(self.rest2_pixmap)
+            if self.rest3_pixmap: options.append(self.rest3_pixmap)
+            if self.rest4_pixmap: options.append(self.rest4_pixmap)
             
             if options:
                 self.current_pixmap = random.choice(options)
+                # Random interval between 5s and 15s
+                self.idle_timer.setInterval(random.randint(5000, 15000))
             else:
                 self.current_pixmap = self.download_pixmap
             self.update()
@@ -138,6 +148,13 @@ class FloatingWindow(QWidget):
         if event.button() == Qt.LeftButton:
             self.is_dragging = True
             self.drag_position = event.globalPos() - self.frameGeometry().topLeft()
+            
+            # Show drag image
+            if self.drag_pixmap:
+                self.current_pixmap = self.drag_pixmap
+                self.idle_timer.stop()
+                self.update()
+                
             event.accept()
 
     def mouseMoveEvent(self, event):
@@ -147,6 +164,14 @@ class FloatingWindow(QWidget):
 
     def mouseReleaseEvent(self, event):
         self.is_dragging = False
+        
+        # Resume idle
+        if not self.is_downloading:
+            self.switch_idle_image()
+            self.idle_timer.start()
+        else:
+            self.current_pixmap = self.download_pixmap
+            self.update()
         
     def enterEvent(self, event):
         self.target_scale = 1.1

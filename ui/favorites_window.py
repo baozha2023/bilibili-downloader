@@ -414,7 +414,17 @@ class FavoritesWindow(QDialog):
         copy_bv_action.triggered.connect(lambda: QApplication.clipboard().setText(bvid))
         menu.addAction(copy_bv_action)
         
+        analyze_action = QAction("📊 视频分析", self)
+        analyze_action.triggered.connect(lambda: self.analyze_video(bvid))
+        menu.addAction(analyze_action)
+        
         menu.exec_(self.table.viewport().mapToGlobal(pos))
+        
+    def analyze_video(self, bvid):
+        self.main_window.tabs.setCurrentIndex(3)
+        analysis_tab = self.main_window.analysis_tab
+        analysis_tab.bvid_input.setText(bvid)
+        analysis_tab.start_analysis()
         
     def watch_live(self, bvid, title):
         cookies = self.crawler.cookies

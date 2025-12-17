@@ -35,11 +35,13 @@ class DownloadTab(QWidget):
         input_layout.addWidget(self.bvid_input)
         
         self.download_btn = QPushButton("开始下载")
+        self.download_btn.setCursor(Qt.PointingHandCursor)
         self.download_btn.clicked.connect(lambda: self.download_video())
         self.download_btn.setStyleSheet("background-color: #fb7299; color: white; font-weight: bold; padding: 5px 15px; font-size: 26px;")
         input_layout.addWidget(self.download_btn)
         
         self.cancel_btn = QPushButton("取消")
+        self.cancel_btn.setCursor(Qt.PointingHandCursor)
         self.cancel_btn.clicked.connect(self.cancel_download)
         self.cancel_btn.setEnabled(False)
         self.cancel_btn.setStyleSheet("background-color: #999; color: white; padding: 5px 15px; font-size: 26px;")
@@ -138,11 +140,13 @@ class DownloadTab(QWidget):
         history_layout.addStretch()
         
         history_btn = QPushButton("查看下载历史")
+        history_btn.setCursor(Qt.PointingHandCursor)
         history_btn.clicked.connect(self.main_window.show_download_history)
         history_btn.setStyleSheet("font-size: 20px;")
         history_layout.addWidget(history_btn)
         
         open_dir_btn = QPushButton("打开下载目录")
+        open_dir_btn.setCursor(Qt.PointingHandCursor)
         open_dir_btn.clicked.connect(lambda: self.main_window.open_download_dir())
         open_dir_btn.setStyleSheet("font-size: 20px;")
         history_layout.addWidget(open_dir_btn)

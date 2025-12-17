@@ -34,6 +34,7 @@ class AnalysisWorker(QThread):
             comments = []
             comment_dates = []
             user_levels = []
+            locations = []
             
             if aid:
                 replies = self.crawler.api.get_video_comments(aid)
@@ -51,6 +52,22 @@ class AnalysisWorker(QThread):
                         # Extract level
                         level = r.get('member', {}).get('level_info', {}).get('current_level', 0)
                         user_levels.append(level)
+                        
+                        # Extract location
+                        try:
+                            loc = r.get('reply_control', {}).get('location', '')
+                            if loc:
+                                locations.append(loc.replace('IP属地：', ''))
+                        except: pass
+            
+            # 3. Get Video Tags (if available)
+            video_tags = []
+            try:
+                # API might return 'tag' as list of dicts or we might need another call
+                # But let's check if it's in data
+                pass 
+                # Note: Standard view API usually returns tags in 'tag' list
+            except: pass
             
             # 2.5 Get Danmaku
             danmaku = []
@@ -104,6 +121,7 @@ class AnalysisWorker(QThread):
                 'comments': comments,
                 'comment_dates': comment_dates,
                 'user_levels': user_levels,
+                'locations': locations,
                 'danmaku': danmaku,
                 'cover_data': cover_data,
                 'sentiment': sentiment_score,
@@ -167,6 +185,30 @@ class AnalysisTab(QWidget):
         self.analyze_btn.clicked.connect(self.start_analysis)
         input_layout.addWidget(self.analyze_btn)
         
+        # Export Button
+        self.export_btn = QPushButton("导出数据")
+        self.export_btn.setCursor(Qt.PointingHandCursor)
+        self.export_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #67c23a;
+                color: white;
+                border-radius: 5px;
+                padding: 10px 20px;
+                font-weight: bold;
+                font-size: 16px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #85ce61;
+            }
+            QPushButton:disabled {
+                background-color: #c0c4cc;
+            }
+        """)
+        self.export_btn.clicked.connect(self.export_analysis)
+        self.export_btn.setEnabled(False)
+        input_layout.addWidget(self.export_btn)
+        
         layout.addLayout(input_layout)
         
         # Content Area (Scrollable)
@@ -226,35 +268,46 @@ class AnalysisTab(QWidget):
         # Row 1: Stats & Ratio
         self.stats_label = QLabel()
         self.stats_label.setAlignment(Qt.AlignCenter)
-        self.stats_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.stats_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.stats_label, 0, 0)
         
         self.ratio_label = QLabel()
         self.ratio_label.setAlignment(Qt.AlignCenter)
-        self.ratio_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.ratio_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.ratio_label, 0, 1)
         
         # Row 2: Danmaku & Date
         self.danmaku_label = QLabel()
         self.danmaku_label.setAlignment(Qt.AlignCenter)
-        self.danmaku_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.danmaku_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.danmaku_label, 1, 0)
         
         self.date_label = QLabel()
         self.date_label.setAlignment(Qt.AlignCenter)
-        self.date_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.date_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.date_label, 1, 1)
         
         # Row 3: Level & Sentiment
         self.level_label = QLabel()
         self.level_label.setAlignment(Qt.AlignCenter)
-        self.level_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.level_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.level_label, 2, 0)
         
         self.sentiment_label = QLabel()
         self.sentiment_label.setAlignment(Qt.AlignCenter)
-        self.sentiment_label.setStyleSheet("background-color: #f9f9f9; border-radius: 8px; padding: 10px;")
+        self.sentiment_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.sentiment_label, 2, 1)
+
+        # Row 4: Location & Tags
+        self.location_label = QLabel()
+        self.location_label.setAlignment(Qt.AlignCenter)
+        self.location_label.setStyleSheet("background-color: transparent; padding: 10px;")
+        self.charts_layout.addWidget(self.location_label, 3, 0)
+        
+        self.tags_label = QLabel()
+        self.tags_label.setAlignment(Qt.AlignCenter)
+        self.tags_label.setStyleSheet("background-color: transparent; padding: 10px;")
+        self.charts_layout.addWidget(self.tags_label, 3, 1)
         
         self.charts_card.add_layout(self.charts_layout)
         self.charts_card.hide()
@@ -304,7 +357,9 @@ class AnalysisTab(QWidget):
         if error:
             BilibiliMessageBox.error(self, "分析失败", error)
             return
-            
+        
+        self.last_result = result
+        self.export_btn.setEnabled(True)
         self.show_results(result)
 
     def show_results(self, result):
@@ -353,6 +408,11 @@ class AnalysisTab(QWidget):
         self.generate_level_chart(result.get('user_levels', []))
         sentiment_score = result.get('sentiment', 0.5)
         self.generate_sentiment_chart(sentiment_score)
+        
+        # Location & Tags
+        self.generate_location_chart(result.get('locations', []))
+        # Display tags or placeholder
+        self.tags_label.setText("暂无更多标签数据")
         
         self.charts_card.show()
         
@@ -685,3 +745,63 @@ class AnalysisTab(QWidget):
         except Exception as e:
             logger.error(f"Generate word cloud error: {e}")
             self.cloud_label.setText(f"词云生成失败: {e}")
+
+    def generate_location_chart(self, locations):
+        try:
+            if not locations:
+                self.location_label.setText("无IP属地数据")
+                return
+                
+            from collections import Counter
+            counts = Counter(locations)
+            # Top 10
+            top_locs = counts.most_common(10)
+            labels = [l[0] for l in top_locs]
+            values = [l[1] for l in top_locs]
+            
+            plt.figure(figsize=(6, 4))
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            
+            # Horizontal Bar
+            y_pos = range(len(labels))
+            plt.barh(y_pos, values, color='#409eff')
+            plt.yticks(y_pos, labels)
+            plt.title('评论用户IP属地分布 (Top 10)')
+            plt.xlabel('用户数量')
+            plt.grid(axis='x', linestyle='--', alpha=0.5)
+            plt.tight_layout()
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=100)
+            buf.seek(0)
+            plt.close()
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+            self.location_label.setPixmap(pixmap)
+        except Exception as e:
+            logger.error(f"Generate location chart error: {e}")
+            self.location_label.setText("图表生成失败")
+
+    def export_analysis(self):
+        if not hasattr(self, 'last_result'):
+            return
+            
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "导出分析数据", "video_analysis.json", "JSON Files (*.json);;Text Files (*.txt)"
+        )
+        
+        if file_path:
+            try:
+                import json
+                # Filter non-serializable data (like bytes)
+                data = self.last_result.copy()
+                if 'cover_data' in data:
+                    del data['cover_data']
+                
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, ensure_ascii=False, indent=2)
+                    
+                BilibiliMessageBox.information(self, "成功", f"数据已导出到: {file_path}")
+            except Exception as e:
+                BilibiliMessageBox.error(self, "错误", f"导出失败: {e}")

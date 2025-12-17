@@ -197,10 +197,12 @@ class BangumiTab(QWidget):
         # Selection Controls
         sel_layout = QHBoxLayout()
         self.select_all_btn = QPushButton("全选")
+        self.select_all_btn.setCursor(Qt.PointingHandCursor)
         self.select_all_btn.clicked.connect(self.select_all)
         sel_layout.addWidget(self.select_all_btn)
         
         self.deselect_all_btn = QPushButton("取消全选")
+        self.deselect_all_btn.setCursor(Qt.PointingHandCursor)
         self.deselect_all_btn.clicked.connect(self.deselect_all)
         sel_layout.addWidget(self.deselect_all_btn)
         
