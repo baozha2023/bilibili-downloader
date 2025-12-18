@@ -5,6 +5,8 @@ from PyQt5.QtGui import QCursor, QPixmap
 from ui.workers import WorkerThread
 from ui.widgets.video_player_window import VideoPlayerWindow
 
+from ui.styles import UIStyles
+
 class PopularTab(QWidget):
     def __init__(self, main_window):
         super().__init__()
@@ -33,26 +35,7 @@ class PopularTab(QWidget):
         self.popular_btn = QPushButton("获取热门视频")
         self.popular_btn.clicked.connect(self.get_popular_videos)
         self.popular_btn.setCursor(Qt.PointingHandCursor)
-        self.popular_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #fb7299;
-                color: white;
-                border-radius: 5px;
-                font-size: 20px;
-                font-weight: bold;
-                padding: 8px 20px;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #fc8bab;
-            }
-            QPushButton:pressed {
-                background-color: #e45c84;
-            }
-            QPushButton:disabled {
-                background-color: #cccccc;
-            }
-        """)
+        self.popular_btn.setStyleSheet(UIStyles.POPULAR_BTN)
         control_layout.addWidget(self.popular_btn)
         
         control_layout.addStretch()

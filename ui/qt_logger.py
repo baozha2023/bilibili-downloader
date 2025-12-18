@@ -13,6 +13,8 @@ class QtLogHandler(logging.Handler, QObject):
 
     def emit(self, record):
         try:
+            # Check if object is still alive (PyQt5)
+            # This is a bit tricky in pure Python, but we can catch the specific runtime error
             msg = self.format(record)
             level = record.levelname.lower()
             if level == 'critical':
@@ -20,5 +22,11 @@ class QtLogHandler(logging.Handler, QObject):
             
             # Avoid infinite loop if logging happens inside log_signal handler
             self.log_signal.emit(msg, level)
+        except RuntimeError as e:
+            if "wrapped C/C++ object" in str(e):
+                # Object is deleted, stop logging
+                pass
+            else:
+                self.handleError(record)
         except Exception:
             self.handleError(record)

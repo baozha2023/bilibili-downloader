@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 bilibiliDownloader主程序入口
-v4.7
+v4.9
 """
 
 import ctypes
@@ -39,75 +39,14 @@ def start_gui():
 
 def start_cli(args):
     """启动命令行界面"""
-    crawler = BilibiliCrawler()
-    
-    if args.popular:
-        # 爬取热门视频
-        pages = args.pages or 3
-        logger.info(f"正在爬取热门视频，页数：{pages}")
-        crawler.crawl_popular_videos(pages)
-    
-    elif args.video:
-        # 获取视频信息
-        bvid = args.video
-        logger.info(f"正在获取视频信息：{bvid}")
-        crawler.crawl_video_details(bvid)
-    
-    elif args.download:
-        # 下载视频
-        bvid = args.download
-        logger.info(f"正在下载视频：{bvid}")
-        crawler.download_video(bvid)
-        print(f"\n下载目录: {os.path.abspath(crawler.download_dir)}")
-    
-    else:
-        # 如果没有指定参数，则启动交互式命令行
-        run_interactive_cli()
-
-def run_interactive_cli():
-    """运行交互式命令行界面"""
-    crawler = BilibiliCrawler()
-    
-    while True:
-        print("\nbilibiliDownloader v4.7 - 命令行模式")
-        print("1. 爬取热门视频")
-        print("2. 爬取指定视频详情")
-        print("3. 下载视频")
-        print("0. 退出")
-        
-        choice = input("请选择功能 (0-3): ")
-        
-        if choice == '1':
-            try:
-                val = input("请输入要爬取的页数 (默认3页): ")
-                pages = int(val) if val else 3
-                crawler.crawl_popular_videos(pages)
-            except ValueError:
-                print("输入无效，使用默认值3")
-                crawler.crawl_popular_videos(3)
-        
-        elif choice == '2':
-            bvid = input("请输入视频BV号 (例如: BV1xx411c7mD): ")
-            if bvid:
-                crawler.crawl_video_details(bvid)
-        
-        elif choice == '3':
-            bvid = input("请输入要下载的视频BV号 (例如: BV1xx411c7mD): ")
-            if bvid:
-                crawler.download_video(bvid)
-                print(f"\n下载目录: {os.path.abspath(crawler.download_dir)}")
-        
-        elif choice == '0':
-            print("感谢使用，再见！")
-            break
-        
-        else:
-            print("无效的选择，请重新输入")
+    from core.cli import CliHandler
+    cli = CliHandler()
+    cli.handle_args(args)
 
 def main():
     """主函数"""
     # 创建命令行参数解析器
-    parser = argparse.ArgumentParser(description='bilibiliDownloader v4.7')
+    parser = argparse.ArgumentParser(description='bilibiliDownloader v4.9')
     parser.add_argument('-g', '--gui', action='store_true', 
                         help='启动图形用户界面')
     parser.add_argument('-p', '--popular', action='store_true', 

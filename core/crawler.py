@@ -120,16 +120,13 @@ class BilibiliCrawler:
         
         # 1. 获取下载链接
         print(f"正在获取视频 {bvid} 的下载链接 (画质: {video_quality}, 编码: {video_codec})...")
-        
-        # 检查停止信号
-        if stop_event and stop_event.is_set():
-            return {"download_success": False, "message": "下载已取消"}
+        if self._check_stop(stop_event): return self._get_cancel_result()
             
         download_info = self.api.get_video_download_url(bvid, video_quality, video_codec, audio_quality)
         if not download_info:
             return {"download_success": False, "message": "无法获取下载地址"}
             
-        # 2. 准备目录
+        # 2. 准备目录和路径
         title = download_info['title']
         safe_title = re.sub(r'[\\/:*?"<>|]', '_', title)
         video_dir = os.path.join(self.download_dir, safe_title)
@@ -137,76 +134,37 @@ class BilibiliCrawler:
         
         output_path = os.path.join(video_dir, f"{safe_title}.mp4")
         
-        # 检查是否已存在
-        if os.path.exists(output_path) and os.path.getsize(output_path) > 1024 * 1024:
+        # 3. 检查是否已存在
+        if self._is_file_exists(output_path):
             logger.info(f"视频已存在: {output_path}")
             return {
-                "download_success": True,
-                "merge_success": True,
-                "output_path": output_path,
-                "download_dir": video_dir,
+                "download_success": True, "merge_success": True,
+                "output_path": output_path, "download_dir": video_dir,
                 "message": "视频已存在，跳过下载"
             }
         
-        # 3. 下载视频流
+        # 4. 下载流媒体 (视频和音频)
         video_url = download_info['video_url']
         video_path = os.path.join(video_dir, f"{safe_title}_video.mp4")
-        
-        video_success = self._download_stream(video_url, video_path, f"{safe_title} - 视频", video_progress_callback, stop_event)
-        if not video_success:
-             return {"download_success": False, "message": "视频流下载失败或已取消"}
-
-        # 4. 下载音频流
         audio_url = download_info.get('audio_url')
-        audio_path = None
-        audio_success = True
-        if audio_url:
-            audio_path = os.path.join(video_dir, f"{safe_title}_audio.m4a")
-            audio_success = self._download_stream(audio_url, audio_path, f"{safe_title} - 音频", audio_progress_callback, stop_event)
-            if not audio_success:
-                # Cleanup video if audio failed
-                if os.path.exists(video_path):
-                    try: os.remove(video_path)
-                    except: pass
-                return {"download_success": False, "message": "音频流下载失败或已取消"}
-
-        # 5. 保存元数据 (Info, Danmaku, Comments)
-        cid = download_info['video_info'].get('cid')
-        aid = download_info['video_info'].get('aid')
+        audio_path = os.path.join(video_dir, f"{safe_title}_audio.m4a") if audio_url else None
         
-        if download_danmaku and cid:
-            if not self._save_danmaku(cid, video_dir, safe_title, danmaku_progress_callback, stop_event):
-                 return {"download_success": False, "message": "下载已取消"}
-            
-        if download_comments and aid:
-            if not self._save_comments(aid, video_dir, safe_title, comments_progress_callback, stop_event):
-                 return {"download_success": False, "message": "下载已取消"}
+        if not self._download_streams(video_url, video_path, audio_url, audio_path, safe_title, 
+                                      video_progress_callback, audio_progress_callback, stop_event):
+            return self._get_cancel_result(message="流媒体下载失败或已取消")
+
+        # 5. 下载元数据 (弹幕和评论)
+        if not self._download_metadata(download_info, video_dir, safe_title, download_danmaku, 
+                                       download_comments, danmaku_progress_callback, 
+                                       comments_progress_callback, stop_event):
+            return self._get_cancel_result()
         
         # 6. 合并/处理
-        merge_success = False
-        
-        if should_merge and audio_path:
-            # 检查停止信号
-            if stop_event and stop_event.is_set():
-                 return {"download_success": False, "message": "下载已取消"}
-
-            print("开始合并视频...")
-            merge_success = self.processor.merge_video_audio(
-                video_path, audio_path, output_path, 
-                remove_watermark=remove_watermark,
-                progress_callback=merge_progress_callback
-            )
+        merge_success = self._process_media(video_path, audio_path, output_path, should_merge, 
+                                            delete_original, remove_watermark, merge_progress_callback, stop_event)
             
-            if merge_success and delete_original:
-                try:
-                    logger.info(f"删除原始文件: {video_path}, {audio_path}")
-                    os.remove(video_path)
-                    os.remove(audio_path)
-                except Exception as e: 
-                    logger.error(f"删除原始文件失败: {e}")
-        else:
-            if not should_merge:
-                output_path = None
+        if not should_merge:
+            output_path = None
             
         return {
             "download_success": True,
@@ -217,6 +175,69 @@ class BilibiliCrawler:
             "download_dir": video_dir,
             "ffmpeg_available": self.processor.ffmpeg_available
         }
+
+    def _check_stop(self, stop_event):
+        return stop_event and stop_event.is_set()
+
+    def _get_cancel_result(self, message="下载已取消"):
+        return {"download_success": False, "message": message}
+
+    def _is_file_exists(self, path):
+        return os.path.exists(path) and os.path.getsize(path) > 1024 * 1024
+
+    def _download_streams(self, video_url, video_path, audio_url, audio_path, safe_title, 
+                          video_cb, audio_cb, stop_event):
+        # 下载视频
+        if not self._download_stream(video_url, video_path, f"{safe_title} - 视频", video_cb, stop_event):
+            return False
+        
+        # 下载音频
+        if audio_url:
+            if not self._download_stream(audio_url, audio_path, f"{safe_title} - 音频", audio_cb, stop_event):
+                # 清理视频文件
+                if os.path.exists(video_path):
+                    try: os.remove(video_path)
+                    except: pass
+                return False
+        return True
+
+    def _download_metadata(self, download_info, video_dir, safe_title, download_danmaku, 
+                           download_comments, danmaku_cb, comments_cb, stop_event):
+        cid = download_info['video_info'].get('cid')
+        aid = download_info['video_info'].get('aid')
+        
+        if download_danmaku and cid:
+            if not self._save_danmaku(cid, video_dir, safe_title, danmaku_cb, stop_event):
+                return False
+            
+        if download_comments and aid:
+            if not self._save_comments(aid, video_dir, safe_title, comments_cb, stop_event):
+                return False
+        return True
+
+    def _process_media(self, video_path, audio_path, output_path, should_merge, 
+                       delete_original, remove_watermark, merge_cb, stop_event):
+        if not (should_merge and audio_path):
+            return False
+            
+        if self._check_stop(stop_event):
+            return False
+
+        print("开始合并视频...")
+        merge_success = self.processor.merge_video_audio(
+            video_path, audio_path, output_path, 
+            remove_watermark=remove_watermark,
+            progress_callback=merge_cb
+        )
+        
+        if merge_success and delete_original:
+            try:
+                logger.info(f"删除原始文件: {video_path}, {audio_path}")
+                os.remove(video_path)
+                os.remove(audio_path)
+            except Exception as e: 
+                logger.error(f"删除原始文件失败: {e}")
+        return merge_success
 
     def _download_stream(self, url, path, desc, progress_callback, stop_event):
         if stop_event and stop_event.is_set(): return False

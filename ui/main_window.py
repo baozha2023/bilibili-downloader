@@ -22,6 +22,9 @@ from ui.tabs.analysis_tab import AnalysisTab
 from ui.widgets.floating_window import FloatingWindow
 from ui.qt_logger import QtLogHandler
 
+from ui.styles import UIStyles
+from core.history_manager import HistoryManager
+
 # 配置日志
 logger = logging.getLogger('bilibili_desktop')
 # 移除旧的配置，将在 init_ui 中统一配置
@@ -32,7 +35,8 @@ class BilibiliDesktop(QMainWindow):
     def __init__(self):
         super().__init__()
         self.crawler = BilibiliCrawler()
-        self.download_history = self.load_download_history()
+        self.history_manager = HistoryManager(self.crawler.data_dir)
+        self.download_history = self.history_manager.get_history()
         
         self.floating_window = FloatingWindow()
         
@@ -101,11 +105,13 @@ class BilibiliDesktop(QMainWindow):
         log_ctrl_layout.addStretch()
         
         clear_log_btn = QPushButton("清除日志")
+        clear_log_btn.setCursor(Qt.PointingHandCursor)
         clear_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
         clear_log_btn.clicked.connect(self.clear_console_log)
         log_ctrl_layout.addWidget(clear_log_btn)
         
         save_log_btn = QPushButton("保存日志")
+        save_log_btn.setCursor(Qt.PointingHandCursor)
         save_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
         save_log_btn.clicked.connect(self.save_console_log)
         log_ctrl_layout.addWidget(save_log_btn)
@@ -226,174 +232,7 @@ class BilibiliDesktop(QMainWindow):
 
     def set_style(self):
         """设置应用样式"""
-        # 全局样式表
-        style = """
-        QMainWindow {
-            background-color: #f6f7f8;
-            font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
-            font-size: 22px;
-        }
-        QTabWidget {
-            background-color: #ffffff;
-            border: none;
-        }
-        QTabWidget::pane {
-            border: 1px solid #e7e7e7;
-            background-color: #ffffff;
-            border-radius: 8px;
-            top: -1px; 
-        }
-        QTabBar::tab {
-            background-color: #f6f7f8;
-            color: #61666d;
-            padding: 10px 15px;
-            border: 1px solid #e7e7e7;
-            border-bottom: none;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-            margin-right: 4px;
-            font-size: 20px;
-            min-width: 80px;
-        }
-        QTabBar::tab:selected {
-            background-color: #ffffff;
-            color: #fb7299;
-            font-weight: bold;
-            border-bottom: 1px solid #ffffff;
-        }
-        QTabBar::tab:hover:!selected {
-            background-color: #ffffff;
-            color: #fb7299;
-        }
-        QLabel {
-            color: #18191c;
-            font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
-            font-size: 14px;
-        }
-        QPushButton {
-            background-color: #fb7299;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: bold;
-        }
-        QPushButton:hover {
-            background-color: #fc8bab;
-        }
-        QPushButton:pressed {
-            background-color: #e45c84;
-        }
-        QPushButton:disabled {
-            background-color: #e7e7e7;
-            color: #999999;
-        }
-        QLineEdit {
-            border: 1px solid #e7e7e7;
-            padding: 10px;
-            border-radius: 4px;
-            background-color: #ffffff;
-            selection-background-color: #fb7299;
-            font-size: 14px;
-        }
-        QLineEdit:focus {
-            border: 1px solid #fb7299;
-        }
-        QProgressBar {
-            border: none;
-            border-radius: 4px;
-            background-color: #e7e7e7;
-            text-align: center;
-            font-size: 14px;
-            color: #333333;
-            min-height: 20px;
-        }
-        QProgressBar::chunk {
-            background-color: #fb7299;
-            border-radius: 4px;
-        }
-        QTableWidget {
-            border: 1px solid #e7e7e7;
-            border-radius: 6px;
-            background-color: #ffffff;
-            selection-background-color: #fef0f5;
-            selection-color: #fb7299;
-            gridline-color: #f0f0f0;
-            font-size: 14px;
-        }
-        QTableWidget::item {
-            padding: 8px;
-        }
-        QHeaderView::section {
-            background-color: #f6f7f8;
-            color: #61666d;
-            padding: 10px;
-            border: none;
-            border-bottom: 1px solid #e7e7e7;
-            border-right: 1px solid #e7e7e7;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        QGroupBox {
-            border: 1px solid #e7e7e7;
-            border-radius: 6px;
-            margin-top: 25px;
-            font-weight: bold;
-            padding-top: 20px;
-            font-size: 15px;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            subcontrol-position: top left;
-            padding: 0 10px;
-            color: #333333;
-        }
-        QCheckBox {
-            spacing: 8px;
-            color: #61666d;
-            font-size: 14px;
-        }
-        QCheckBox::indicator {
-            width: 20px;
-            height: 20px;
-            border: 1px solid #cccccc;
-            border-radius: 3px;
-            background-color: white;
-        }
-        QCheckBox::indicator:unchecked:hover {
-            border-color: #fb7299;
-        }
-        QCheckBox::indicator:checked {
-            background-color: #fb7299;
-            border-color: #fb7299;
-            image: url(resource/checkbox_checked.png); /* 如果没有图片会显示纯色 */
-        }
-        QComboBox {
-            border: 1px solid #e7e7e7;
-            border-radius: 4px;
-            padding: 8px 12px;
-            min-width: 6em;
-            font-size: 14px;
-        }
-        QComboBox:hover {
-            border-color: #c0c0c0;
-        }
-        QComboBox::drop-down {
-            subcontrol-origin: padding;
-            subcontrol-position: top right;
-            width: 25px;
-            border-left-width: 0px;
-            border-top-right-radius: 3px;
-            border-bottom-right-radius: 3px;
-        }
-        QTextEdit {
-            border: 1px solid #e7e7e7;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        """
-        self.setStyleSheet(style)
+        self.setStyleSheet(UIStyles.get_main_style())
 
     def log_to_console(self, message, level="info"):
         """向控制台日志添加消息"""
@@ -472,35 +311,9 @@ class BilibiliDesktop(QMainWindow):
                 self.log_to_console(f"保存日志失败: {str(e)}", "error")
                 QMessageBox.warning(self, "保存失败", f"保存日志失败: {str(e)}")
 
-    def load_download_history(self):
-        history_file = os.path.join(self.crawler.data_dir, "download_history.json")
-        if os.path.exists(history_file):
-            try:
-                with open(history_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception:
-                return []
-        return []
-
-    def save_download_history(self):
-        history_file = os.path.join(self.crawler.data_dir, "download_history.json")
-        try:
-            with open(history_file, 'w', encoding='utf-8') as f:
-                json.dump(self.download_history, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"保存下载历史记录失败: {e}")
-
     def add_download_history(self, bvid, title, status):
-        history_item = {
-            "bvid": bvid,
-            "title": title,
-            "time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
-            "status": status
-        }
-        self.download_history.insert(0, history_item)
-        if len(self.download_history) > 100:
-            self.download_history = self.download_history[:100]
-        self.save_download_history()
+        self.history_manager.add_history(bvid, title, status)
+        self.download_history = self.history_manager.get_history()
 
     def show_download_history(self):
         dialog = QDialog(self)
@@ -550,31 +363,16 @@ class BilibiliDesktop(QMainWindow):
         buttons_layout = QHBoxLayout()
         buttons_layout.setSpacing(20)
         
-        btn_style = """
-            QPushButton {
-                font-size: 16px; 
-                padding: 10px 25px;
-                background-color: #fb7299;
-                color: white;
-                border-radius: 5px;
-                border: none;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #fc8bab;
-            }
-        """
-        
         redownload_btn = QPushButton("重新下载")
         redownload_btn.clicked.connect(lambda: self.redownload_from_history(table))
         redownload_btn.setCursor(Qt.PointingHandCursor)
-        redownload_btn.setStyleSheet(btn_style)
+        redownload_btn.setStyleSheet(UIStyles.POPULAR_BTN)
         buttons_layout.addWidget(redownload_btn)
         
         clear_btn = QPushButton("清空历史")
         clear_btn.clicked.connect(lambda: self.clear_download_history(table))
         clear_btn.setCursor(Qt.PointingHandCursor)
-        clear_btn.setStyleSheet(btn_style)
+        clear_btn.setStyleSheet(UIStyles.POPULAR_BTN)
         buttons_layout.addWidget(clear_btn)
         
         close_btn = QPushButton("关闭")
@@ -615,8 +413,8 @@ class BilibiliDesktop(QMainWindow):
     def clear_download_history(self, table):
         reply = QMessageBox.question(self, "确认清空", "确定要清空所有下载历史记录吗？", QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
+            self.history_manager.clear_history()
             self.download_history = []
-            self.save_download_history()
             table.setRowCount(0)
 
     def open_download_dir(self, specific_dir=None):

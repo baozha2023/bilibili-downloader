@@ -37,6 +37,7 @@ class VideoPlayerWindow(QMainWindow):
         layout.addWidget(msg)
         
         close_btn = QPushButton("关闭播放器")
+        close_btn.setCursor(Qt.PointingHandCursor)
         close_btn.setStyleSheet("""
             QPushButton {
                 background-color: #fb7299;

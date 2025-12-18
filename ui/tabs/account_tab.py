@@ -13,7 +13,7 @@ from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkRepl
 from ui.workers import AccountInfoThread
 from ui.login_dialog import BilibiliLoginWindow
 from ui.favorites_window import FavoritesWindow
-from ui.widgets.video_player_window import VideoPlayerWindow
+from ui.styles import UIStyles
 
 logger = logging.getLogger('bilibili_desktop')
 
@@ -214,20 +214,7 @@ class AccountTab(QWidget):
         
         unlock_btn = QPushButton("点击解锁")
         unlock_btn.setCursor(Qt.PointingHandCursor)
-        unlock_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #fb7299;
-                color: white;
-                font-size: 20px;
-                font-weight: bold;
-                padding: 10px 40px;
-                border-radius: 25px;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #fc8bab;
-            }
-        """)
+        unlock_btn.setStyleSheet(UIStyles.UNLOCK_BTN)
         unlock_btn.clicked.connect(self.unlock_content)
         lock_layout.addWidget(unlock_btn)
         
