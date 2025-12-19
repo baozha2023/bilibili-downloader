@@ -21,7 +21,6 @@ class FavoriteWorker(QThread):
 
     def run(self):
         try:
-            # Use api directly
             videos = self.crawler.api.get_favorite_resources(self.media_id, self.page)
             self.finished_signal.emit(videos, "")
         except Exception as e:
@@ -116,7 +115,6 @@ class FavoritesWindow(QDialog):
         self.table.cellDoubleClicked.connect(self.on_video_double_clicked)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.show_context_menu)
-        # Enable mouse tracking for hover
         self.table.setMouseTracking(True)
         self.table.cellEntered.connect(self.on_cell_entered)
         self.table.installEventFilter(self)
@@ -191,7 +189,7 @@ class FavoritesWindow(QDialog):
         return super().eventFilter(source, event)
         
     def export_current_page(self):
-        """导出当前页数据到Excel (CSV)"""
+        """导出当前页数据到Excel"""
         if not hasattr(self, 'current_videos') or not self.current_videos:
             BilibiliMessageBox.warning(self, "提示", "当前没有数据可导出")
             return
@@ -210,7 +208,6 @@ class FavoritesWindow(QDialog):
             data = []
             
             # 获取所有可能的键作为表头
-            # 为了保证顺序，我们先放已知的常用字段，然后放其他的
             known_headers = ["title", "upper", "duration", "play", "bvid", "intro", "pubtime", "fav_time"]
             all_keys = set()
             for v in self.current_videos:
@@ -335,7 +332,6 @@ class FavoritesWindow(QDialog):
             self.table.setItem(i, 3, QTableWidgetItem(str(play)))
             
             bvid_item = QTableWidgetItem(bvid)
-            # Add cover url to UserRole for tooltip
             cover = v.get("cover", "")
             bvid_item.setData(Qt.UserRole, cover)
             self.table.setItem(i, 4, bvid_item)

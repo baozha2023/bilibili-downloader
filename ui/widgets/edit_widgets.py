@@ -3,8 +3,9 @@ from PyQt5.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QFrame, QLabel,
                              QSpinBox, QAbstractItemView)
 from PyQt5.QtCore import Qt, pyqtSignal, QSize
 from PyQt5.QtGui import QColor, QBrush, QPixmap
-import os
 from ui.widgets.custom_combobox import NoScrollComboBox
+
+import os
 
 class MergeItemWidget(QWidget):
     removed = pyqtSignal(QWidget)
@@ -54,10 +55,10 @@ class MergeItemWidget(QWidget):
         
         # Range Selection
         range_group = QFrame()
-        range_group.setStyleSheet("background-color: #f9f9f9; border-radius: 6px; padding: 5px; border: 1px solid #eee;")
+        range_group.setStyleSheet("background-color: transparent; border: none;")
         range_layout = QHBoxLayout(range_group)
-        range_layout.setContentsMargins(5, 5, 5, 5)
-        range_layout.setSpacing(8)
+        range_layout.setContentsMargins(0, 0, 0, 0)
+        range_layout.setSpacing(5)
         
         range_layout.addWidget(QLabel("截取:"))
         
@@ -186,7 +187,7 @@ class MergeItemWidget(QWidget):
                 background: white;
                 selection-background-color: #fb7299;
             }
-            QDoubleSpinBox:focus, QSpinBox:focus {
+            QDoubleSpinBox:focus, QSpinBox:focus, QDoubleSpinBox:hover, QSpinBox:hover {
                 border-color: #fb7299;
             }
         """)

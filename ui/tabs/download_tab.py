@@ -1,11 +1,13 @@
 import time
 import os
+import PyQt5.QtCore as QtCore
+import re
+
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QLineEdit, QGroupBox, QProgressBar, QMessageBox, QDialog)
 from PyQt5.QtCore import Qt
 from ui.workers import WorkerThread
 from ui.message_box import BilibiliMessageBox
-
 from ui.styles import UIStyles
 
 class DownloadTab(QWidget):
@@ -95,7 +97,6 @@ class DownloadTab(QWidget):
         
         # 初始化时更新进度条可见性
         # 使用QTimer.singleShot在下一轮事件循环更新，确保SettingsTab已初始化
-        import PyQt5.QtCore as QtCore
         QtCore.QTimer.singleShot(100, self.update_progress_visibility)
         
         # 详细信息
@@ -177,7 +178,6 @@ class DownloadTab(QWidget):
             return
             
         # Extract BV from URL or use as is
-        import re
         bvid = raw_input
         bv_match = re.search(r'(BV\w{10})', raw_input, re.IGNORECASE)
         if bv_match:

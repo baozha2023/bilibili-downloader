@@ -1,9 +1,9 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QHBoxLayout, QApplication
 from PyQt5.QtCore import Qt, QPoint, QTimer, QPropertyAnimation, QEasingCurve
 from PyQt5.QtGui import QColor, QPainter, QBrush, QPen, QFont, QPixmap, QRegion, QBitmap, QPainterPath, QFontMetrics
+
 import os
 import sys
-
 import random
 
 class FloatingWindow(QWidget):
@@ -258,5 +258,3 @@ class FloatingWindow(QWidget):
                 painter.setBrush(QBrush(QColor(251, 114, 153)))
                 painter.drawRoundedRect(bar_x, bar_y, fill_w, bar_h, 3, 3)
                 
-            # No text as requested
-

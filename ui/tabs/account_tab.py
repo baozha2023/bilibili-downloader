@@ -2,6 +2,7 @@ import os
 import json
 import time
 import logging
+
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QStackedWidget, QGroupBox, QTableWidget, QTableWidgetItem, 
                              QHeaderView, QTabWidget, QMessageBox, QGraphicsOpacityEffect,
@@ -9,7 +10,6 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
 from PyQt5.QtGui import QPixmap, QPainter, QBrush, QDesktopServices, QCursor
 from PyQt5.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
-
 from ui.workers import AccountInfoThread
 from ui.login_dialog import BilibiliLoginWindow
 from ui.favorites_window import FavoritesWindow
@@ -83,7 +83,7 @@ class AccountTab(QWidget):
         
         # 用户详细信息
         user_details_layout = QVBoxLayout()
-        user_details_layout.setSpacing(10) # 增加间距
+        user_details_layout.setSpacing(10)
         
         # 第一行：用户名
         self.account_name = QLabel("用户名")
@@ -155,7 +155,7 @@ class AccountTab(QWidget):
         self.favorites_list.setHorizontalHeaderLabels(["标题", "状态", "视频数量", "ID"])
         self.favorites_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.favorites_list.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.favorites_list.setFrameShape(QTableWidget.NoFrame) # 去除边框
+        self.favorites_list.setFrameShape(QTableWidget.NoFrame)
         self.favorites_list.cellDoubleClicked.connect(self.on_favorite_double_clicked)
         self.favorites_list.setStyleSheet("""
             QTableWidget { 
@@ -177,7 +177,7 @@ class AccountTab(QWidget):
         self.history_list.setHorizontalHeaderLabels(["标题", "UP主", "观看时间", "BV号"])
         self.history_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.history_list.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.history_list.setFrameShape(QTableWidget.NoFrame) # 去除边框
+        self.history_list.setFrameShape(QTableWidget.NoFrame)
         self.history_list.cellDoubleClicked.connect(self.on_history_video_clicked)
         self.history_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.history_list.customContextMenuRequested.connect(self.show_history_context_menu)
@@ -361,7 +361,7 @@ class AccountTab(QWidget):
         # vip_status 1 表示有效
         is_vip = (vip_type > 0 and vip_status == 1)
         
-        # 只要登录了就可以尝试1080p (qn=80)
+        # 只要登录了就可以尝试1080p
         if is_logged_in:
              if "1080P 高清" not in qualities:
                 qualities.insert(0, "1080P 高清")
@@ -567,7 +567,6 @@ class AccountTab(QWidget):
         menu.exec_(self.history_list.viewport().mapToGlobal(pos))
         
     def analyze_video(self, bvid):
-        # Switch to Analysis Tab (Index 3)
         self.main_window.tabs.setCurrentIndex(3)
         analysis_tab = self.main_window.analysis_tab
         analysis_tab.bvid_input.setText(bvid)

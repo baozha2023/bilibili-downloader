@@ -3,6 +3,7 @@ import os
 import re
 import json
 import subprocess
+
 from datetime import datetime
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QLineEdit, QGroupBox, QProgressBar, QMessageBox, QListWidget, 
@@ -42,7 +43,7 @@ class HistoryDialog(QDialog):
         self.load_history()
         
     def load_history(self):
-        self.table.setRowCount(0) # Clear table
+        self.table.setRowCount(0)
         if not os.path.exists(self.history_file):
             return
             
@@ -114,7 +115,7 @@ class BangumiTab(QWidget):
         input_group = QGroupBox("番剧/影视链接")
         input_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 18px; padding-top: 5px; margin-top: 5px; }")
         input_layout = QHBoxLayout(input_group)
-        input_layout.setContentsMargins(10, 20, 10, 10) # Reduced margins
+        input_layout.setContentsMargins(10, 20, 10, 10)
         
         self.url_input = QLineEdit()
         self.url_input.setPlaceholderText("请输入番剧播放页地址，例如: https://www.bilibili.com/bangumi/play/ep2474435/")

@@ -80,10 +80,7 @@ class BilibiliMessageBox(QDialog):
             
         self.frame_layout.addLayout(self.btn_layout)
         self.layout.addWidget(self.frame)
-        
-        # Shadow effect (optional, simple implementation)
-        # self.setGraphicsEffect(...) 
-        
+
         self.resize(500, 350)
         
     def style_primary_button(self, btn):

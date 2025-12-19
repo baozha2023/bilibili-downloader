@@ -1,6 +1,10 @@
 import os
 import re
+import shutil
 import logging
+import xml.etree.ElementTree as ET
+import json
+
 from .network import NetworkManager
 from .api import BilibiliAPI
 from .downloader import Downloader
@@ -87,7 +91,6 @@ class BilibiliCrawler:
         if not xml_bytes: return []
         
         try:
-            import xml.etree.ElementTree as ET
             root = ET.fromstring(xml_bytes)
             danmaku_list = []
             for d in root.findall('./d'):
@@ -122,8 +125,7 @@ class BilibiliCrawler:
         return self.network.make_request(*args, **kwargs)
 
     # --- 核心业务逻辑 ---
-    
-    def download_video(self, bvid, video_progress_callback=None, audio_progress_callback=None, 
+    def download_video(self, bvid, video_progress_callback=None, audio_progress_callback=None,
                       merge_progress_callback=None, danmaku_progress_callback=None, 
                       comments_progress_callback=None, should_merge=True, delete_original=True,
                       remove_watermark=False, download_danmaku=False, download_comments=False,
@@ -164,17 +166,27 @@ class BilibiliCrawler:
         
         if not self._download_streams(video_url, video_path, audio_url, audio_path, safe_title, 
                                       video_progress_callback, audio_progress_callback, stop_event):
-            return self._get_cancel_result(message="流媒体下载失败或已取消")
+            if self._check_stop(stop_event):
+                self._cleanup_dir(video_dir)
+                return self._get_cancel_result(message="下载已取消")
+            return self._get_cancel_result(message="流媒体下载失败")
 
         # 5. 下载元数据 (弹幕和评论)
         if not self._download_metadata(download_info, video_dir, safe_title, download_danmaku, 
                                        download_comments, danmaku_progress_callback, 
                                        comments_progress_callback, stop_event):
-            return self._get_cancel_result()
+            if self._check_stop(stop_event):
+                self._cleanup_dir(video_dir)
+                return self._get_cancel_result(message="下载已取消")
+            return self._get_cancel_result(message="元数据下载失败")
         
         # 6. 合并/处理
         merge_success = self._process_media(video_path, audio_path, output_path, should_merge, 
                                             delete_original, remove_watermark, merge_progress_callback, stop_event)
+        
+        if self._check_stop(stop_event):
+            self._cleanup_dir(video_dir)
+            return self._get_cancel_result(message="下载已取消")
             
         if not should_merge:
             output_path = None
@@ -188,6 +200,15 @@ class BilibiliCrawler:
             "download_dir": video_dir,
             "ffmpeg_available": self.processor.ffmpeg_available
         }
+
+    def _cleanup_dir(self, dir_path):
+        """清理目录"""
+        if os.path.exists(dir_path):
+            try:
+                shutil.rmtree(dir_path)
+                logger.info(f"已清理目录: {dir_path}")
+            except Exception as e:
+                logger.error(f"清理目录失败: {e}")
 
     def _check_stop(self, stop_event):
         return stop_event and stop_event.is_set()
@@ -270,7 +291,7 @@ class BilibiliCrawler:
         if danmaku_list:
             danmaku_path = os.path.join(video_dir, f"{safe_title}_danmaku.json")
             try:
-                import json
+
                 with open(danmaku_path, 'w', encoding='utf-8') as f:
                     json.dump(danmaku_list, f, ensure_ascii=False, indent=2)
                 print(f"弹幕已保存到: {danmaku_path}")
@@ -296,7 +317,6 @@ class BilibiliCrawler:
         if all_comments:
             comments_path = os.path.join(video_dir, f"{safe_title}_comments.json")
             try:
-                import json
                 with open(comments_path, 'w', encoding='utf-8') as f:
                     json.dump(all_comments, f, ensure_ascii=False, indent=2)
                 print(f"评论已保存到: {comments_path}")
@@ -311,7 +331,6 @@ class BilibiliCrawler:
         
     def save_to_json(self, data, filename):
         # 简易实现
-        import json
         path = os.path.join(self.data_dir, f"{filename}.json")
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)

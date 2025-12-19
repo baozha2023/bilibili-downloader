@@ -54,10 +54,10 @@ class WorkerThread(QThread):
         
         # 设置重试次数
         self.max_retries = self.config.get('max_retries', 3)
-        self.retry_delay = 2  # 秒
+        self.retry_delay = self.config.get('retry_interval', 2)  # 秒
         
         # 设置超时时间
-        self.timeout = 30  # 秒
+        self.timeout = self.config.get('timeout', 30)  # 秒
         
         # Task mapping
         self.task_map = {
@@ -186,10 +186,36 @@ class WorkerThread(QThread):
         except Exception as e:
             return {"status": "error", "message": f"获取视频信息出错: {str(e)}"}
 
+    def _on_video_progress(self, current, total):
+        self.progress_signal.emit("video", current, total)
+        
+    def _on_audio_progress(self, current, total):
+        self.progress_signal.emit("audio", current, total)
+        
+    def _on_merge_progress(self, current, total):
+        if self.params.get("should_merge", True):
+            self.progress_signal.emit("merge", current, 100)
+            
+    def _on_danmaku_progress(self, current, total):
+        self.progress_signal.emit("danmaku", current, total)
+        
+    def _on_comments_progress(self, current, total):
+        self.progress_signal.emit("comments", current, total)
+
     def _download_video(self):
         """下载视频"""
+        start_time = time.time()
+        
         # 重试机制
         for retry in range(self.max_retries):
+            # 每次循环开始前检查是否已取消
+            if self.stop_event.is_set():
+                return {
+                    "status": "cancelled", 
+                    "message": "下载已取消",
+                    "execution_time": time.time() - start_time
+                }
+
             try:
                 bvid = self.params.get("bvid", "")
                 if not bvid:
@@ -223,29 +249,6 @@ class WorkerThread(QThread):
                     
                     title = info.get("data", {}).get("title", "未知视频")
                 
-                # 定义视频下载进度回调函数
-                def video_progress_callback(current, total):
-                    self.progress_signal.emit("video", current, total)
-                
-                # 定义音频下载进度回调函数
-                def audio_progress_callback(current, total):
-                    self.progress_signal.emit("audio", current, total)
-                
-                # 定义合并进度回调函数
-                def merge_progress_callback(current, total):
-                    # 合并进度通常是0-100的整数
-                    # 只有在需要合并时才发送进度信号
-                    if self.params.get("should_merge", True):
-                        self.progress_signal.emit("merge", current, 100)
-                
-                # 定义弹幕下载进度回调函数
-                def danmaku_progress_callback(current, total):
-                    self.progress_signal.emit("danmaku", current, total)
-                
-                # 定义评论下载进度回调函数
-                def comments_progress_callback(current, total):
-                    self.progress_signal.emit("comments", current, total)
-                
                 # 获取是否合并的选项
                 should_merge = self.params.get("should_merge", True)
                 if not should_merge:
@@ -264,17 +267,17 @@ class WorkerThread(QThread):
                 audio_quality = self.params.get("audio_quality", "高音质 (Hi-Res/Dolby)")
 
                 # 下载视频
-                start_time = time.time()
+                # start_time = time.time() # Moved to start of method
                 self.update_signal.emit({"status": "download", "message": f"开始下载: {title}"})
                 
                 # Construct kwargs for download_video
                 download_kwargs = {
                     'bvid': bvid,
-                    'video_progress_callback': video_progress_callback,
-                    'audio_progress_callback': audio_progress_callback,
-                    'merge_progress_callback': merge_progress_callback,
-                    'danmaku_progress_callback': danmaku_progress_callback,
-                    'comments_progress_callback': comments_progress_callback,
+                    'video_progress_callback': self._on_video_progress,
+                    'audio_progress_callback': self._on_audio_progress,
+                    'merge_progress_callback': self._on_merge_progress,
+                    'danmaku_progress_callback': self._on_danmaku_progress,
+                    'comments_progress_callback': self._on_comments_progress,
                     'should_merge': should_merge,
                     'delete_original': delete_original,
                     'remove_watermark': remove_watermark,
@@ -407,7 +410,7 @@ class WorkerThread(QThread):
                             }
                 
                 # 检查是否是取消下载
-                elif download_result.get("message") == "下载已取消":
+                elif "下载已取消" in download_result.get("message", "") or self.stop_event.is_set():
                     return {
                         "status": "cancelled", 
                         "message": "下载已取消",
@@ -416,6 +419,14 @@ class WorkerThread(QThread):
                     
                 # 下载失败，准备重试
                 else:
+                    # 再次检查是否取消 (双重保险)
+                    if self.stop_event.is_set():
+                        return {
+                            "status": "cancelled", 
+                            "message": "下载已取消",
+                            "execution_time": time.time() - start_time
+                        }
+
                     if retry < self.max_retries - 1:
                         self.update_signal.emit({"status": "warning", "message": f"下载失败: {download_result.get('message')}，正在重试 ({retry+1}/{self.max_retries})..."})
                         time.sleep(self.retry_delay)

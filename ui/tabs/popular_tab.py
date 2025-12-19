@@ -4,8 +4,8 @@ from PyQt5.QtCore import Qt, QUrl, QEvent
 from PyQt5.QtGui import QCursor, QPixmap
 from ui.workers import WorkerThread
 from ui.widgets.video_player_window import VideoPlayerWindow
-
 from ui.styles import UIStyles
+from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
 class PopularTab(QWidget):
     def __init__(self, main_window):
@@ -65,10 +65,6 @@ class PopularTab(QWidget):
         self.popular_table.cellEntered.connect(self.on_cell_entered)
         self.popular_table.installEventFilter(self)
         layout.addWidget(self.popular_table)
-        
-        # 状态区域 (Removed as per user request)
-        # self.popular_status = QLabel("就绪")
-        # layout.addWidget(self.popular_status)
 
         # 封面预览Label (悬浮显示)
         self.cover_label = QLabel(self)
@@ -92,8 +88,6 @@ class PopularTab(QWidget):
                 self.show_cover_preview(cover_url)
                 
     def show_cover_preview(self, url):
-        from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
-        
         if not hasattr(self, 'network_manager'):
             self.network_manager = QNetworkAccessManager(self)
             self.network_manager.finished.connect(self.on_cover_downloaded)
@@ -136,7 +130,6 @@ class PopularTab(QWidget):
     def get_popular_videos(self):
         """获取热门视频"""
         self.popular_btn.setEnabled(False)
-        # self.popular_status.setText("正在获取热门视频...") # Removed
         self.main_window.log_to_console("正在获取热门视频...", "info")
         
         pages = self.popular_pages.value()

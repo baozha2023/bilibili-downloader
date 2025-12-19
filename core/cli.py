@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 import os
 import sys
-from core.crawler import BilibiliCrawler
 import logging
+
+from core.crawler import BilibiliCrawler
+
 
 logger = logging.getLogger('bilibili_cli')
 
@@ -40,7 +42,7 @@ class CliHandler:
     def run_interactive(self):
         """Run interactive CLI"""
         while True:
-            print("\nbilibiliDownloader v4.10 - 命令行模式")
+            print("bilibili-downloader v5.0")
             print("1. 爬取热门视频")
             print("2. 爬取指定视频详情")
             print("3. 下载视频")

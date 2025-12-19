@@ -6,6 +6,7 @@ import logging
 import threading
 import shutil
 import tempfile
+
 from core.watermark import WatermarkRemover
 
 logger = logging.getLogger('bilibili_core.processor')
@@ -217,14 +218,12 @@ class MediaProcessor:
             logger.error(f"获取帧率失败: {e}")
         return 0
 
-    def cut_video(self, input_path, start, end, unit='time', fade_in=False, fade_out=False, output_path=None, progress_callback=None):
+    def cut_video(self, input_path, start, end, unit='time', output_path=None, progress_callback=None):
         """
         剪辑视频
         :param start: 开始时间/帧
         :param end: 结束时间/帧
         :param unit: 'time' (秒) 或 'frame' (帧)
-        :param fade_in: 是否开启淡入 (1秒)
-        :param fade_out: 是否开启淡出 (1秒)
         """
         if not self.ffmpeg_available:
             return False, "ffmpeg未安装"
@@ -249,14 +248,6 @@ class MediaProcessor:
         if duration <= 0:
             return False, "无效的时间范围"
 
-        # 构建滤镜链
-        filters = []
-        if fade_in:
-            filters.append("fade=t=in:st=0:d=1")
-        if fade_out:
-            # 淡出需要在剪辑后的流上应用，开始时间是 duration - 1
-            filters.append(f"fade=t=out:st={duration-1}:d=1")
-            
         cmd = [self.ffmpeg_path]
         
         # 使用 -ss 在输入前快速定位
@@ -264,17 +255,9 @@ class MediaProcessor:
         cmd.extend(['-i', input_path])
         cmd.extend(['-t', str(duration)])
         
-        if filters:
-            cmd.extend(['-vf', ','.join(filters)])
-            # 重新编码是必须的
-            cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
-            cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
-        else:
-            # 如果没有滤镜，尽量使用 copy 模式? 
-            # 不，因为 cut_video 之前的实现就是重编码 (-c:v libx264)，为了精确剪辑通常建议重编码
-            # 特别是当 start_time 不是关键帧时。这里保持重编码以保证一致性和精确性。
-            cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
-            cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
+        # 重新编码以保证精确性
+        cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
+        cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
             
         cmd.extend(['-y', output_path])
         
@@ -386,77 +369,64 @@ class MediaProcessor:
         else:
             return False, "合并失败"
 
-    def merge_video_files(self, file_list, output_path, progress_callback=None):
+    def merge_videos_with_range(self, file_list, output_path, progress_callback=None):
         """
-        合并多个视频文件 (Concat)
+        合并多个视频文件，支持片段剪辑 (无转场)
+        file_list: [{'path': str, 'start': float, 'end': float}, ...]
         """
         if not self.ffmpeg_available:
             return False, "ffmpeg未安装"
         
         if len(file_list) < 2:
             return False, "至少需要两个文件"
-            
-        # 创建临时列表文件
-        try:
-            fd, list_path = tempfile.mkstemp(suffix=".txt", text=True)
-            os.close(fd)
-            
-            with open(list_path, 'w', encoding='utf-8') as f:
-                for file in file_list:
-                    # 转义路径中的单引号
-                    path = file.replace("'", "'\\''")
-                    f.write(f"file '{path}'\n")
-            
-            cmd = [
-                self.ffmpeg_path,
-                '-f', 'concat',
-                '-safe', '0',
-                '-i', list_path,
-                '-c', 'copy', # 尝试复制流 (前提是格式一致)
-                '-y', output_path
-            ]
-            
-            logger.info(f"合并视频: {cmd}")
-            success = self._run_ffmpeg_with_progress(cmd, progress_callback)
-            
-            # 清理临时文件
-            if os.path.exists(list_path):
-                os.remove(list_path)
-                
-            if success:
-                return True, output_path
-            else:
-                # 如果copy失败，尝试重编码合并 (更稳健但更慢)
-                logger.warning("流复制合并失败，尝试重编码合并...")
-                cmd = [
-                    self.ffmpeg_path,
-                    '-f', 'concat',
-                    '-safe', '0',
-                    '-i', list_path,
-                    '-c:v', 'libx264', '-c:a', 'aac',
-                    '-y', output_path
-                ]
-                
-                # 再次创建列表文件 (因为可能已被删除)
-                with open(list_path, 'w', encoding='utf-8') as f:
-                    for file in file_list:
-                        path = file.replace("'", "'\\''")
-                        f.write(f"file '{path}'\n")
-                        
-                success = self._run_ffmpeg_with_progress(cmd, progress_callback)
-                if os.path.exists(list_path):
-                    os.remove(list_path)
-                    
-                if success:
-                    return True, output_path
-                else:
-                    return False, "合并失败"
-                    
-        except Exception as e:
-            logger.error(f"合并出错: {e}")
-            return False, str(e)
 
-    def compress_video(self, input_path, target_resolution, crf=23, fade_in=False, fade_out=False, output_path=None, progress_callback=None):
+        inputs = []
+        filter_complex = []
+        
+        video_streams = []
+        audio_streams = []
+        
+        for i, clip in enumerate(file_list):
+            path = clip['path']
+            inputs.extend(['-i', path])
+            
+            start = clip.get('start', 0)
+            end = clip.get('end', None)
+            
+            # 如果 end 为 None，需要获取视频时长
+            if end is None:
+                duration = self.get_video_duration(path)
+                end = duration
+            
+            # Trim Video
+            v_tag = f"v{i}"
+            filter_complex.append(f"[{i}:v]trim=start={start}:end={end},setpts=PTS-STARTPTS[{v_tag}]")
+            video_streams.append(v_tag)
+            
+            # Trim Audio
+            a_tag = f"a{i}"
+            filter_complex.append(f"[{i}:a]atrim=start={start}:end={end},asetpts=PTS-STARTPTS[{a_tag}]")
+            audio_streams.append(a_tag)
+
+        # Concat
+        v_concat = "".join([f"[{v}]" for v in video_streams])
+        a_concat = "".join([f"[{a}]" for a in audio_streams])
+        filter_complex.append(f"{v_concat}concat=n={len(file_list)}:v=1:a=0[outv]")
+        filter_complex.append(f"{a_concat}concat=n={len(file_list)}:v=0:a=1[outa]")
+
+        cmd = [self.ffmpeg_path] + inputs + ['-filter_complex', ";".join(filter_complex)]
+        cmd.extend(['-map', '[outv]', '-map', '[outa]'])
+        cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
+        cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
+        cmd.extend(['-y', output_path])
+        
+        logger.info(f"合并视频(带剪辑): {cmd}")
+        if self._run_ffmpeg_with_progress(cmd, progress_callback):
+            return True, output_path
+        else:
+            return False, "合并失败"
+
+    def compress_video(self, input_path, target_resolution, crf=23, output_path=None, progress_callback=None):
         """
         压缩视频
         :param target_resolution: 目标分辨率 (e.g. "1280x720", "1920x1080")

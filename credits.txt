@@ -11,38 +11,40 @@
 3. FFmpeg (https://ffmpeg.org/)
    - 强大的音视频处理工具 (视频合并、剪辑、转换等)
 
-4. Requests (https://requests.readthedocs.io/)
+4. OpenCV (https://opencv.org/)
+   - 开源计算机视觉库，用于视频帧提取和处理
+
+5. Requests (https://requests.readthedocs.io/)
    - 优雅而简单的HTTP库
 
-5. Qrcode (https://pypi.org/project/qrcode/)
+6. Qrcode (https://pypi.org/project/qrcode/)
    - 纯Python实现的二维码生成库
 
-6. Pillow (https://python-pillow.org/)
+7. Pillow (https://python-pillow.org/)
    - Python图像处理库
 
-7. fake-useragent (https://pypi.org/project/fake-useragent/)
+8. fake-useragent (https://pypi.org/project/fake-useragent/)
    - 随机User-Agent生成库，用于爬虫反检测
 
-8. PyInstaller (https://pyinstaller.org/)
+9. PyInstaller (https://pyinstaller.org/)
    - 将Python应用打包成独立可执行文件的工具
 
-9. pywebview (https://pywebview.flowrl.com/)
+10. pywebview (https://pywebview.flowrl.com/)
    - 轻量级跨平台WebView封装库，用于实时观看视频
 
-10. jieba (https://github.com/fxsjy/jieba)
+11. jieba (https://github.com/fxsjy/jieba)
     - 最好的Python中文分词组件
 
-11. wordcloud (https://amueller.github.io/word_cloud/)
+12. wordcloud (https://amueller.github.io/word_cloud/)
     - 词云生成库
 
-12. Matplotlib (https://matplotlib.org/)
+13. Matplotlib (https://matplotlib.org/)
     - Python绘图库，用于生成数据统计图表
 
-13. SnowNLP (https://github.com/isnowfy/snownlp)
+14. SnowNLP (https://github.com/isnowfy/snownlp)
     - Python中文文本情感分析库
 
 本软件作者：zxj
-作者B站首页：https://space.bilibili.com/451133247
 作者gitee首页：https://gitee.com/bzJAVA/bilibili-downloader
 
 免责声明：

@@ -143,7 +143,6 @@ class QRCodeLoginThread(QThread):
     def get_login_qr(self):
         """获取登录二维码URL"""
         try:
-            # 使用新版API
             url = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate"
             logger.info(f"正在请求二维码URL: {url}")
             response = self.session.get(url, timeout=10)
@@ -158,7 +157,6 @@ class QRCodeLoginThread(QThread):
     def check_qr_status(self, qr_key):
         """检查二维码扫描状态"""
         try:
-            # 使用新版API
             url = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll"
             params = {
                 "qrcode_key": qr_key
@@ -210,7 +208,6 @@ class QRCodeLoginThread(QThread):
                 return None
                 
             # 缩放以适应控件大小，保持清晰度
-            # 确保图片是正方形，如果不是，进行裁剪或填充
             if pixmap.width() != pixmap.height():
                 size = min(pixmap.width(), pixmap.height())
                 pixmap = pixmap.copy(0, 0, size, size)
@@ -225,56 +222,6 @@ class QRCodeLoginThread(QThread):
             import traceback
             logger.debug(traceback.format_exc())
             return None
-
-class VIPCheckThread(QThread):
-    """检查用户会员状态的线程"""
-    update_signal = pyqtSignal(dict)
-    
-    def __init__(self, cookies):
-        super().__init__()
-        self.cookies = cookies
-        
-    def run(self):
-        try:
-            self.update_signal.emit({
-                "status": "info", 
-                "message": "正在检查会员状态..."
-            })
-            
-            # 模拟检查会员状态
-            time.sleep(1.5)
-            
-            # 这里实际应该调用B站API检查会员状态
-            # 由于是演示，直接返回固定结果
-            is_vip = False
-            vip_type = 0
-            vip_expire = 0
-            
-            # 判断是否是会员
-            if "SESSDATA" in self.cookies and len(self.cookies["SESSDATA"]) > 10:
-                # 演示: 随机判定是否为会员
-                import random
-                if random.random() > 0.5:
-                    is_vip = True
-                    vip_type = 2  # 年度大会员
-                    vip_expire = int(time.time()) + 30 * 24 * 3600  # 30天后过期
-            
-            self.update_signal.emit({
-                "status": "success", 
-                "message": "会员状态检查完成", 
-                "data": {
-                    "is_vip": is_vip,
-                    "vip_type": vip_type,
-                    "vip_expire": vip_expire
-                }
-            })
-            
-        except Exception as e:
-            logger.error(f"检查会员状态出错：{str(e)}")
-            self.update_signal.emit({
-                "status": "error", 
-                "message": f"检查会员状态出错: {str(e)}"
-            })
 
 class BilibiliLoginWindow(QMainWindow):
     """B站登录窗口"""
@@ -350,7 +297,7 @@ class BilibiliLoginWindow(QMainWindow):
         title_label.setStyleSheet("font-size: 34px; font-weight: bold; color: #fb7299;")
         main_layout.addWidget(title_label)
         
-        # 二维码区域容器 (卡片式设计)
+        # 二维码区域容器
         qr_card = QFrame()
         qr_card.setStyleSheet("""
             QFrame {
@@ -365,7 +312,7 @@ class BilibiliLoginWindow(QMainWindow):
         # 二维码显示
         self.qr_label = QLabel("请点击获取二维码")
         self.qr_label.setAlignment(Qt.AlignCenter)
-        self.qr_label.setFixedSize(220, 220)  # 保持正方形
+        self.qr_label.setFixedSize(220, 220)
         self.qr_label.setScaledContents(True)
         self.qr_label.setStyleSheet("background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 6px;")
         
@@ -379,9 +326,7 @@ class BilibiliLoginWindow(QMainWindow):
         self.qr_status_label = QLabel("等待获取二维码...")
         self.qr_status_label.setAlignment(Qt.AlignCenter)
         self.qr_status_label.setStyleSheet("color: #666666; margin-top: 12px; font-size: 22px; border: none;")
-        # 用户要求移除该组件显示，因为它挡住了二维码
-        # qr_card_layout.addWidget(self.qr_status_label) 
-        
+
         main_layout.addWidget(qr_card)
         
         # 操作说明
@@ -411,7 +356,7 @@ class BilibiliLoginWindow(QMainWindow):
                 image: url(resource/checkbox_checked.png);
             }
         """)
-        # 由于可能没有自定义图标，这里先使用默认样式或者简单的颜色样式
+
         self.save_info_check.setStyleSheet("QCheckBox { color: #666666; font-size: 22px; }")
         button_layout.addWidget(self.save_info_check, alignment=Qt.AlignCenter)
         
@@ -483,10 +428,7 @@ class BilibiliLoginWindow(QMainWindow):
         """更新二维码状态"""
         status = data.get("status")
         message = data.get("message", "")
-        
-        # 更新状态文本
-        # self.qr_status_label.setText(message)
-        
+
         if status == "qr_ready":
             # 显示二维码
             qr_img = data.get("data", {}).get("qr_img")
@@ -498,7 +440,7 @@ class BilibiliLoginWindow(QMainWindow):
                 self.info_text.setText("请使用哔哩哔哩APP扫码")
                 self.info_text.setStyleSheet("color: #333333; font-size: 22px; line-height: 1.6; font-weight: bold;")
                 
-                # 添加简单的淡入动画效果 (模拟)
+                # 添加简单的淡入动画效果
                 self.qr_label.setGraphicsEffect(None) # 清除旧效果
             else:
                 logger.error("二维码图像无效，无法显示")

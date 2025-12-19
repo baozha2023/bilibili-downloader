@@ -1,5 +1,8 @@
 from PyQt5.QtWidgets import QMainWindow, QDesktopWidget, QLabel, QVBoxLayout, QWidget, QPushButton
 from PyQt5.QtCore import QUrl, Qt, QTimer
+from PyQt5.QtGui import QIcon
+from ui.message_box import BilibiliMessageBox
+
 import subprocess
 import sys
 import os
@@ -29,7 +32,7 @@ class VideoPlayerWindow(QMainWindow):
         # 设置图标
         icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "resource/icon.ico")
         if os.path.exists(icon_path):
-            from PyQt5.QtGui import QIcon
+
             self.setWindowIcon(QIcon(icon_path))
 
         central_widget = QWidget()
@@ -98,7 +101,7 @@ class VideoPlayerWindow(QMainWindow):
             
         except Exception as e:
             print(f"Error starting player: {e}")
-            from ui.message_box import BilibiliMessageBox
+
             BilibiliMessageBox.error(self, "播放错误", f"无法启动播放器: {e}")
 
     def check_process_status(self):
@@ -108,7 +111,6 @@ class VideoPlayerWindow(QMainWindow):
                 # Process ended
                 self.monitor_timer.stop()
                 if return_code != 0:
-                    from ui.message_box import BilibiliMessageBox
                     BilibiliMessageBox.error(self, "播放器错误", f"播放器意外退出 (代码: {return_code})。\n可能原因：未安装 WebView2 运行时或缺少依赖。")
                 self.player_process = None
                 self.close()

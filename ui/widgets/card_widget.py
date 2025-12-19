@@ -7,7 +7,6 @@ class CardWidget(QFrame):
     def __init__(self, title=None, parent=None):
         super().__init__(parent)
         self.setObjectName("CardWidget")
-        # 移除阴影背景，改为透明或仅保留标题
         self.setStyleSheet("""
             #CardWidget {
                 background-color: transparent;
@@ -17,7 +16,7 @@ class CardWidget(QFrame):
         
         # 主布局
         self.layout = QVBoxLayout(self)
-        self.layout.setContentsMargins(10, 10, 10, 10) # 减小边距
+        self.layout.setContentsMargins(10, 10, 10, 10)
         self.layout.setSpacing(20)
         
         # 标题

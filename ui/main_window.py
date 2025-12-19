@@ -17,8 +17,8 @@ from ui.tabs.bangumi_tab import BangumiTab
 from ui.tabs.popular_tab import PopularTab
 from ui.tabs.account_tab import AccountTab
 from ui.tabs.settings_tab import SettingsTab
-from ui.tabs.video_edit_tab import VideoEditTab
-from ui.tabs.analysis_tab import AnalysisTab
+from ui.tabs.video_edit import VideoEditTab
+from ui.tabs.analysis import AnalysisTab
 from ui.widgets.floating_window import FloatingWindow
 from ui.qt_logger import QtLogHandler
 
@@ -64,7 +64,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v4.10")
+        self.setWindowTitle("bilibiliDownloader v5.0")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -207,7 +207,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用bilibiliDownloader v4.10！")
+        logger.info("欢迎使用bilibiliDownloader v5.0！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
@@ -218,14 +218,14 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v4.9"
+        version = "v5.0"
         updates = (
-            "1. 编辑: 修复视频导入后名称不显示的问题。\n"
-            "2. 分析: 新增IP属地分布图表、标签显示、数据导出功能。\n"
-            "3. 交互: 悬浮窗新增随机休息动画和拖拽反馈。\n"
-            "4. 功能: 热门/收藏/历史列表右键新增'视频分析'入口。\n"
-            "5. 体验: 下载界面按钮鼠标手势优化。\n"
-            "6. 核心: 代码重构与优化。\n"
+            "1. 新增: 暂停/取消下载时自动清理残留文件，保持磁盘整洁。\n"
+            "2. 分析: 优化弹幕颜色分布图表，使用条形图展示，更清晰直观。\n"
+            "3. 编辑: 新增逐帧获取功能，支持查看并保存视频任意一帧，满足精确截图需求。\n"
+            "4. 设置: 新增超时时间和重试间隔设置，并优化所有设置选项的交互体验。\n"
+            "5. UI: 修复视频剪辑与压缩界面的按钮文字显示不全问题。\n"
+            "6. 核心: 代码深度重构，优化文件结构，提升代码可读性与维护性。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

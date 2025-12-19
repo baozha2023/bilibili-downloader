@@ -132,6 +132,30 @@ class SettingsTab(QWidget):
         """)
         basic_layout.addWidget(self.retry_count, 1, 1)
 
+        # 超时时间 (秒)
+        timeout_label = QLabel("超时时间 (秒):")
+        timeout_label.setStyleSheet("font-size: 20px; color: #555;")
+        basic_layout.addWidget(timeout_label, 2, 0)
+
+        self.timeout_spin = QSpinBox()
+        self.timeout_spin.setRange(5, 300)
+        self.timeout_spin.setValue(30)
+        self.timeout_spin.setFixedWidth(120)
+        self.timeout_spin.setStyleSheet(self.retry_count.styleSheet())
+        basic_layout.addWidget(self.timeout_spin, 2, 1)
+
+        # 重试间隔 (秒)
+        interval_label = QLabel("重试间隔 (秒):")
+        interval_label.setStyleSheet("font-size: 20px; color: #555;")
+        basic_layout.addWidget(interval_label, 3, 0)
+
+        self.retry_interval_spin = QSpinBox()
+        self.retry_interval_spin.setRange(1, 60)
+        self.retry_interval_spin.setValue(2)
+        self.retry_interval_spin.setFixedWidth(120)
+        self.retry_interval_spin.setStyleSheet(self.retry_count.styleSheet())
+        basic_layout.addWidget(self.retry_interval_spin, 3, 1)
+
         basic_card.add_layout(basic_layout)
         self.content_layout.addWidget(basic_card)
         
@@ -242,28 +266,34 @@ class SettingsTab(QWidget):
         self.merge_check = QCheckBox("合并视频和音频")
         self.merge_check.setChecked(True)
         self.merge_check.setStyleSheet(checkbox_style)
+        self.merge_check.setCursor(Qt.PointingHandCursor)
         checkbox_layout.addWidget(self.merge_check, 0, 0)
         
         self.delete_original_check = QCheckBox("合并后删除原始文件")
         self.delete_original_check.setChecked(True)
         self.delete_original_check.setStyleSheet(checkbox_style)
+        self.delete_original_check.setCursor(Qt.PointingHandCursor)
         checkbox_layout.addWidget(self.delete_original_check, 0, 1)
 
         self.remove_watermark_check = QCheckBox("尝试去除水印 (实验性)")
         self.remove_watermark_check.setChecked(False)
         self.remove_watermark_check.setStyleSheet(checkbox_style)
+        self.remove_watermark_check.setCursor(Qt.PointingHandCursor)
         checkbox_layout.addWidget(self.remove_watermark_check, 1, 0)
         
         self.download_danmaku_check = QCheckBox("下载弹幕")
         self.download_danmaku_check.setStyleSheet(checkbox_style)
+        self.download_danmaku_check.setCursor(Qt.PointingHandCursor)
         checkbox_layout.addWidget(self.download_danmaku_check, 1, 1)
         
         self.download_comments_check = QCheckBox("下载评论")
         self.download_comments_check.setStyleSheet(checkbox_style)
+        self.download_comments_check.setCursor(Qt.PointingHandCursor)
         checkbox_layout.addWidget(self.download_comments_check, 2, 0)
         
         self.floating_window_check = QCheckBox("显示桌面悬浮窗")
         self.floating_window_check.setStyleSheet(checkbox_style)
+        self.floating_window_check.setCursor(Qt.PointingHandCursor)
         self.floating_window_check.stateChanged.connect(self.toggle_floating_window)
         checkbox_layout.addWidget(self.floating_window_check, 2, 1)
         
@@ -301,6 +331,7 @@ class SettingsTab(QWidget):
         self.always_lock_check = QCheckBox("每次进入'我的账号'都需要点击解锁")
         self.always_lock_check.setChecked(False) # 默认不开启
         self.always_lock_check.setStyleSheet(checkbox_style)
+        self.always_lock_check.setCursor(Qt.PointingHandCursor)
         self.always_lock_check.setToolTip("开启后，每次切换到'我的账号'页面时，收藏夹和历史记录都会被隐藏，直到点击解锁")
         privacy_layout.addWidget(self.always_lock_check, 0, 0)
         
@@ -405,6 +436,8 @@ class SettingsTab(QWidget):
         config = {
             'data_dir': self.data_dir_input.text().strip(),
             'max_retries': self.retry_count.value(),
+            'timeout': self.timeout_spin.value(),
+            'retry_interval': self.retry_interval_spin.value(),
             'merge_video': self.merge_check.isChecked(),
             'delete_original': self.delete_original_check.isChecked(),
             'remove_watermark': self.remove_watermark_check.isChecked(),
@@ -442,6 +475,10 @@ class SettingsTab(QWidget):
                     self.crawler.download_dir = os.path.join(config['data_dir'], 'downloads')
                 if 'max_retries' in config:
                     self.retry_count.setValue(config['max_retries'])
+                if 'timeout' in config:
+                    self.timeout_spin.setValue(config['timeout'])
+                if 'retry_interval' in config:
+                    self.retry_interval_spin.setValue(config['retry_interval'])
                 if 'merge_video' in config:
                     self.merge_check.setChecked(config['merge_video'])
                 if 'delete_original' in config:
