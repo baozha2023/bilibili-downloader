@@ -2,36 +2,38 @@
 # -*- coding: utf-8 -*-
 """
 bilibiliDownloader主程序入口
-v4.9
+v4.10
 """
-
 import ctypes
 import sys
 import os
 import argparse
 import logging
 from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication
+from ui.main_window import BilibiliDesktop
+# 导入项目模块
+from ui.main_window import BilibiliDesktop
+from core.crawler import BilibiliCrawler
+from core.cli import CliHandler
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('bilibili_downloader')
 
-# 导入项目模块
-from ui.main_window import BilibiliDesktop
-from core.crawler import BilibiliCrawler
+
 
 def start_gui():
     """启动图形用户界面"""
     try:
         # 设置AppUserModelID，确保任务栏图标正常显示
-        myappid = 'mycompany.myproduct.subproduct.version' # arbitrary string
+        myappid = 'mycompany.myproduct.subproduct.version'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except:
         pass
         
-    from PyQt5.QtWidgets import QApplication
-    from ui.main_window import BilibiliDesktop
+
     app = QApplication(sys.argv)
     window = BilibiliDesktop()
     window.show()
@@ -39,7 +41,7 @@ def start_gui():
 
 def start_cli(args):
     """启动命令行界面"""
-    from core.cli import CliHandler
+
     cli = CliHandler()
     cli.handle_args(args)
 

@@ -31,6 +31,14 @@ class BilibiliAPI:
         url = f'https://api.bilibili.com/x/web-interface/view?bvid={bvid}'
         return self.network.make_request(url)
 
+    def get_video_tags(self, aid):
+        """获取视频标签"""
+        url = f'https://api.bilibili.com/x/web-interface/view/detail/tag?aid={aid}'
+        response = self.network.make_request(url)
+        if isinstance(response, dict):
+            return response.get('data', [])
+        return []
+
     def get_bangumi_info(self, ep_id):
         """获取番剧/影视详细信息"""
         url = f"https://api.bilibili.com/pgc/view/web/season?ep_id={ep_id}"

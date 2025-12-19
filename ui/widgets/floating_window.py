@@ -88,20 +88,27 @@ class FloatingWindow(QWidget):
 
     def switch_idle_image(self):
         """Randomly switch between rest images if in idle mode"""
-        if not self.is_downloading and not self.is_dragging:
-            options = []
-            if self.rest1_pixmap: options.append(self.rest1_pixmap)
-            if self.rest2_pixmap: options.append(self.rest2_pixmap)
-            if self.rest3_pixmap: options.append(self.rest3_pixmap)
-            if self.rest4_pixmap: options.append(self.rest4_pixmap)
-            
-            if options:
-                self.current_pixmap = random.choice(options)
-                # Random interval between 5s and 15s
-                self.idle_timer.setInterval(random.randint(5000, 15000))
-            else:
-                self.current_pixmap = self.download_pixmap
-            self.update()
+        try:
+            if not self.is_downloading and not self.is_dragging:
+                options = []
+                if self.rest1_pixmap: options.append(self.rest1_pixmap)
+                if self.rest2_pixmap: options.append(self.rest2_pixmap)
+                if self.rest3_pixmap: options.append(self.rest3_pixmap)
+                if self.rest4_pixmap: options.append(self.rest4_pixmap)
+                
+                if options:
+                    self.current_pixmap = random.choice(options)
+                    # Random interval between 5s and 15s
+                    self.idle_timer.setInterval(random.randint(5000, 15000))
+                else:
+                    self.current_pixmap = self.download_pixmap
+                    
+                if self.isVisible():
+                    self.update()
+        except Exception as e:
+            print(f"Error in switch_idle_image: {e}")
+            # Fallback
+            self.current_pixmap = self.download_pixmap
 
     def update_status(self, progress, speed_str):
         self.progress = progress

@@ -64,7 +64,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v4.8")
+        self.setWindowTitle("bilibiliDownloader v4.10")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -207,7 +207,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用bilibiliDownloader v4.8！")
+        logger.info("欢迎使用bilibiliDownloader v4.10！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg

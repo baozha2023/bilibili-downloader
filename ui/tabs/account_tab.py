@@ -116,10 +116,12 @@ class AccountTab(QWidget):
         actions_layout = QVBoxLayout()
         
         refresh_btn = QPushButton("刷新信息")
+        refresh_btn.setCursor(Qt.PointingHandCursor)
         refresh_btn.clicked.connect(self.refresh_account_info)
         actions_layout.addWidget(refresh_btn)
         
         logout_btn = QPushButton("退出登录")
+        logout_btn.setCursor(Qt.PointingHandCursor)
         logout_btn.clicked.connect(self.logout_account)
         actions_layout.addWidget(logout_btn)
         

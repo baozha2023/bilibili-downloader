@@ -25,6 +25,12 @@ class VideoPlayerWindow(QMainWindow):
         self.setWindowTitle(f"播放控制器: {self.video_title}")
         self.resize(400, 200)
         self.center()
+        
+        # 设置图标
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "resource/icon.ico")
+        if os.path.exists(icon_path):
+            from PyQt5.QtGui import QIcon
+            self.setWindowIcon(QIcon(icon_path))
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)

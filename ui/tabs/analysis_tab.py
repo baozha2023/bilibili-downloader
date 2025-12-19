@@ -57,17 +57,19 @@ class AnalysisWorker(QThread):
                         try:
                             loc = r.get('reply_control', {}).get('location', '')
                             if loc:
-                                locations.append(loc.replace('IP属地：', ''))
+                                locations.append(loc.replace('IP属地：', '').replace('IP属地:', '').strip())
                         except: pass
             
             # 3. Get Video Tags (if available)
             video_tags = []
             try:
-                # API might return 'tag' as list of dicts or we might need another call
-                # But let's check if it's in data
-                pass 
-                # Note: Standard view API usually returns tags in 'tag' list
-            except: pass
+                if aid:
+                    tags_data = self.crawler.get_video_tags(aid)
+                    # tags_data usually is list of dicts: [{'tag_name': '...', ...}, ...]
+                    if tags_data and isinstance(tags_data, list):
+                        video_tags = [t.get('tag_name') for t in tags_data if isinstance(t, dict) and t.get('tag_name')]
+            except Exception as e:
+                logger.error(f"Failed to get video tags: {e}")
             
             # 2.5 Get Danmaku
             danmaku = []
@@ -430,6 +432,44 @@ class AnalysisTab(QWidget):
             self.cloud_card.show()
         else:
             self.cloud_card.hide()
+
+    def generate_tags_chart(self, tags):
+        if not tags:
+            self.tags_label.setText("无视频标签数据")
+            return
+            
+        try:
+            # Create a simple word cloud or just a list
+            # Using Matplotlib to draw text cloud
+            plt.figure(figsize=(6, 4))
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            plt.axis('off')
+            
+            # Simple layout: random positions
+            import random
+            n = len(tags)
+            for i, tag in enumerate(tags):
+                x = random.random() * 0.8 + 0.1
+                y = random.random() * 0.8 + 0.1
+                size = random.randint(10, 20)
+                color = random.choice(['#fb7299', '#409eff', '#67c23a', '#e6a23c', '#909399'])
+                plt.text(x, y, tag, ha='center', va='center', fontsize=size, color=color, alpha=0.8)
+                
+            plt.title('视频标签云')
+            plt.tight_layout()
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=100)
+            buf.seek(0)
+            plt.close()
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+            self.tags_label.setPixmap(pixmap)
+            
+        except Exception as e:
+            logger.error(f"Generate tags chart error: {e}")
+            self.tags_label.setText(f"标签生成失败: {', '.join(tags[:5])}...")
 
     def generate_danmaku_chart(self, danmaku_list, duration=None):
         if not danmaku_list:

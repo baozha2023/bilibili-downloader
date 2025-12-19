@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 4.9
+版本: 4.10
 """
 
 import os
@@ -146,7 +146,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v4.9_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v4.10_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -190,7 +190,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  bilibiliDownloader打包工具 v4.9")
+    print("  bilibiliDownloader打包工具 v4.10")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -215,13 +215,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v4.9 更新内容:")
-    print("- 编辑：修复视频导入后名称不显示的问题")
-    print("- 分析：新增IP属地分布图表、标签显示、数据导出功能")
-    print("- 交互：悬浮窗新增随机休息动画和拖拽反馈")
-    print("- 功能：热门/收藏/历史列表右键新增'视频分析'入口")
-    print("- 体验：下载界面按钮鼠标手势优化")
-    print("- 核心：代码重构与优化")
+    print("\n新版本 v4.10 更新内容:")
+    print("- 优化：移除热门视频获取时的冗余环境检查")
+    print("- 分析：视频分析功能增强，新增视频标签云展示")
+    print("- 体验：全面优化按钮交互体验，统一鼠标悬停手势")
+    print("- 修复：修复悬浮窗在特定场景下的图片切换异常")
+    print("- 核心：代码深度重构与规范化")
 
 if __name__ == "__main__":
     main() 

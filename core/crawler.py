@@ -22,11 +22,21 @@ class BilibiliCrawler:
         self.network = NetworkManager(use_proxy, cookies)
         self.api = BilibiliAPI(self.network)
         self.downloader = Downloader(self.network)
-        self.processor = MediaProcessor()
+        self._processor = None
         
-        # 兼容旧属性
-        self.ffmpeg_available = self.processor.ffmpeg_available
-        self.ffmpeg_path = self.processor.ffmpeg_path
+    @property
+    def processor(self):
+        if self._processor is None:
+            self._processor = MediaProcessor()
+        return self._processor
+        
+    @property
+    def ffmpeg_available(self):
+        return self.processor.ffmpeg_available
+        
+    @property
+    def ffmpeg_path(self):
+        return self.processor.ffmpeg_path
         
     def _init_dirs(self):
         if not os.path.exists(self.data_dir): os.makedirs(self.data_dir)
@@ -62,6 +72,9 @@ class BilibiliCrawler:
         
     def get_video_info(self, bvid):
         return self.api.get_video_info(bvid)
+
+    def get_video_tags(self, aid):
+        return self.api.get_video_tags(aid)
         
     def get_video_comments(self, aid, page=1):
         return self.api.get_video_comments(aid, page)

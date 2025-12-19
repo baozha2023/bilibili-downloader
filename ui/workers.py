@@ -1,6 +1,7 @@
 import time
 import logging
 import os
+import traceback
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 from threading import Event
 from core.crawler import BilibiliCrawler
@@ -91,7 +92,7 @@ class WorkerThread(QThread):
             
         except Exception as e:
             # 记录异常信息
-            import traceback
+
             error_msg = str(e)
             error_traceback = traceback.format_exc()
             
@@ -221,9 +222,6 @@ class WorkerThread(QThread):
                             return {"status": "error", "message": "获取视频信息失败"}
                     
                     title = info.get("data", {}).get("title", "未知视频")
-                
-                # 只记录关键步骤，避免冗余
-                # self.update_signal.emit({"status": "info", "message": f"准备下载: {title}"})
                 
                 # 定义视频下载进度回调函数
                 def video_progress_callback(current, total):
@@ -427,7 +425,7 @@ class WorkerThread(QThread):
                     self.update_signal.emit({"status": "warning", "message": f"下载出错: {str(e)}，重试中 ({retry+1}/{self.max_retries})..."})
                     time.sleep(self.retry_delay)
                 else:
-                    import traceback
+
                     error_traceback = traceback.format_exc()
                     logger.error(f"下载失败: {str(e)}\n{error_traceback}")
                     return {
@@ -494,7 +492,6 @@ class AccountInfoThread(QThread):
             result = self.get_account_info()
         except Exception as e:
             # 记录异常信息
-            import traceback
             error_msg = str(e)
             error_traceback = traceback.format_exc()
             
