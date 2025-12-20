@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QTextEdit, QCheckBox, QFileDialog, QDialog, 
                              QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox, QAction)
 from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import QTimer, Qt
+from PyQt5.QtCore import QTimer, Qt, QEvent
 
 from core.crawler import BilibiliCrawler
 from ui.update_dialog import UpdateDialog
@@ -55,6 +55,23 @@ class BilibiliDesktop(QMainWindow):
         
         event.accept()
         
+    def changeEvent(self, event):
+        """窗口状态改变事件"""
+        if event.type() == QEvent.WindowStateChange:
+            if self.windowState() & Qt.WindowMaximized:
+                # 全屏/最大化时的布局优化
+                if self.centralWidget() and self.centralWidget().layout():
+                    # 增加边距，使内容不紧贴边缘
+                    self.centralWidget().layout().setContentsMargins(40, 30, 40, 30)
+                    # 增加组件间距
+                    self.centralWidget().layout().setSpacing(20)
+            else:
+                # 恢复正常时的布局
+                if self.centralWidget() and self.centralWidget().layout():
+                    self.centralWidget().layout().setContentsMargins(10, 10, 10, 10)
+                    self.centralWidget().layout().setSpacing(10)
+        super().changeEvent(event)
+        
     def resource_path(self, relative_path):
         """获取资源文件的绝对路径"""
         if hasattr(sys, '_MEIPASS'):
@@ -64,7 +81,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v5.0")
+        self.setWindowTitle("bilibiliDownloader v5.1")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -83,6 +100,7 @@ class BilibiliDesktop(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(10, 10, 10, 10) # 默认边距
         
         # ---------------------------------------------------------------
         # 1. 初始化控制台日志
@@ -207,7 +225,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用bilibiliDownloader v5.0！")
+        logger.info("欢迎使用bilibiliDownloader v5.1！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
@@ -218,14 +236,14 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v5.0"
+        version = "v5.1"
         updates = (
-            "1. 新增: 暂停/取消下载时自动清理残留文件，保持磁盘整洁。\n"
-            "2. 分析: 优化弹幕颜色分布图表，使用条形图展示，更清晰直观。\n"
-            "3. 编辑: 新增逐帧获取功能，支持查看并保存视频任意一帧，满足精确截图需求。\n"
-            "4. 设置: 新增超时时间和重试间隔设置，并优化所有设置选项的交互体验。\n"
-            "5. UI: 修复视频剪辑与压缩界面的按钮文字显示不全问题。\n"
-            "6. 核心: 代码深度重构，优化文件结构，提升代码可读性与维护性。\n"
+            "1. 收藏: 优化导出功能，支持仅导出Excel格式，移除冗余字段。\n"
+            "2. 安全: 增强账号安全性，Cookies数据采用加密存储。\n"
+            "3. 编辑: 重构逐帧获取界面，新增上一帧/下一帧、秒级跳转等精确控制功能。\n"
+            "4. 分析: 优化评论关键词提取算法，新增评论表情包分布图表。\n"
+            "5. UI: 适配全屏显示模式，优化界面布局和交互体验。\n"
+            "6. 核心: 深度代码重构与性能优化，提升软件稳定性。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

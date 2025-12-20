@@ -267,6 +267,27 @@ class AccountTab(QWidget):
         self.account_stack.setCurrentIndex(1)
         self.anim.start()
 
+    def _xor_cipher(self, data: bytes, key: bytes) -> bytes:
+        """简单的XOR加密"""
+        return bytes([b ^ key[i % len(key)] for i, b in enumerate(data)])
+
+    def _decrypt_data(self, encrypted_str):
+        """解密数据"""
+        try:
+            import base64
+            key = b"bilibili_downloader_v5_secret_key"
+            # 1. To bytes
+            b64_bytes = encrypted_str.encode('utf-8')
+            # 2. Base64 decode
+            xor_bytes = base64.b64decode(b64_bytes)
+            # 3. XOR
+            data_bytes = self._xor_cipher(xor_bytes, key)
+            # 4. To string
+            return data_bytes.decode('utf-8')
+        except Exception as e:
+            logger.error(f"解密失败: {e}")
+            return None
+
     def check_login_status(self):
         """检查登录状态"""
         self.main_window.log_to_console("正在检查登录状态...", "info")
@@ -274,13 +295,28 @@ class AccountTab(QWidget):
         if os.path.exists(config_file):
             try:
                 with open(config_file, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                cookies = config.get("cookies", {})
-                if cookies and "SESSDATA" in cookies:
-                    self.crawler.cookies = cookies
-                    self.get_account_info(cookies)
-                    self.switch_to_logged_view()
-                    return
+                    saved_data = json.load(f)
+                
+                config = None
+                # Check if encrypted
+                if isinstance(saved_data, dict) and "data" in saved_data and "version" in saved_data:
+                    # Decrypt
+                    decrypted_str = self._decrypt_data(saved_data["data"])
+                    if decrypted_str:
+                        config = json.loads(decrypted_str)
+                else:
+                    # Fallback for old plain text format (if any users still have it, though we are removing support, it doesn't hurt to keep reading for migration if we wanted, but user asked to remove support. 
+                    # Actually user said "remove legacy config support" in previous turn for LoginDialog.
+                    # Here we should consistent. But to be safe, I'll just support encrypted.)
+                    pass
+
+                if config:
+                    cookies = config.get("cookies", {})
+                    if cookies and "SESSDATA" in cookies:
+                        self.crawler.cookies = cookies
+                        self.get_account_info(cookies)
+                        self.switch_to_logged_view()
+                        return
             except Exception as e:
                 logger.error(f"读取登录配置失败: {e}")
                 self.main_window.log_to_console(f"读取登录配置失败: {e}", "error")

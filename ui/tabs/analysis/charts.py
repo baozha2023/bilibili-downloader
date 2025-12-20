@@ -355,7 +355,7 @@ class ChartGenerator:
                 "真的", "就是", "觉得", "喜欢", "支持", "加油", "其实", "然后", "现在", "时候", "已经", "可以", "一下", "这里", "那里",
                 "doge", "call", "https", "com", "bilibili", "opus", "回复", "楼上", "转发", "点赞", "收藏", "关注", "投币",
                 "星星",  "滑稽", "打卡", "第一", "前排", "沙发", "板凳", "地板", "热乎", "来了", "更新", "辛苦",
-                "www", "http", "cn", "net", "org", "html", "htm"
+                "www", "http", "cn", "net", "org", "html", "htm", "感觉", "有没有", "是不是", "或者", "只是", "为了", "不过", "只要", "只有"
             }
             
             text = " ".join(comments)
@@ -379,9 +379,10 @@ class ChartGenerator:
                 background_color="white",
                 width=800,
                 height=400,
-                max_words=100,
+                max_words=150, # Increased
                 stopwords=STOP_WORDS,
-                collocations=False
+                collocations=False,
+                mask=None # Can add shape mask if needed
             ).generate(" ".join(filtered_words))
             
             image = wc.to_image()

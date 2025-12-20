@@ -131,35 +131,34 @@ class CutPage(BaseEditPage):
                  
             if is_frame:
                 # Update frame limits
-                fps = self.processor.get_video_fps(file_path)
+                total_frames = self.processor.get_total_frames(file_path)
                 duration = self.processor.get_video_duration(file_path)
-                total_frames = int(duration * fps) if fps > 0 else 0
+                
                 self.start_frame_spin.setMaximum(total_frames)
                 self.end_frame_spin.setMaximum(total_frames)
                 if self.end_frame_spin.value() == 0:
                     self.end_frame_spin.setValue(total_frames)
-                self.duration_label.setText(f"总时长: {duration}秒 (约 {total_frames} 帧)")
+                self.duration_label.setText(f"总时长: {duration:.2f}秒 (约 {total_frames} 帧)")
             else:
                 duration = self.processor.get_video_duration(file_path)
                 self.start_time_spin.setMaximum(duration)
                 self.end_time_spin.setMaximum(duration)
                 if self.end_time_spin.value() == 0:
                     self.end_time_spin.setValue(duration)
-                self.duration_label.setText(f"总时长: {duration}秒")
+                self.duration_label.setText(f"总时长: {duration:.2f}秒")
 
     def on_cut_file_dropped(self, file_path):
         self.set_single_file(file_path, self.cut_file_list, self.cut_btn)
         # Get duration
         duration = self.processor.get_video_duration(file_path)
-        self.duration_label.setText(f"总时长: {duration}秒")
+        self.duration_label.setText(f"总时长: {duration:.2f}秒")
         self.start_time_spin.setMaximum(duration)
         self.end_time_spin.setMaximum(duration)
         self.end_time_spin.setValue(duration)
         
         # Try to set fps-dependent frame limits
         try:
-            fps = self.processor.get_video_fps(file_path)
-            total_frames = int(duration * fps)
+            total_frames = self.processor.get_total_frames(file_path)
             self.start_frame_spin.setMaximum(total_frames)
             self.end_frame_spin.setMaximum(total_frames)
             self.end_frame_spin.setValue(total_frames)

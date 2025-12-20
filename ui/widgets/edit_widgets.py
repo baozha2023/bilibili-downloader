@@ -46,7 +46,7 @@ class MergeItemWidget(QWidget):
         info_layout.addWidget(name_label)
         
         # Duration info
-        dur_text = f"时长: {self.duration}s"
+        dur_text = f"时长: {self.duration:.2f}s"
         dur_label = QLabel(dur_text)
         dur_label.setStyleSheet("font-size: 12px; color: #888;")
         info_layout.addWidget(dur_label)
@@ -231,7 +231,7 @@ class VideoFileWidget(QWidget):
         # Details
         details_text = []
         if self.duration > 0:
-            details_text.append(f"时长: {self.duration}s")
+            details_text.append(f"时长: {self.duration:.2f}s")
         if self.size > 0:
             details_text.append(f"大小: {self.size:.2f}MB")
             

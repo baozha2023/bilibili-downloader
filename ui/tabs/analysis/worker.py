@@ -1,6 +1,8 @@
 import logging
 import requests
 import jieba.analyse
+import re
+from collections import Counter
 
 from PyQt5.QtCore import QThread, pyqtSignal
 from snownlp import SnowNLP
@@ -33,28 +35,51 @@ class AnalysisWorker(QThread):
             locations = []
             
             if aid:
-                replies = self.crawler.api.get_video_comments(aid)
-                if replies:
-                    for r in replies:
-                        content = r.get('content', {}).get('message', '')
-                        if content:
-                            comments.append(content)
+                # Fetch multiple pages (Limit to 20 pages / 400 comments to avoid slow analysis)
+                # API default page size is 20
+                max_pages = 20
+                for page in range(1, max_pages + 1):
+                    try:
+                        replies = self.crawler.api.get_video_comments(aid, page=page)
+                        if not replies:
+                            break
                             
-                        # Extract date
-                        ctime = r.get('ctime', 0)
-                        if ctime:
-                            comment_dates.append(ctime)
+                        for r in replies:
+                            content = r.get('content', {}).get('message', '')
+                            if content:
+                                comments.append(content)
+                                
+                            # Extract date
+                            ctime = r.get('ctime', 0)
+                            if ctime:
+                                comment_dates.append(ctime)
+                                
+                            # Extract level
+                            level = r.get('member', {}).get('level_info', {}).get('current_level', 0)
+                            user_levels.append(level)
                             
-                        # Extract level
-                        level = r.get('member', {}).get('level_info', {}).get('current_level', 0)
-                        user_levels.append(level)
-                        
-                        # Extract location
-                        try:
-                            loc = r.get('reply_control', {}).get('location', '')
-                            if loc:
-                                locations.append(loc.replace('IP属地：', '').replace('IP属地:', '').strip())
-                        except: pass
+                            # Extract location
+                            try:
+                                # 优化IP属地提取逻辑
+                                loc = ""
+                                # 1. Try standard field
+                                reply_control = r.get('reply_control', {})
+                                if reply_control and 'location' in reply_control:
+                                    loc = reply_control['location']
+                                # 2. Try root field (sometimes)
+                                elif 'location' in r:
+                                    loc = r['location']
+                                
+                                if loc:
+                                    # Remove prefix if present, support both colon types
+                                    clean_loc = loc.replace('IP属地：', '').replace('IP属地:', '').strip()
+                                    if clean_loc:
+                                        locations.append(clean_loc)
+                            except: pass
+                            
+                    except Exception as e:
+                        logger.error(f"Error fetching comments page {page}: {e}")
+                        break
             
             # 2.5 Get Danmaku (Fixed: Added back)
             danmaku = []
@@ -81,8 +106,10 @@ class AnalysisWorker(QThread):
                 if comments:
                     scores = []
                     for c in comments:
-                        if len(c) > 1:
-                            s = SnowNLP(c)
+                        # 简单的过滤：移除纯表情、纯符号
+                        clean_c = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9]', '', c)
+                        if len(clean_c) > 1:
+                            s = SnowNLP(clean_c)
                             scores.append(s.sentiments)
                     if scores:
                         sentiment_score = sum(scores) / len(scores)
@@ -91,12 +118,32 @@ class AnalysisWorker(QThread):
             except Exception as e:
                 logger.error(f"Sentiment analysis failed: {e}")
 
-            # 4. Keyword Analysis
+            # 4. Keyword Analysis (Optimized)
             keywords = []
             try:
                 if comments:
+                    # 预处理：合并所有评论
                     text = " ".join(comments)
-                    keywords = jieba.analyse.extract_tags(text, topK=10, withWeight=True)
+                    
+                    # 自定义停用词 (简单实现，不需要额外文件)
+                    stop_words = {
+                        "视频", "弹幕", "这个", "那个", "什么", "因为", "所以", "如果", "但是", "就是", 
+                        "真的", "觉得", "喜欢", "支持", "加油", "其实", "然后", "现在", "时候", "已经", 
+                        "可以", "一下", "这里", "那里", "哈哈", "哈哈哈", "up", "UP", "Up", "怎么",
+                        "还是", "感觉", "有没有", "是不是", "或者", "只是", "为了", "不过", "只要", "只有"
+                    }
+                    
+                    # 使用 jieba 提取关键词
+                    # topK=30，提取更多以供筛选
+                    tags = jieba.analyse.extract_tags(text, topK=30, withWeight=True)
+                    
+                    # 过滤停用词和单字
+                    keywords = []
+                    for word, weight in tags:
+                        if word.lower() not in stop_words and len(word) > 1 and not word.isdigit():
+                            keywords.append((word, weight))
+                            if len(keywords) >= 15: # 保留前15个
+                                break
             except Exception as e:
                 logger.error(f"Keyword extraction failed: {e}")
 
@@ -109,7 +156,7 @@ class AnalysisWorker(QThread):
                 'danmaku': danmaku,
                 'cover_data': cover_data,
                 'sentiment': sentiment_score,
-                'keywords': keywords
+                'keywords': keywords,
             }
             self.finished_signal.emit(result, "")
         except Exception as e:

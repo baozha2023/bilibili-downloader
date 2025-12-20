@@ -6,6 +6,7 @@ import logging
 import threading
 import shutil
 import tempfile
+import cv2
 
 from core.watermark import WatermarkRemover
 
@@ -187,12 +188,32 @@ class MediaProcessor:
                                encoding='utf-8', errors='replace')
             _, stderr = p.communicate()
             
-            match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2})', stderr)
+            match = re.search(r'Duration: (\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)', stderr)
             if match:
-                h, m, s = map(int, match.groups())
+                h = int(match.group(1))
+                m = int(match.group(2))
+                s = float(match.group(3))
                 return h * 3600 + m * 60 + s
         except Exception as e:
             logger.error(f"获取时长失败: {e}")
+        return 0
+
+    def get_total_frames(self, video_path):
+        """获取视频总帧数 (优先使用 OpenCV 精确获取)"""
+        try:
+            cap = cv2.VideoCapture(video_path)
+            if cap.isOpened():
+                count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                cap.release()
+                return count
+        except Exception as e:
+            logger.warning(f"OpenCV获取帧数失败，尝试使用ffmpeg估算: {e}")
+        
+        # Fallback
+        fps = self.get_video_fps(video_path)
+        duration = self.get_video_duration(video_path)
+        if fps > 0:
+            return int(duration * fps)
         return 0
 
     def get_video_fps(self, video_path):

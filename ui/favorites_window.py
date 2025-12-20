@@ -198,7 +198,7 @@ class FavoritesWindow(QDialog):
         timestamp = time.strftime("%Y%m%d_%H%M%S")
         default_name = f"favorites_page_{self.page}_{timestamp}.xlsx"
         
-        path, _ = QFileDialog.getSaveFileName(self, "导出数据", default_name, "Excel Files (*.xlsx);;CSV Files (*.csv)")
+        path, _ = QFileDialog.getSaveFileName(self, "导出数据", default_name, "Excel Files (*.xlsx)")
         
         if not path:
             return
@@ -208,7 +208,7 @@ class FavoritesWindow(QDialog):
             data = []
             
             # 获取所有可能的键作为表头
-            known_headers = ["title", "upper", "duration", "play", "bvid", "intro", "pubtime", "fav_time"]
+            known_headers = ["title", "upper", "duration", "play", "intro", "pubtime", "fav_time"]
             all_keys = set()
             for v in self.current_videos:
                 all_keys.update(v.keys())
@@ -226,14 +226,14 @@ class FavoritesWindow(QDialog):
                 "upper_name": "UP主",
                 "duration": "时长(秒)",
                 "cnt_info_play": "播放量",
-                "bvid": "BV号",
                 "intro": "简介",
                 "pubtime": "发布时间",
                 "fav_time": "收藏时间"
             }
             
             # 添加常用字段
-            for k in ["title", "upper_name", "duration", "cnt_info_play", "bvid", "intro", "pubtime", "fav_time"]:
+            # 移除 BV号 (bvid)
+            for k in ["title", "upper_name", "duration", "cnt_info_play", "intro", "pubtime", "fav_time"]:
                 headers.append(header_map.get(k, k))
             
             # 添加其他字段 (不翻译)
@@ -251,7 +251,7 @@ class FavoritesWindow(QDialog):
                 row_data.append(v.get("upper", {}).get("name", "") if isinstance(v.get("upper"), dict) else "")
                 row_data.append(v.get("duration", ""))
                 row_data.append(v.get("cnt_info", {}).get("play", "") if isinstance(v.get("cnt_info"), dict) else "")
-                row_data.append(v.get("bvid", ""))
+                # row_data.append(v.get("bvid", "")) # Removed
                 row_data.append(v.get("intro", ""))
                 row_data.append(v.get("pubtime", ""))
                 row_data.append(v.get("fav_time", ""))
@@ -265,23 +265,17 @@ class FavoritesWindow(QDialog):
                     row_data.append(str(val))
                 data.append(row_data)
                 
-            if path.endswith('.xlsx'):
-                import openpyxl
-                wb = openpyxl.Workbook()
-                ws = wb.active
-                for r_idx, row in enumerate(data, 1):
-                    for c_idx, val in enumerate(row, 1):
-                        # 处理非法字符
-                        val_str = str(val)
-                        # 移除非法字符 (Excel 不支持的控制字符)
-                        val_str = "".join(ch for ch in val_str if (0x20 <= ord(ch) <= 0xD7FF) or (0xE000 <= ord(ch) <= 0xFFFD) or ch in "\t\r\n")
-                        ws.cell(row=r_idx, column=c_idx, value=val_str)
-                wb.save(path)
-            else:
-                # Fallback to CSV
-                with open(path, 'w', encoding='utf-8-sig', newline='') as f:
-                    writer = csv.writer(f)
-                    writer.writerows(data)
+            import openpyxl
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            for r_idx, row in enumerate(data, 1):
+                for c_idx, val in enumerate(row, 1):
+                    # 处理非法字符
+                    val_str = str(val)
+                    # 移除非法字符 (Excel 不支持的控制字符)
+                    val_str = "".join(ch for ch in val_str if (0x20 <= ord(ch) <= 0xD7FF) or (0xE000 <= ord(ch) <= 0xFFFD) or ch in "\t\r\n")
+                    ws.cell(row=r_idx, column=c_idx, value=val_str)
+            wb.save(path)
                     
             BilibiliMessageBox.information(self, "成功", f"数据已导出到: {path}")
             

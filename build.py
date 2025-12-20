@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 5.0
+版本: 5.1
 """
 
 import os
@@ -47,6 +47,7 @@ def build_executable():
         '--collect-all=jieba',     # 收集jieba数据
         '--collect-all=wordcloud', # 收集wordcloud数据
         '--hidden-import=cv2',     # OpenCV
+        '--hidden-import=openpyxl', # Excel Export
         '--hidden-import=core.crawler',
         '--hidden-import=core.network',
         '--hidden-import=core.api',
@@ -152,7 +153,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v5.0_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v5.1_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -196,7 +197,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  bilibiliDownloader打包工具 v5.0")
+    print("  bilibiliDownloader打包工具 v5.1")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -221,12 +222,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v5.0 更新内容:")
-    print("- 新增：暂停/取消下载时自动清理残留文件")
-    print("- 分析：优化弹幕颜色分布图表，移除部分冗余分析功能")
-    print("- 编辑：新增逐帧获取功能，精确截取视频画面")
-    print("- 设置：新增超时时间和重试间隔设置，优化交互体验")
-    print("- 优化：修复部分UI显示问题，重构核心代码")
+    print("\n新版本 v5.1 更新内容:")
+    print("- 收藏：优化导出功能，支持仅导出Excel格式")
+    print("- 安全：增强账号安全性，Cookies数据采用加密存储")
+    print("- 编辑：重构逐帧获取界面，新增精确控制功能")
+    print("- 分析：优化评论关键词提取，新增表情包分布图表")
+    print("- UI：适配全屏显示模式，优化界面布局")
 
 if __name__ == "__main__":
     main() 

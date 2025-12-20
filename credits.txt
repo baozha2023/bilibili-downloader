@@ -44,6 +44,9 @@
 14. SnowNLP (https://github.com/isnowfy/snownlp)
     - Python中文文本情感分析库
 
+15. openpyxl (https://openpyxl.readthedocs.io/)
+    - 用于读写Excel 2010 xlsx/xlsm文件的Python库
+
 本软件作者：zxj
 作者gitee首页：https://gitee.com/bzJAVA/bilibili-downloader
 

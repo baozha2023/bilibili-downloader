@@ -180,7 +180,7 @@ class AnalysisTab(QWidget):
         self.sentiment_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.sentiment_label, 2, 1)
 
-        # Row 4: Location & Danmaku Color
+        # Row 3: Location & Danmaku Color
         self.location_label = QLabel()
         self.location_label.setAlignment(Qt.AlignCenter)
         self.location_label.setStyleSheet("background-color: transparent; padding: 10px;")
@@ -190,6 +190,8 @@ class AnalysisTab(QWidget):
         self.color_label.setAlignment(Qt.AlignCenter)
         self.color_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.color_label, 3, 1)
+
+        # Row 4: Emoji Analysis (Removed)
         
         self.charts_card.add_layout(self.charts_layout)
         self.charts_card.hide()
@@ -294,7 +296,7 @@ class AnalysisTab(QWidget):
         # Location & Danmaku Color
         ChartGenerator.generate_location_chart(self.location_label, result.get('locations', []))
         ChartGenerator.generate_danmaku_color_chart(self.color_label, result.get('danmaku', []))
-        
+
         self.charts_card.show()
         
         # 4. Keywords

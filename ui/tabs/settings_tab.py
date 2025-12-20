@@ -208,8 +208,9 @@ class SettingsTab(QWidget):
         pref_layout.addWidget(quality_label, 1, 0)
         
         self.quality_combo = NoScrollComboBox()
-        self.quality_combo.addItems(["8K 超高清", "4K 超清", "1080P+ 高码率", "1080P 高清", "720P 高清", "480P 清晰", "360P 流畅"])
-        self.quality_combo.setCurrentText("1080P 高清")
+        # 默认只显示非登录用户的画质选项，登录后会自动更新
+        self.quality_combo.addItems(["720P 高清", "480P 清晰", "360P 流畅"])
+        self.quality_combo.setCurrentText("720P 高清")
         self.quality_combo.setStyleSheet(combo_style)
         pref_layout.addWidget(self.quality_combo, 1, 1)
         
@@ -295,6 +296,7 @@ class SettingsTab(QWidget):
         self.floating_window_check.setStyleSheet(checkbox_style)
         self.floating_window_check.setCursor(Qt.PointingHandCursor)
         self.floating_window_check.stateChanged.connect(self.toggle_floating_window)
+        self.floating_window_check.setChecked(True) # 默认开启
         checkbox_layout.addWidget(self.floating_window_check, 2, 1)
         
         download_card.add_layout(checkbox_layout)

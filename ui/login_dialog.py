@@ -239,6 +239,7 @@ class BilibiliLoginWindow(QMainWindow):
         
         # 登录完成信号（用于通知主窗口）
         self.finished_signal = None
+        self.login_successful = False
         
         # 加载配置 - 统一使用 bilibili_data/config
         self.data_dir = 'bilibili_data'
@@ -457,9 +458,6 @@ class BilibiliLoginWindow(QMainWindow):
             self.info_text.setText("登录成功！")
             self.info_text.setStyleSheet("color: #52c41a; font-size: 24px; line-height: 1.6; font-weight: bold;")
             
-            # 保存cookies
-            self.cookies = data.get("data", {}).get("cookies", {})
-            
             # 保存配置
             if self.cookies:
                 if self.save_info_check.isChecked():
@@ -518,6 +516,44 @@ class BilibiliLoginWindow(QMainWindow):
         """注销登录"""
         pass
             
+    def _xor_cipher(self, data: bytes, key: bytes) -> bytes:
+        """简单的XOR加密"""
+        return bytes([b ^ key[i % len(key)] for i, b in enumerate(data)])
+
+    def _encrypt_data(self, data_str):
+        """加密数据"""
+        try:
+            import base64
+            key = b"bilibili_downloader_v5_secret_key"
+            # 1. To bytes
+            data_bytes = data_str.encode('utf-8')
+            # 2. XOR
+            xor_bytes = self._xor_cipher(data_bytes, key)
+            # 3. Base64
+            b64_bytes = base64.b64encode(xor_bytes)
+            # 4. To string
+            return b64_bytes.decode('utf-8')
+        except Exception as e:
+            logger.error(f"加密失败: {e}")
+            return None
+
+    def _decrypt_data(self, encrypted_str):
+        """解密数据"""
+        try:
+            import base64
+            key = b"bilibili_downloader_v5_secret_key"
+            # 1. To bytes
+            b64_bytes = encrypted_str.encode('utf-8')
+            # 2. Base64 decode
+            xor_bytes = base64.b64decode(b64_bytes)
+            # 3. XOR
+            data_bytes = self._xor_cipher(xor_bytes, key)
+            # 4. To string
+            return data_bytes.decode('utf-8')
+        except Exception as e:
+            logger.error(f"解密失败: {e}")
+            return None
+
     def save_config(self):
         """保存配置"""
         if not self.cookies:
@@ -529,10 +565,26 @@ class BilibiliLoginWindow(QMainWindow):
                 "timestamp": int(time.time())
             }
             
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(config, f)
+            # Serialize to JSON string
+            json_str = json.dumps(config)
+            
+            # Encrypt
+            encrypted_data = self._encrypt_data(json_str)
+            
+            if encrypted_data:
+                # Wrap in a structure to identify it's encrypted
+                final_data = {
+                    "version": "v1",
+                    "data": encrypted_data
+                }
                 
-            logger.info("配置已保存")
+                with open(self.config_file, 'w', encoding='utf-8') as f:
+                    json.dump(final_data, f)
+                
+                logger.info("配置已加密保存")
+            else:
+                logger.error("加密配置失败，未保存")
+                
         except Exception as e:
             logger.error(f"保存配置失败: {str(e)}")
 
@@ -552,8 +604,23 @@ class BilibiliLoginWindow(QMainWindow):
             
         try:
             with open(self.config_file, 'r', encoding='utf-8') as f:
-                config = json.load(f)
+                saved_data = json.load(f)
+            
+            config = None
+            
+            # Check if encrypted
+            if isinstance(saved_data, dict) and "data" in saved_data and "version" in saved_data:
+                # Decrypt
+                decrypted_str = self._decrypt_data(saved_data["data"])
+                if decrypted_str:
+                    config = json.loads(decrypted_str)
+            else:
+                logger.warning("配置文件格式无效或不支持旧版配置")
+                return
                 
+            if not config:
+                return
+
             timestamp = config.get("timestamp", 0)
             current_time = int(time.time())
             
@@ -590,7 +657,7 @@ class BilibiliLoginWindow(QMainWindow):
             self.save_config()
         
         # 通知主窗口登录状态变化
-        if self.finished_signal:
+        if self.finished_signal and not self.login_successful:
             try:
                 self.finished_signal()
             except Exception as e:

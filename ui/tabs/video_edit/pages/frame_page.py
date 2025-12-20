@@ -1,7 +1,8 @@
 import os
 import cv2
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QGroupBox, 
-                             QSizePolicy, QSlider, QSpinBox, QFileDialog)
+                             QSizePolicy, QSlider, QSpinBox, QFileDialog, 
+                             QPushButton, QFrame, QSplitter, QWidget)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
 from ui.widgets.edit_widgets import DragDropListWidget
@@ -13,68 +14,201 @@ class FramePage(BaseEditPage):
         self.cap = None
         self.current_frame_img = None
         self.total_frames = 0
+        self.fps = 30 # Default
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(40, 30, 40, 30)
-        layout.setSpacing(20)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(10)
         
-        self.setup_header(layout, "逐帧获取", "查看视频任意帧并保存")
+        # Header
+        self.setup_header(layout, "逐帧获取", "精确查看视频每一帧并保存高清截图")
         
-        # File Selection
+        # Main Content - Splitter for resizing
+        splitter = QSplitter(Qt.Vertical)
+        splitter.setHandleWidth(1)
+        
+        # Top: File List (Collapsible-ish)
+        file_widget = QWidget()
+        file_layout = QVBoxLayout(file_widget)
+        file_layout.setContentsMargins(0, 0, 0, 0)
+        
         self.frame_file_list = DragDropListWidget()
         self.frame_file_list.file_dropped.connect(lambda p: self.load_video_for_frame(p))
         self.frame_file_list.clicked.connect(lambda: self.select_single_file(self.frame_file_list, None, callback=self.load_video_for_frame))
-        self.frame_file_list.setMaximumHeight(100)
-        layout.addWidget(self.frame_file_list)
+        self.frame_file_list.setMaximumHeight(80)
+        self.frame_file_list.setToolTip("拖拽视频文件到此处")
+        file_layout.addWidget(self.frame_file_list)
         
-        # Preview Area
+        splitter.addWidget(file_widget)
+        
+        # Middle: Preview (Large)
+        preview_container = QWidget()
+        preview_layout = QVBoxLayout(preview_container)
+        preview_layout.setContentsMargins(0, 10, 0, 10)
+        
         self.preview_label = QLabel()
         self.preview_label.setAlignment(Qt.AlignCenter)
-        self.preview_label.setStyleSheet("background-color: #000; border-radius: 8px;")
-        self.preview_label.setMinimumHeight(300)
+        self.preview_label.setStyleSheet("background-color: #1a1a1a; border-radius: 8px; border: 1px solid #333;")
         self.preview_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        layout.addWidget(self.preview_label)
+        self.preview_label.setMinimumHeight(300)
+        preview_layout.addWidget(self.preview_label)
         
-        # Controls
-        controls_group = QGroupBox("帧控制")
-        controls_group.setStyleSheet("QGroupBox { font-size: 16px; color: #333; border: 1px solid #ddd; border-radius: 8px; margin-top: 10px; padding-top: 15px; }")
-        controls_layout = QVBoxLayout(controls_group)
+        splitter.addWidget(preview_container)
         
-        # Slider
+        # Set stretch factors (Top: 0, Bottom: 1)
+        splitter.setStretchFactor(0, 0)
+        splitter.setStretchFactor(1, 1)
+        
+        layout.addWidget(splitter)
+        
+        # Bottom: Controls
+        controls_frame = QFrame()
+        controls_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f9f9f9;
+                border-radius: 8px;
+                border: 1px solid #e0e0e0;
+            }
+        """)
+        controls_layout = QVBoxLayout(controls_frame)
+        controls_layout.setContentsMargins(15, 15, 15, 15)
+        
+        # 1. Slider & Info
+        slider_layout = QHBoxLayout()
+        
+        self.time_label = QLabel("00:00:00")
+        self.time_label.setFixedWidth(80)
+        self.time_label.setStyleSheet("font-family: monospace; font-weight: bold; color: #555; border: none;")
+        slider_layout.addWidget(self.time_label)
+        
         self.frame_slider = QSlider(Qt.Horizontal)
         self.frame_slider.setEnabled(False)
         self.frame_slider.valueChanged.connect(self.seek_frame)
-        controls_layout.addWidget(self.frame_slider)
+        self.frame_slider.setStyleSheet("""
+            QSlider::groove:horizontal {
+                border: 1px solid #ddd;
+                height: 6px;
+                background: #e0e0e0;
+                border-radius: 3px;
+            }
+            QSlider::handle:horizontal {
+                background: #fb7299;
+                border: 1px solid #fb7299;
+                width: 16px;
+                height: 16px;
+                margin: -6px 0;
+                border-radius: 8px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #fb7299;
+                border-radius: 3px;
+            }
+        """)
+        slider_layout.addWidget(self.frame_slider)
         
-        # Info & SpinBox
-        info_layout = QHBoxLayout()
-        self.frame_info_label = QLabel("0 / 0 帧")
-        info_layout.addWidget(self.frame_info_label)
+        self.frame_info_label = QLabel("0 / 0")
+        self.frame_info_label.setFixedWidth(100)
+        self.frame_info_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.frame_info_label.setStyleSheet("color: #555; border: none;")
+        slider_layout.addWidget(self.frame_info_label)
         
-        info_layout.addStretch()
+        controls_layout.addLayout(slider_layout)
         
-        info_layout.addWidget(QLabel("跳转到:"))
+        # 2. Buttons
+        btns_layout = QHBoxLayout()
+        btns_layout.setSpacing(10)
+        
+        # Jump Buttons
+        self.btn_prev_s = QPushButton("⏪ -1秒")
+        self.btn_prev_f = QPushButton("◀ 上一帧")
+        self.btn_next_f = QPushButton("下一帧 ▶")
+        self.btn_next_s = QPushButton("+1秒 ⏩")
+        
+        for btn in [self.btn_prev_s, self.btn_prev_f, self.btn_next_f, self.btn_next_s]:
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.setEnabled(False)
+            btn.setFixedWidth(90)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: white;
+                    border: 1px solid #dcdfe6;
+                    color: #606266;
+                    border-radius: 4px;
+                    padding: 6px 0;
+                }
+                QPushButton:hover {
+                    color: #fb7299;
+                    border-color: #fb7299;
+                    background-color: #ecf5ff;
+                }
+                QPushButton:pressed {
+                    background-color: #fb7299;
+                    color: white;
+                }
+                QPushButton:disabled {
+                    background-color: #f5f7fa;
+                    border-color: #e4e7ed;
+                    color: #c0c4cc;
+                }
+            """)
+            
+        self.btn_prev_s.clicked.connect(lambda: self.jump_seconds(-1))
+        self.btn_prev_f.clicked.connect(lambda: self.jump_frame(-1))
+        self.btn_next_f.clicked.connect(lambda: self.jump_frame(1))
+        self.btn_next_s.clicked.connect(lambda: self.jump_seconds(1))
+        
+        btns_layout.addWidget(self.btn_prev_s)
+        btns_layout.addWidget(self.btn_prev_f)
+        btns_layout.addWidget(self.btn_next_f)
+        btns_layout.addWidget(self.btn_next_s)
+        
+        btns_layout.addStretch()
+        
+        # Frame Spin
+        btns_layout.addWidget(QLabel("跳转帧:"))
         self.frame_spin = QSpinBox()
         self.frame_spin.setRange(0, 0)
         self.frame_spin.setEnabled(False)
+        self.frame_spin.setFixedWidth(100)
         self.frame_spin.valueChanged.connect(self.on_frame_spin_changed)
         self.style_spinbox(self.frame_spin)
-        info_layout.addWidget(self.frame_spin)
+        btns_layout.addWidget(self.frame_spin)
         
-        controls_layout.addLayout(info_layout)
-        layout.addWidget(controls_group)
+        btns_layout.addSpacing(20)
         
-        # Action Buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        
-        self.save_frame_btn = self.create_primary_button("保存当前帧", self.save_current_frame)
+        # Save Button
+        self.save_frame_btn = QPushButton("📸 保存当前帧")
+        self.save_frame_btn.setCursor(Qt.PointingHandCursor)
         self.save_frame_btn.setEnabled(False)
-        btn_layout.addWidget(self.save_frame_btn)
+        self.save_frame_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #fb7299;
+                color: white;
+                border-radius: 4px;
+                padding: 8px 20px;
+                font-weight: bold;
+                font-size: 14px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #fc8bab;
+            }
+            QPushButton:pressed {
+                background-color: #e45c84;
+            }
+            QPushButton:disabled {
+                background-color: #f5f7fa;
+                color: #c0c4cc;
+                border: 1px solid #e4e7ed;
+            }
+        """)
+        self.save_frame_btn.clicked.connect(self.save_current_frame)
+        btns_layout.addWidget(self.save_frame_btn)
         
-        layout.addLayout(btn_layout)
+        controls_layout.addLayout(btns_layout)
+        layout.addWidget(controls_frame)
         
         self.reset_list(self.frame_file_list, "👇 拖拽视频文件到此处")
 
@@ -91,7 +225,8 @@ class FramePage(BaseEditPage):
                 return
                 
             self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            # fps = self.cap.get(cv2.CAP_PROP_FPS)
+            self.fps = self.cap.get(cv2.CAP_PROP_FPS)
+            if self.fps <= 0: self.fps = 30
             
             self.frame_slider.setRange(0, self.total_frames - 1)
             self.frame_slider.setValue(0)
@@ -102,6 +237,8 @@ class FramePage(BaseEditPage):
             self.frame_spin.setEnabled(True)
             
             self.save_frame_btn.setEnabled(True)
+            for btn in [self.btn_prev_s, self.btn_prev_f, self.btn_next_f, self.btn_next_s]:
+                btn.setEnabled(True)
             
             self.update_frame_preview(0)
         except Exception as e:
@@ -117,6 +254,15 @@ class FramePage(BaseEditPage):
     def on_frame_spin_changed(self, val):
         if self.frame_slider.value() != val:
             self.frame_slider.setValue(val)
+
+    def jump_frame(self, delta):
+        current = self.frame_slider.value()
+        new_val = max(0, min(self.total_frames - 1, current + delta))
+        self.frame_slider.setValue(new_val)
+
+    def jump_seconds(self, seconds):
+        delta_frames = int(seconds * self.fps)
+        self.jump_frame(delta_frames)
             
     def update_frame_preview(self, frame_idx):
         if not self.cap or not self.cap.isOpened():
@@ -136,10 +282,20 @@ class FramePage(BaseEditPage):
                 
                 # Scale to fit label
                 pixmap = QPixmap.fromImage(qt_img)
+                
+                # Maintain aspect ratio and fit within the label area
                 scaled_pixmap = pixmap.scaled(self.preview_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 self.preview_label.setPixmap(scaled_pixmap)
                 
-                self.frame_info_label.setText(f"{frame_idx} / {self.total_frames} 帧")
+                # Update Info
+                self.frame_info_label.setText(f"{frame_idx} / {self.total_frames}")
+                
+                # Update Time
+                seconds = frame_idx / self.fps
+                m, s = divmod(seconds, 60)
+                h, m = divmod(m, 60)
+                self.time_label.setText(f"{int(h):02d}:{int(m):02d}:{int(s):02d}")
+                
         except Exception as e:
             pass # Ignore preview errors during seek
             
