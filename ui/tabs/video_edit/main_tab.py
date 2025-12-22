@@ -7,6 +7,7 @@ from .pages.cut_page import CutPage
 from .pages.merge_page import MergePage
 from .pages.compress_page import CompressPage
 from .pages.frame_page import FramePage
+from .pages.reverse_page import ReversePage
 
 class VideoEditTab(QWidget):
     def __init__(self, main_window):
@@ -53,7 +54,14 @@ class VideoEditTab(QWidget):
         sidebar_layout.setSpacing(5)
         
         self.nav_btns = []
-        nav_items = [("格式转换", "convert"), ("视频剪辑", "cut"), ("视频合并", "merge"), ("视频压缩", "compress"), ("逐帧获取", "frame")]
+        nav_items = [
+            ("格式转换", "convert"), 
+            ("视频剪辑", "cut"), 
+            ("视频合并", "merge"), 
+            ("视频压缩", "compress"), 
+            ("视频反转", "reverse"),
+            ("逐帧获取", "frame")
+        ]
         
         for text, tag in nav_items:
             btn = QPushButton(text)
@@ -76,6 +84,7 @@ class VideoEditTab(QWidget):
         self.pages['cut'] = CutPage(self.main_window, self.processor)
         self.pages['merge'] = MergePage(self.main_window, self.processor)
         self.pages['compress'] = CompressPage(self.main_window, self.processor)
+        self.pages['reverse'] = ReversePage(self.main_window, self.processor)
         self.pages['frame'] = FramePage(self.main_window, self.processor)
         
         for tag, page in self.pages.items():

@@ -353,6 +353,7 @@ class BangumiTab(QWidget):
             return
             
         ep_data = self.download_queue.pop(0)
+        self.current_ep_data = ep_data  # Store current episode data
         self.current_batch_index += 1
         bvid = ep_data.get('bvid')
         title = f"{ep_data.get('title')} {ep_data.get('long_title')}"
@@ -460,18 +461,11 @@ class BangumiTab(QWidget):
             self.main_window.log_to_console(f"下载失败: {result.get('message')}", "error")
             # Save failed history
             try:
-                # Try to get data from result first
-                data = result.get('data', {})
-                if data:
-                    title = data.get('title', '未知')
-                    bvid = data.get('bvid', '')
+                # Use stored current episode data
+                if hasattr(self, 'current_ep_data') and self.current_ep_data:
+                    title = f"{self.current_ep_data.get('title')} {self.current_ep_data.get('long_title')}"
+                    bvid = self.current_ep_data.get('bvid', '')
                 else:
-                    # Fallback to current episode data if result has no data
-                    # This happens if download failed before even starting properly or returning data
-                    # But since we process one by one, we might not have easy access to 'ep_data' here
-                    # unless we stored it in self.current_ep_data or similar.
-                    # However, we can't easily access the local variable 'ep_data' from process_next_download.
-                    # Let's check if the worker returns it now.
                     title = '未知'
                     bvid = ''
                 

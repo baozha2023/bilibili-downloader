@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 5.1
+版本: 5.2
 """
 
 import os
@@ -153,7 +153,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v5.1_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v5.2_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -197,7 +197,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  bilibiliDownloader打包工具 v5.1")
+    print("  bilibiliDownloader打包工具 v5.2")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -222,12 +222,13 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v5.1 更新内容:")
-    print("- 收藏：优化导出功能，支持仅导出Excel格式")
-    print("- 安全：增强账号安全性，Cookies数据采用加密存储")
-    print("- 编辑：重构逐帧获取界面，新增精确控制功能")
-    print("- 分析：优化评论关键词提取，新增表情包分布图表")
-    print("- UI：适配全屏显示模式，优化界面布局")
+    print("\n新版本 v5.2 更新内容:")
+    print("- 画质：登录自动1080P，大会员自动4K")
+    print("- 合并：支持拖拽添加视频文件")
+    print("- 编辑：新增视频反转功能")
+    print("- 分析：优化关键词提取，新增表情包分布图")
+    print("- 修复：番剧下载失败历史记录问题")
+    print("- 优化：代码重构与性能提升")
 
 if __name__ == "__main__":
     main() 

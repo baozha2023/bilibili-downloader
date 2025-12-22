@@ -95,6 +95,50 @@ class MediaProcessor:
         else:
             return False, "转换失败"
 
+    def reverse_video(self, input_path, progress_callback=None):
+        """
+        视频反转
+        :param input_path: 输入文件路径
+        :param progress_callback: 进度回调
+        :return: 成功/失败, 输出路径/错误信息
+        """
+        if not self.ffmpeg_available:
+            return False, "ffmpeg未安装"
+            
+        if not os.path.exists(input_path):
+            return False, "输入文件不存在"
+            
+        # 生成输出路径
+        input_dir = os.path.dirname(input_path)
+        input_name = os.path.splitext(os.path.basename(input_path))[0]
+        output_path = os.path.join(input_dir, f"{input_name}_reverse.mp4")
+        
+        counter = 1
+        while os.path.exists(output_path):
+            output_path = os.path.join(input_dir, f"{input_name}_reverse_{counter}.mp4")
+            counter += 1
+            
+        # 视频反转 + 音频反转
+        # -vf reverse 视频反转
+        # -af areverse 音频反转
+        # 注意: 反转操作非常耗时且占用内存，大视频可能会失败
+        cmd = [
+            self.ffmpeg_path, '-i', input_path,
+            '-vf', 'reverse', '-af', 'areverse',
+            '-c:v', 'libx264', '-crf', '23', '-preset', 'medium',
+            '-c:a', 'aac', '-b:a', '128k',
+            output_path, '-y'
+        ]
+        
+        logger.info(f"执行视频反转: {' '.join(cmd)}")
+        
+        success = self._run_ffmpeg_with_progress(cmd, progress_callback)
+        
+        if success:
+            return True, output_path
+        else:
+            return False, "视频反转失败"
+
     def merge_video_audio(self, video_path, audio_path, output_path, remove_watermark=False, progress_callback=None):
         """
         合并视频和音频，可选去水印

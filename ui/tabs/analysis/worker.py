@@ -73,7 +73,7 @@ class AnalysisWorker(QThread):
                                 if loc:
                                     # Remove prefix if present, support both colon types
                                     clean_loc = loc.replace('IP属地：', '').replace('IP属地:', '').strip()
-                                    if clean_loc:
+                                    if clean_loc and clean_loc != "未知":
                                         locations.append(clean_loc)
                             except: pass
                             
@@ -125,27 +125,43 @@ class AnalysisWorker(QThread):
                     # 预处理：合并所有评论
                     text = " ".join(comments)
                     
-                    # 自定义停用词 (简单实现，不需要额外文件)
+                    # 自定义停用词 (优化版)
                     stop_words = {
                         "视频", "弹幕", "这个", "那个", "什么", "因为", "所以", "如果", "但是", "就是", 
                         "真的", "觉得", "喜欢", "支持", "加油", "其实", "然后", "现在", "时候", "已经", 
                         "可以", "一下", "这里", "那里", "哈哈", "哈哈哈", "up", "UP", "Up", "怎么",
-                        "还是", "感觉", "有没有", "是不是", "或者", "只是", "为了", "不过", "只要", "只有"
+                        "还是", "感觉", "有没有", "是不是", "或者", "只是", "为了", "不过", "只要", "只有",
+                        "回复", "查看", "图片", "表情", "doge", "妙啊", "吃瓜", "滑稽", "笑死", "甚至",
+                        "虽然", "但是", "看到", "知道", "告诉", "希望", "今天", "明天", "今年", "明年",
+                        "还是", "还有", "and", "the", "of", "to", "in", "it", "is", "for",
+                        "啊", "呀", "呢", "吧", "嘛", "哦", "嗯", "哼", "哈", "咳", "呸", "嘘",
+                        "b站", "B站", "哔哩哔哩", "投币", "点赞", "收藏", "关注", "三连", "白嫖", "下次一定"
                     }
                     
                     # 使用 jieba 提取关键词
-                    # topK=30，提取更多以供筛选
-                    tags = jieba.analyse.extract_tags(text, topK=30, withWeight=True)
+                    # topK=50，提取更多以供筛选
+                    tags = jieba.analyse.extract_tags(text, topK=50, withWeight=True)
                     
                     # 过滤停用词和单字
                     keywords = []
                     for word, weight in tags:
                         if word.lower() not in stop_words and len(word) > 1 and not word.isdigit():
                             keywords.append((word, weight))
-                            if len(keywords) >= 15: # 保留前15个
+                            if len(keywords) >= 20: # 保留前20个
                                 break
             except Exception as e:
                 logger.error(f"Keyword extraction failed: {e}")
+
+            # 5. Emoji Analysis
+            emojis = []
+            try:
+                emoji_pattern = re.compile(r'\[(.*?)\]')
+                for c in comments:
+                    found = emoji_pattern.findall(c)
+                    if found:
+                        emojis.extend(found)
+            except Exception as e:
+                logger.error(f"Emoji extraction failed: {e}")
 
             result = {
                 'info': video_data,
@@ -157,6 +173,7 @@ class AnalysisWorker(QThread):
                 'cover_data': cover_data,
                 'sentiment': sentiment_score,
                 'keywords': keywords,
+                'emojis': emojis
             }
             self.finished_signal.emit(result, "")
         except Exception as e:

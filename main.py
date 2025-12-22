@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 bilibiliDownloader主程序入口
-v5.0
+v5.2
 """
 import ctypes
 import sys
@@ -10,8 +10,6 @@ import os
 import argparse
 import logging
 from PyQt5.QtWidgets import QApplication
-from PyQt5.QtWidgets import QApplication
-from ui.main_window import BilibiliDesktop
 # 导入项目模块
 from ui.main_window import BilibiliDesktop
 from core.crawler import BilibiliCrawler
@@ -48,7 +46,7 @@ def start_cli(args):
 def main():
     """主函数"""
     # 创建命令行参数解析器
-    parser = argparse.ArgumentParser(description='bilibiliDownloader v5.0')
+    parser = argparse.ArgumentParser(description='bilibiliDownloader v5.2')
     parser.add_argument('-g', '--gui', action='store_true', 
                         help='启动图形用户界面')
     parser.add_argument('-p', '--popular', action='store_true', 
@@ -59,7 +57,7 @@ def main():
                         help='下载指定BV号的视频')
     parser.add_argument('--pages', type=int, 
                         help='指定爬取的页数，用于热门视频')
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s 5.0')
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s 5.2')
     
     # 解析命令行参数
     args = parser.parse_args()

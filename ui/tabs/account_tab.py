@@ -397,26 +397,48 @@ class AccountTab(QWidget):
         # vip_status 1 表示有效
         is_vip = (vip_type > 0 and vip_status == 1)
         
-        # 只要登录了就可以尝试1080p
-        if is_logged_in:
-             if "1080P 高清" not in qualities:
-                qualities.insert(0, "1080P 高清")
-             
-        # 大会员
         if is_vip:
-            if "1080P+ 高码率" not in qualities:
-                qualities.insert(0, "1080P+ 高码率")
-            if "4K 超清" not in qualities:
-                qualities.insert(0, "4K 超清")
+            # 大会员: 4K, 1080P60, 1080P+
+            qualities.insert(0, "4K 超清")
+            qualities.insert(1, "1080P 60帧")
+            qualities.insert(2, "1080P 高码率")
+            qualities.insert(3, "1080P 高清")
+            
+            # 自动设置为4K
+            self.main_window.log_to_console("检测到大会员，自动调整画质为 4K", "info")
+            # 查找4K的索引，通常是0
+            target_quality = "4K 超清"
+        elif is_logged_in:
+            # 普通登录用户: 1080P, 720P60
+            qualities.insert(0, "1080P 高清")
+            qualities.insert(1, "720P 60帧")
+            
+            # 自动设置为1080P
+            self.main_window.log_to_console("检测到已登录，自动调整画质为 1080P", "info")
+            target_quality = "1080P 高清"
+        else:
+            # 未登录: 最高1080P (有时限制) -> 保持默认
+             # 自动设置为480P或保持默认
+            target_quality = None
             
         settings_tab.quality_combo.addItems(qualities)
         
-        # 尝试恢复之前的选择，如果不存在则默认选择第一个（最高画质）
-        index = settings_tab.quality_combo.findText(current_quality)
-        if index >= 0:
-            settings_tab.quality_combo.setCurrentIndex(index)
+        # 尝试选中目标画质
+        if target_quality:
+            index = settings_tab.quality_combo.findText(target_quality)
+            if index >= 0:
+                settings_tab.quality_combo.setCurrentIndex(index)
+                # 更新配置
+                if hasattr(self.main_window, 'config_manager'):
+                    self.main_window.config_manager.set('video_quality', target_quality)
+                    self.main_window.config_manager.save()
         else:
-            settings_tab.quality_combo.setCurrentIndex(0)
+            # 如果没有目标画质（未登录），尝试恢复之前的选择或默认
+            index = settings_tab.quality_combo.findText(current_quality)
+            if index >= 0:
+                settings_tab.quality_combo.setCurrentIndex(index)
+            else:
+                settings_tab.quality_combo.setCurrentIndex(0)
 
     def update_favorites_list(self, favorites):
         """更新收藏夹列表显示"""

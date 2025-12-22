@@ -81,7 +81,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v5.1")
+        self.setWindowTitle("bilibiliDownloader v5.2")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -225,7 +225,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用bilibiliDownloader v5.1！")
+        logger.info("欢迎使用bilibiliDownloader v5.2！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
@@ -236,14 +236,14 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v5.1"
+        version = "v5.2"
         updates = (
-            "1. 收藏: 优化导出功能，支持仅导出Excel格式，移除冗余字段。\n"
-            "2. 安全: 增强账号安全性，Cookies数据采用加密存储。\n"
-            "3. 编辑: 重构逐帧获取界面，新增上一帧/下一帧、秒级跳转等精确控制功能。\n"
+            "1. 画质: 登录后自动调整画质（大会员4K，普通登录1080P）。\n"
+            "2. 合并: 视频合并支持拖拽添加文件。\n"
+            "3. 编辑: 新增视频反转功能。\n"
             "4. 分析: 优化评论关键词提取算法，新增评论表情包分布图表。\n"
-            "5. UI: 适配全屏显示模式，优化界面布局和交互体验。\n"
-            "6. 核心: 深度代码重构与性能优化，提升软件稳定性。\n"
+            "5. 修复: 修复番剧下载失败时不记录历史的问题。\n"
+            "6. 优化: 代码重构，移除冗余代码，提升稳定性。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

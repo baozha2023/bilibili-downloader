@@ -1,10 +1,46 @@
 import os
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QListWidget, 
                              QAbstractItemView, QListWidgetItem, QMessageBox, QGraphicsOpacityEffect, QFileDialog)
-from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve
+from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, pyqtSignal
 from ui.widgets.edit_widgets import MergeItemWidget
 from .base_page import BaseEditPage
 from ..workers import GenericWorker
+
+class MergeListWidget(QListWidget):
+    """支持拖拽文件和内部排序的列表控件"""
+    files_dropped = pyqtSignal(list)
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.setDragDropMode(QAbstractItemView.DragDrop)
+        self.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.setDefaultDropAction(Qt.MoveAction)
+        
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            super().dragEnterEvent(event)
+            
+    def dragMoveEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            super().dragMoveEvent(event)
+            
+    def dropEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+            files = []
+            for url in event.mimeData().urls():
+                file_path = str(url.toLocalFile())
+                if os.path.isfile(file_path):
+                    files.append(file_path)
+            if files:
+                self.files_dropped.emit(files)
+        else:
+            super().dropEvent(event)
 
 class MergePage(BaseEditPage):
     def __init__(self, main_window, processor):
@@ -24,9 +60,8 @@ class MergePage(BaseEditPage):
         layout.addWidget(tip_label)
         
         # Merge List
-        self.merge_list = QListWidget()
-        self.merge_list.setSelectionMode(QAbstractItemView.NoSelection)
-        self.merge_list.setDragDropMode(QAbstractItemView.InternalMove)
+        self.merge_list = MergeListWidget()
+        self.merge_list.files_dropped.connect(self.process_dropped_files)
         self.merge_list.setStyleSheet("""
             QListWidget {
                 border: 2px dashed #e0e0e0;
@@ -100,6 +135,36 @@ class MergePage(BaseEditPage):
         layout.addWidget(self.merge_status)
         
         layout.addStretch()
+
+    def process_dropped_files(self, files):
+        if files:
+            for f in files:
+                # Check extension
+                if not f.lower().endswith(('.mp4', '.mkv', '.avi', '.mov', '.flv')):
+                    continue
+                    
+                # Get duration
+                duration = self.processor.get_video_duration(f)
+                fps = self.processor.get_video_fps(f)
+                
+                item = QListWidgetItem(self.merge_list)
+                item.setSizeHint(QSize(0, 95)) 
+                
+                widget = MergeItemWidget(f, duration, fps)
+                widget.removed.connect(lambda w: self.remove_merge_item(w))
+                self.merge_list.setItemWidget(item, widget)
+                
+                # Simple fade in animation for the new item
+                opacity = QGraphicsOpacityEffect(widget)
+                widget.setGraphicsEffect(opacity)
+                anim = QPropertyAnimation(opacity, b"opacity")
+                anim.setDuration(400)
+                anim.setStartValue(0)
+                anim.setEndValue(1)
+                anim.setEasingCurve(QEasingCurve.OutQuad)
+                anim.finished.connect(lambda: widget.setGraphicsEffect(None))
+                anim.start()
+                widget.anim = anim # keep ref
 
     def add_merge_files(self):
         files, _ = QFileDialog.getOpenFileNames(

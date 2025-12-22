@@ -345,6 +345,43 @@ class ChartGenerator:
             label.setText("图表生成失败")
 
     @staticmethod
+    def generate_emoji_chart(label: QLabel, emojis: list):
+        try:
+            if not emojis:
+                label.setText("无表情包使用数据")
+                return
+
+            counts = Counter(emojis)
+            # Top 10
+            top_emojis = counts.most_common(10)
+            labels = [e[0] for e in top_emojis]
+            values = [e[1] for e in top_emojis]
+            
+            plt.figure(figsize=(6, 4))
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            
+            # Vertical Bar Chart
+            x_pos = range(len(labels))
+            plt.bar(x_pos, values, color='#fb7299', alpha=0.7)
+            plt.xticks(x_pos, labels, rotation=45)
+            plt.title('评论表情包分布 (Top 10)')
+            plt.ylabel('使用次数')
+            plt.grid(axis='y', linestyle='--', alpha=0.5)
+            plt.tight_layout()
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=100)
+            buf.seek(0)
+            plt.close()
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+            label.setPixmap(pixmap)
+        except Exception as e:
+            logger.error(f"Generate emoji chart error: {e}")
+            label.setText("图表生成失败")
+
+    @staticmethod
     def generate_word_cloud(label: QLabel, comments: list):
         try:
             # Expanded stop words list
