@@ -128,7 +128,7 @@ class BilibiliCrawler:
     def download_video(self, bvid, video_progress_callback=None, audio_progress_callback=None,
                       merge_progress_callback=None, danmaku_progress_callback=None, 
                       comments_progress_callback=None, should_merge=True, delete_original=True,
-                      remove_watermark=False, download_danmaku=False, download_comments=False,
+                      download_danmaku=False, download_comments=False,
                       video_quality='1080p', video_codec='H.264/AVC', audio_quality='高音质 (Hi-Res/Dolby)',
                       stop_event=None):
         """下载视频主流程"""
@@ -182,7 +182,7 @@ class BilibiliCrawler:
         
         # 6. 合并/处理
         merge_success = self._process_media(video_path, audio_path, output_path, should_merge, 
-                                            delete_original, remove_watermark, merge_progress_callback, stop_event)
+                                            delete_original, merge_progress_callback, stop_event)
         
         if self._check_stop(stop_event):
             self._cleanup_dir(video_dir)
@@ -250,7 +250,7 @@ class BilibiliCrawler:
         return True
 
     def _process_media(self, video_path, audio_path, output_path, should_merge, 
-                       delete_original, remove_watermark, merge_cb, stop_event):
+                       delete_original, merge_cb, stop_event):
         if not (should_merge and audio_path):
             return False
             
@@ -260,7 +260,6 @@ class BilibiliCrawler:
         print("开始合并视频...")
         merge_success = self.processor.merge_video_audio(
             video_path, audio_path, output_path, 
-            remove_watermark=remove_watermark,
             progress_callback=merge_cb
         )
         

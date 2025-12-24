@@ -257,8 +257,6 @@ class WorkerThread(QThread):
                 # 获取是否删除原始文件的选项
                 delete_original = self.params.get("delete_original", True)
                 
-                # 获取是否去除水印选项
-                remove_watermark = self.params.get("remove_watermark", False)
                 download_danmaku = self.params.get("download_danmaku", False)
                 download_comments = self.params.get("download_comments", False)
 
@@ -280,7 +278,6 @@ class WorkerThread(QThread):
                     'comments_progress_callback': self._on_comments_progress,
                     'should_merge': should_merge,
                     'delete_original': delete_original,
-                    'remove_watermark': remove_watermark,
                     'download_danmaku': download_danmaku,
                     'download_comments': download_comments,
                     'video_quality': video_quality,
