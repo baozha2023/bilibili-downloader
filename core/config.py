@@ -11,14 +11,14 @@ class ConfigManager:
         'max_retries': 3,
         'merge_video': True,
         'delete_original': True,
-        'remove_watermark': False,
         'download_danmaku': False,
         'download_comments': False,
         'complete_action': 1,
         'video_quality': '1080P 高清',
         'video_codec': 'H.264/AVC',
         'audio_quality': '高音质 (Hi-Res/Dolby)',
-        'always_lock_account': False
+        'always_lock_account': False,
+        'hardware_acceleration': False
     }
 
     def __new__(cls, data_dir=None):

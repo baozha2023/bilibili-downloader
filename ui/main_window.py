@@ -55,23 +55,6 @@ class BilibiliDesktop(QMainWindow):
         
         event.accept()
         
-    def changeEvent(self, event):
-        """窗口状态改变事件"""
-        if event.type() == QEvent.WindowStateChange:
-            if self.windowState() & Qt.WindowMaximized:
-                # 全屏/最大化时的布局优化
-                if self.centralWidget() and self.centralWidget().layout():
-                    # 增加边距，使内容不紧贴边缘
-                    self.centralWidget().layout().setContentsMargins(40, 30, 40, 30)
-                    # 增加组件间距
-                    self.centralWidget().layout().setSpacing(20)
-            else:
-                # 恢复正常时的布局
-                if self.centralWidget() and self.centralWidget().layout():
-                    self.centralWidget().layout().setContentsMargins(10, 10, 10, 10)
-                    self.centralWidget().layout().setSpacing(10)
-        super().changeEvent(event)
-        
     def resource_path(self, relative_path):
         """获取资源文件的绝对路径"""
         if hasattr(sys, '_MEIPASS'):
@@ -81,7 +64,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v5.2")
+        self.setWindowTitle("bilibiliDownloader v5.3")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -225,7 +208,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用bilibiliDownloader v5.2！")
+        logger.info("欢迎使用bilibiliDownloader v5.3！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
@@ -236,14 +219,14 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v5.2"
+        version = "v5.3"
         updates = (
-            "1. 画质: 登录后自动调整画质（大会员4K，普通登录1080P）。\n"
-            "2. 合并: 视频合并支持拖拽添加文件。\n"
-            "3. 编辑: 新增视频反转功能。\n"
-            "4. 分析: 优化评论关键词提取算法，新增评论表情包分布图表。\n"
-            "5. 修复: 修复番剧下载失败时不记录历史的问题。\n"
-            "6. 优化: 代码重构，移除冗余代码，提升稳定性。\n"
+            "1. 设置: 移除自动去水印选项，改为手动处理。\n"
+            "2. 编辑: 新增手动去水印功能（支持框选）。\n"
+            "3. 历史: 优化下载失败记录，保留BV号和标题。\n"
+            "4. 界面: 优化窗口最大化时的布局。\n"
+            "5. 分析: 新增评论用户性别分布和活跃时间分布图表。\n"
+            "6. 优化: 代码重构与清理。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

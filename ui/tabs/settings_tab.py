@@ -276,28 +276,28 @@ class SettingsTab(QWidget):
         self.delete_original_check.setCursor(Qt.PointingHandCursor)
         checkbox_layout.addWidget(self.delete_original_check, 0, 1)
 
-        self.remove_watermark_check = QCheckBox("尝试去除水印 (实验性)")
-        self.remove_watermark_check.setChecked(False)
-        self.remove_watermark_check.setStyleSheet(checkbox_style)
-        self.remove_watermark_check.setCursor(Qt.PointingHandCursor)
-        checkbox_layout.addWidget(self.remove_watermark_check, 1, 0)
-        
         self.download_danmaku_check = QCheckBox("下载弹幕")
         self.download_danmaku_check.setStyleSheet(checkbox_style)
         self.download_danmaku_check.setCursor(Qt.PointingHandCursor)
-        checkbox_layout.addWidget(self.download_danmaku_check, 1, 1)
+        checkbox_layout.addWidget(self.download_danmaku_check, 1, 0)
         
         self.download_comments_check = QCheckBox("下载评论")
         self.download_comments_check.setStyleSheet(checkbox_style)
         self.download_comments_check.setCursor(Qt.PointingHandCursor)
-        checkbox_layout.addWidget(self.download_comments_check, 2, 0)
+        checkbox_layout.addWidget(self.download_comments_check, 1, 1)
         
         self.floating_window_check = QCheckBox("显示桌面悬浮窗")
         self.floating_window_check.setStyleSheet(checkbox_style)
         self.floating_window_check.setCursor(Qt.PointingHandCursor)
         self.floating_window_check.stateChanged.connect(self.toggle_floating_window)
         self.floating_window_check.setChecked(True) # 默认开启
-        checkbox_layout.addWidget(self.floating_window_check, 2, 1)
+        checkbox_layout.addWidget(self.floating_window_check, 2, 0)
+        
+        self.hardware_acceleration_check = QCheckBox("启用 NVIDIA 硬件加速 (NVDEC)")
+        self.hardware_acceleration_check.setStyleSheet(checkbox_style)
+        self.hardware_acceleration_check.setCursor(Qt.PointingHandCursor)
+        self.hardware_acceleration_check.setToolTip("需要 NVIDIA 显卡支持，可加速视频处理")
+        checkbox_layout.addWidget(self.hardware_acceleration_check, 2, 1)
         
         download_card.add_layout(checkbox_layout)
         
@@ -425,6 +425,9 @@ class SettingsTab(QWidget):
         self.crawler.use_proxy = False
         self.crawler.proxies = {}
         
+        # Apply hardware acceleration setting immediately
+        self.crawler.processor.set_hardware_acceleration(self.hardware_acceleration_check.isChecked())
+        
         self.save_config_to_file()
         self.main_window.log_to_console("系统设置已保存", "success")
         BilibiliMessageBox.information(self, "设置保存", "设置已保存")
@@ -442,7 +445,6 @@ class SettingsTab(QWidget):
             'retry_interval': self.retry_interval_spin.value(),
             'merge_video': self.merge_check.isChecked(),
             'delete_original': self.delete_original_check.isChecked(),
-            'remove_watermark': self.remove_watermark_check.isChecked(),
             'download_danmaku': self.download_danmaku_check.isChecked(),
             'download_comments': self.download_comments_check.isChecked(),
             'floating_window': self.floating_window_check.isChecked(),
@@ -450,7 +452,8 @@ class SettingsTab(QWidget):
             'video_quality': self.quality_combo.currentText(),
             'video_codec': self.codec_combo.currentText(),
             'audio_quality': self.audio_quality_combo.currentText(),
-            'always_lock_account': self.always_lock_check.isChecked()
+            'always_lock_account': self.always_lock_check.isChecked(),
+            'hardware_acceleration': self.hardware_acceleration_check.isChecked()
         }
         try:
             config_dir = os.path.join(self.crawler.data_dir, 'config')
@@ -485,8 +488,6 @@ class SettingsTab(QWidget):
                     self.merge_check.setChecked(config['merge_video'])
                 if 'delete_original' in config:
                     self.delete_original_check.setChecked(config['delete_original'])
-                if 'remove_watermark' in config:
-                    self.remove_watermark_check.setChecked(config['remove_watermark'])
                 if 'download_danmaku' in config:
                     self.download_danmaku_check.setChecked(config['download_danmaku'])
                 if 'download_comments' in config:
@@ -505,6 +506,9 @@ class SettingsTab(QWidget):
                     self.audio_quality_combo.setCurrentText(config['audio_quality'])
                 if 'always_lock_account' in config:
                     self.always_lock_check.setChecked(config['always_lock_account'])
+                if 'hardware_acceleration' in config:
+                    self.hardware_acceleration_check.setChecked(config['hardware_acceleration'])
+                    self.crawler.processor.set_hardware_acceleration(config['hardware_acceleration'])
             except Exception as e:
                 logger.error(f"加载配置文件时出错: {e}")
 

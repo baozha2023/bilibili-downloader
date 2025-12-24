@@ -8,6 +8,7 @@ from .pages.merge_page import MergePage
 from .pages.compress_page import CompressPage
 from .pages.frame_page import FramePage
 from .pages.reverse_page import ReversePage
+from .pages.remove_watermark_page import RemoveWatermarkPage
 
 class VideoEditTab(QWidget):
     def __init__(self, main_window):
@@ -59,6 +60,7 @@ class VideoEditTab(QWidget):
             ("视频剪辑", "cut"), 
             ("视频合并", "merge"), 
             ("视频压缩", "compress"), 
+            ("视频去水印", "watermark"),
             ("视频反转", "reverse"),
             ("逐帧获取", "frame")
         ]
@@ -84,6 +86,7 @@ class VideoEditTab(QWidget):
         self.pages['cut'] = CutPage(self.main_window, self.processor)
         self.pages['merge'] = MergePage(self.main_window, self.processor)
         self.pages['compress'] = CompressPage(self.main_window, self.processor)
+        self.pages['watermark'] = RemoveWatermarkPage(self.main_window, self.processor)
         self.pages['reverse'] = ReversePage(self.main_window, self.processor)
         self.pages['frame'] = FramePage(self.main_window, self.processor)
         

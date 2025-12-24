@@ -229,7 +229,6 @@ class DownloadTab(QWidget):
             "bvid": bvid, 
             "should_merge": should_merge,
             "delete_original": settings_tab.delete_original_check.isChecked(),
-            "remove_watermark": settings_tab.remove_watermark_check.isChecked(),
             "download_danmaku": settings_tab.download_danmaku_check.isChecked(),
             "download_comments": settings_tab.download_comments_check.isChecked(),
             "video_quality": settings_tab.quality_combo.currentText(),

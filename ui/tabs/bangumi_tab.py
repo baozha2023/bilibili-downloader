@@ -461,17 +461,23 @@ class BangumiTab(QWidget):
             self.main_window.log_to_console(f"下载失败: {result.get('message')}", "error")
             # Save failed history
             try:
-                # Use stored current episode data
-                if hasattr(self, 'current_ep_data') and self.current_ep_data:
+                title = '未知'
+                bvid = ''
+                
+                # 尝试从结果中获取
+                data = result.get('data', {})
+                if data and ('bvid' in data or 'title' in data):
+                    bvid = data.get('bvid', '')
+                    title = data.get('title', '未知')
+                # 尝试从当前任务数据中获取
+                elif hasattr(self, 'current_ep_data') and self.current_ep_data:
                     title = f"{self.current_ep_data.get('title')} {self.current_ep_data.get('long_title')}"
                     bvid = self.current_ep_data.get('bvid', '')
-                else:
-                    title = '未知'
-                    bvid = ''
                 
-                self.save_history(self.current_series_title, title, bvid, "失败", "")
-            except:
-                pass
+                if bvid or title != '未知':
+                    self.save_history(self.current_series_title, title, bvid, "失败", "")
+            except Exception as e:
+                print(f"Failed to save failed history: {e}")
             
         # Next
         self.process_next_download()

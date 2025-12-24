@@ -431,6 +431,12 @@ class WorkerThread(QThread):
                         self.update_signal.emit({"status": "warning", "message": f"下载失败: {download_result.get('message')}，正在重试 ({retry+1}/{self.max_retries})..."})
                         time.sleep(self.retry_delay)
                         continue
+                    else:
+                        return {
+                            "status": "error", 
+                            "message": f"下载失败: {download_result.get('message', '未知错误')}",
+                            "data": {"bvid": bvid, "title": title}
+                        }
             except Exception as e:
                 if retry < self.max_retries - 1:
                     self.update_signal.emit({"status": "warning", "message": f"下载出错: {str(e)}，重试中 ({retry+1}/{self.max_retries})..."})

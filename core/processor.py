@@ -16,11 +16,33 @@ class MediaProcessor:
     """
     负责媒体处理：合并、去水印、转码
     """
-    def __init__(self):
+    def __init__(self, hardware_acceleration=False):
         self.ffmpeg_path = self._find_ffmpeg()
         self.ffmpeg_available = self.ffmpeg_path is not None
         self.watermark_remover = WatermarkRemover(self.ffmpeg_path, self._run_ffmpeg_with_progress) if self.ffmpeg_available else None
-        
+        self.hardware_acceleration = hardware_acceleration
+
+    def set_hardware_acceleration(self, enabled):
+        self.hardware_acceleration = enabled
+        logger.info(f"硬件加速已{'启用' if enabled else '禁用'}")
+
+    def _get_encoding_params(self, crf=23, preset='medium'):
+        """获取编码参数 (根据硬件加速设置)"""
+        if self.hardware_acceleration:
+            # NVIDIA NVENC 参数
+            # -cq 对应 -crf, 但数值范围略有不同，这里近似处理
+            # -preset p4 是中等预设 (p1-p7, p7最慢)
+            return ['-c:v', 'h264_nvenc', '-cq', str(crf), '-preset', 'p4']
+        else:
+            # CPU libx264 参数
+            return ['-c:v', 'libx264', '-crf', str(crf), '-preset', preset]
+
+    def _get_input_flags(self):
+        """获取输入参数 (硬件解码)"""
+        if self.hardware_acceleration:
+            return ['-hwaccel', 'cuda']
+        return []
+
     def _find_ffmpeg(self):
         """查找ffmpeg路径"""
         # 1. 项目内 ffmpeg/ffmpeg.exe
@@ -69,7 +91,7 @@ class MediaProcessor:
             output_path = os.path.join(input_dir, f"{input_name}_converted_{counter}.{output_format}")
             counter += 1
             
-        cmd = [self.ffmpeg_path, '-i', input_path]
+        cmd = [self.ffmpeg_path] + self._get_input_flags() + ['-i', input_path]
         
         # 根据不同格式设置参数
         if output_format.lower() == 'mp3':
@@ -80,7 +102,8 @@ class MediaProcessor:
             cmd.extend(['-vf', 'fps=10,scale=480:-1:flags=lanczos', '-c:v', 'gif'])
         else:
             # 视频转换
-            cmd.extend(['-c:v', 'libx264', '-crf', '23', '-preset', 'medium', '-c:a', 'aac', '-b:a', '128k'])
+            cmd.extend(self._get_encoding_params())
+            cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
             
         cmd.append(output_path)
         cmd.append('-y')
@@ -122,13 +145,11 @@ class MediaProcessor:
         # -vf reverse 视频反转
         # -af areverse 音频反转
         # 注意: 反转操作非常耗时且占用内存，大视频可能会失败
-        cmd = [
-            self.ffmpeg_path, '-i', input_path,
-            '-vf', 'reverse', '-af', 'areverse',
-            '-c:v', 'libx264', '-crf', '23', '-preset', 'medium',
-            '-c:a', 'aac', '-b:a', '128k',
-            output_path, '-y'
-        ]
+        cmd = [self.ffmpeg_path] + self._get_input_flags() + ['-i', input_path]
+        
+        cmd.extend(['-vf', 'reverse', '-af', 'areverse'])
+        cmd.extend(self._get_encoding_params())
+        cmd.extend(['-c:a', 'aac', '-b:a', '128k', output_path, '-y'])
         
         logger.info(f"执行视频反转: {' '.join(cmd)}")
         
@@ -139,9 +160,9 @@ class MediaProcessor:
         else:
             return False, "视频反转失败"
 
-    def merge_video_audio(self, video_path, audio_path, output_path, remove_watermark=False, progress_callback=None):
+    def merge_video_audio(self, video_path, audio_path, output_path, progress_callback=None):
         """
-        合并视频和音频，可选去水印
+        合并视频和音频
         """
         if not self.ffmpeg_available:
             logger.error("ffmpeg不可用")
@@ -158,34 +179,7 @@ class MediaProcessor:
         cmd_base = [self.ffmpeg_path, '-i', video_path, '-i', audio_path]
         
         # 视频编码参数
-        if remove_watermark:
-            resolution = self._get_video_resolution(video_path)
-            if resolution:
-                w, h = resolution
-                
-                # 使用 WatermarkRemover 的智能计算逻辑
-                if self.watermark_remover:
-                    wm_x, wm_y, wm_w, wm_h = self.watermark_remover.calculate_watermark_rect(w, h)
-                    
-                    # 确保尺寸有效
-                    if wm_w <= 0 or wm_h <= 0:
-                        logger.warning("水印区域计算无效，跳过去水印")
-                        cmd_video = ['-c:v', 'copy']
-                    else:
-                        # 增加band参数使边缘过渡更自然 (32)
-                        # 增加 show=0 参数确保不显示边界框
-                        filter_str = f"delogo=x={wm_x}:y={wm_y}:w={wm_w}:h={wm_h}:band=32:show=0"
-                        logger.info(f"应用去水印滤镜: {filter_str} (分辨率: {w}x{h})")
-                        # 使用libx264重编码，crf 16提升画质 (原17)，preset medium平衡速度和质量
-                        cmd_video = ['-vf', filter_str, '-c:v', 'libx264', '-preset', 'medium', '-crf', '16']
-                else:
-                    logger.warning("WatermarkRemover未初始化")
-                    cmd_video = ['-c:v', 'copy']
-            else:
-                logger.warning("无法获取分辨率，跳过去水印")
-                cmd_video = ['-c:v', 'copy']
-        else:
-            cmd_video = ['-c:v', 'copy']
+        cmd_video = ['-c:v', 'copy']
             
         cmd_audio = ['-c:a', 'copy']
         cmd_out = ['-map', '0:v:0', '-map', '1:a:0', output_path, '-y']
@@ -283,6 +277,28 @@ class MediaProcessor:
             logger.error(f"获取帧率失败: {e}")
         return 0
 
+    def has_audio_stream(self, video_path):
+        """Check if video has audio stream"""
+        try:
+            cmd = [self.ffmpeg_path, '-i', video_path]
+            if os.name == 'nt':
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            else:
+                startupinfo = None
+
+            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, 
+                               universal_newlines=True, startupinfo=startupinfo, 
+                               encoding='utf-8', errors='replace')
+            _, stderr = p.communicate()
+            
+            # Look for Audio stream info
+            # Stream #0:1(und): Audio: aac (LC) (mp4a / 0x6134706D), 44100 Hz, stereo, fltp, 83 kb/s (default)
+            return "Audio:" in stderr
+        except Exception as e:
+            logger.error(f"Failed to check audio stream: {e}")
+            return False
+
     def cut_video(self, input_path, start, end, unit='time', output_path=None, progress_callback=None):
         """
         剪辑视频
@@ -313,7 +329,7 @@ class MediaProcessor:
         if duration <= 0:
             return False, "无效的时间范围"
 
-        cmd = [self.ffmpeg_path]
+        cmd = [self.ffmpeg_path] + self._get_input_flags()
         
         # 使用 -ss 在输入前快速定位
         cmd.extend(['-ss', str(start_time)])
@@ -321,7 +337,7 @@ class MediaProcessor:
         cmd.extend(['-t', str(duration)])
         
         # 重新编码以保证精确性
-        cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
+        cmd.extend(self._get_encoding_params())
         cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
             
         cmd.extend(['-y', output_path])
@@ -358,6 +374,7 @@ class MediaProcessor:
         processed_clips = []
         for i, clip in enumerate(file_list):
             path = clip['path']
+            inputs.extend(self._get_input_flags())
             inputs.extend(['-i', path])
             
             start = clip.get('start', 0)
@@ -405,7 +422,11 @@ class MediaProcessor:
             
             # Trim Audio
             a_tag = f"a{i}"
-            filter_complex.append(f"[{i}:a]atrim=start={clip['start']}:end={clip['end']},asetpts=PTS-STARTPTS[{a_tag}]")
+            path = file_list[clip['index']]['path']
+            if self.has_audio_stream(path):
+                filter_complex.append(f"[{i}:a]atrim=start={clip['start']}:end={clip['end']},asetpts=PTS-STARTPTS[{a_tag}]")
+            else:
+                 filter_complex.append(f"anullsrc=channel_layout=stereo:sample_rate=44100,atrim=duration={clip['duration']}[{a_tag}]")
             audio_streams.append(a_tag)
 
         if not transition:
@@ -424,7 +445,7 @@ class MediaProcessor:
 
         cmd = [self.ffmpeg_path] + inputs + ['-filter_complex', ";".join(filter_complex)]
         cmd.extend(['-map', '[outv]', '-map', '[outa]'])
-        cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
+        cmd.extend(self._get_encoding_params())
         cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
         cmd.extend(['-y', output_path])
         
@@ -453,6 +474,7 @@ class MediaProcessor:
         
         for i, clip in enumerate(file_list):
             path = clip['path']
+            inputs.extend(self._get_input_flags())
             inputs.extend(['-i', path])
             
             start = clip.get('start', 0)
@@ -460,8 +482,10 @@ class MediaProcessor:
             
             # 如果 end 为 None，需要获取视频时长
             if end is None:
-                duration = self.get_video_duration(path)
-                end = duration
+                duration_total = self.get_video_duration(path)
+                end = duration_total
+            
+            duration = end - start
             
             # Trim Video
             v_tag = f"v{i}"
@@ -470,7 +494,12 @@ class MediaProcessor:
             
             # Trim Audio
             a_tag = f"a{i}"
-            filter_complex.append(f"[{i}:a]atrim=start={start}:end={end},asetpts=PTS-STARTPTS[{a_tag}]")
+            if self.has_audio_stream(path):
+                filter_complex.append(f"[{i}:a]atrim=start={start}:end={end},asetpts=PTS-STARTPTS[{a_tag}]")
+            else:
+                # 生成静音音频
+                filter_complex.append(f"anullsrc=channel_layout=stereo:sample_rate=44100,atrim=duration={duration}[{a_tag}]")
+            
             audio_streams.append(a_tag)
 
         # Concat
@@ -481,7 +510,7 @@ class MediaProcessor:
 
         cmd = [self.ffmpeg_path] + inputs + ['-filter_complex', ";".join(filter_complex)]
         cmd.extend(['-map', '[outv]', '-map', '[outa]'])
-        cmd.extend(['-c:v', 'libx264', '-preset', 'medium', '-crf', '23'])
+        cmd.extend(self._get_encoding_params())
         cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
         cmd.extend(['-y', output_path])
         
@@ -509,16 +538,11 @@ class MediaProcessor:
         # Filters
         filters = [f'scale={target_resolution}:force_original_aspect_ratio=decrease']
         
-        cmd = [
-            self.ffmpeg_path,
-            '-i', input_path,
-            '-vf', ','.join(filters),
-            '-c:v', 'libx264', 
-            '-crf', str(crf), 
-            '-preset', 'medium',
-            '-c:a', 'aac', '-b:a', '128k',
-            '-y', output_path
-        ]
+        cmd = [self.ffmpeg_path] + self._get_input_flags() + ['-i', input_path]
+        
+        cmd.extend(['-vf', ','.join(filters)])
+        cmd.extend(self._get_encoding_params(crf=crf))
+        cmd.extend(['-c:a', 'aac', '-b:a', '128k', '-y', output_path])
         
         logger.info(f"压缩视频: {cmd}")
         if self._run_ffmpeg_with_progress(cmd, progress_callback):

@@ -2,6 +2,7 @@ import os
 import logging
 import json
 import subprocess
+from core.config import ConfigManager
 
 logger = logging.getLogger('bilibili_core.watermark')
 
@@ -75,8 +76,9 @@ class WatermarkRemover:
         
         x, y, w, h = rect
         
-        # band=10 -> 32 for better transition
-        filter_str = f"delogo=x={x}:y={y}:w={w}:h={h}:band=32:show=0"
+        # band option might not be supported in all ffmpeg versions or builds
+        # Simplified filter string
+        filter_str = f"delogo=x={x}:y={y}:w={w}:h={h}:show=0"
         
         cmd = [
             self.ffmpeg_path,
