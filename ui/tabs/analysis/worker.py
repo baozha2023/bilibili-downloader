@@ -90,6 +90,13 @@ class AnalysisWorker(QThread):
                 except Exception as e:
                     logger.error(f"Failed to get danmaku: {e}")
 
+            # 2.6 Get Related Videos
+            related = []
+            try:
+                related = self.crawler.api.get_related_videos(self.bvid)
+            except Exception as e:
+                logger.error(f"Failed to get related videos: {e}")
+
             # 3. Get cover image
             cover_data = None
             pic_url = video_data.get('pic', '')
@@ -171,6 +178,7 @@ class AnalysisWorker(QThread):
                 'user_levels': user_levels,
                 'locations': locations,
                 'danmaku': danmaku,
+                'related': related,
                 'cover_data': cover_data,
                 'sentiment': sentiment_score,
                 'keywords': keywords,

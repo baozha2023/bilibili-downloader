@@ -8,6 +8,7 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QPixmap
 from ui.message_box import BilibiliMessageBox
 from ui.widgets.card_widget import CardWidget
+from ui.widgets.loading_bar import LoadingBar
 from .worker import AnalysisWorker
 from .charts import ChartGenerator
 
@@ -92,6 +93,10 @@ class AnalysisTab(QWidget):
         input_layout.addWidget(self.export_btn)
         
         layout.addLayout(input_layout)
+        
+        # 加载进度条
+        self.loading_bar = LoadingBar(self)
+        layout.addWidget(self.loading_bar)
         
         # Content Area (Scrollable)
         scroll = QScrollArea()
@@ -232,6 +237,15 @@ class AnalysisTab(QWidget):
         self.cloud_card.add_layout(self.cloud_layout)
         self.cloud_card.hide()
         self.content_layout.addWidget(self.cloud_card)
+
+        self.add_separator(self.content_layout)
+
+        # 6. Related Videos Card
+        self.related_card = CardWidget("相关视频推荐")
+        self.related_layout = QGridLayout()
+        self.related_card.add_layout(self.related_layout)
+        self.related_card.hide()
+        self.content_layout.addWidget(self.related_card)
         
         scroll.setWidget(self.content_widget)
         layout.addWidget(scroll)
@@ -244,6 +258,7 @@ class AnalysisTab(QWidget):
             
         self.analyze_btn.setEnabled(False)
         self.analyze_btn.setText("分析中...")
+        self.loading_bar.start()
         
         self.worker = AnalysisWorker(self.crawler, bvid)
         self.worker.finished_signal.connect(self.on_analysis_finished)
@@ -252,6 +267,7 @@ class AnalysisTab(QWidget):
     def on_analysis_finished(self, result, error):
         self.analyze_btn.setEnabled(True)
         self.analyze_btn.setText("开始分析")
+        self.loading_bar.stop()
         
         if error:
             BilibiliMessageBox.error(self, "分析失败", error)
@@ -375,6 +391,9 @@ class AnalysisTab(QWidget):
                 data = self.last_result.copy()
                 if 'cover_data' in data:
                     del data['cover_data']
+                if 'related' in data:
+                     # Clean related data to be smaller if needed
+                     pass
                 
                 with open(file_path, 'w', encoding='utf-8') as f:
                     json.dump(data, f, ensure_ascii=False, indent=2)

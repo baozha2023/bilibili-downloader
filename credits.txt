@@ -23,33 +23,36 @@
 7. Pillow (https://python-pillow.org/)
    - Python图像处理库
 
-8. fake-useragent (https://pypi.org/project/fake-useragent/)
+8. PyQtWebEngine (https://pypi.org/project/PyQtWebEngine/)
+   - 基于Chromium的Web引擎，用于PyQt5
+
+9. fake-useragent (https://pypi.org/project/fake-useragent/)
    - 随机User-Agent生成库，用于爬虫反检测
 
-9. PyInstaller (https://pyinstaller.org/)
+10. PyInstaller (https://pyinstaller.org/)
    - 将Python应用打包成独立可执行文件的工具
 
-10. pywebview (https://pywebview.flowrl.com/)
+11. pywebview (https://pywebview.flowrl.com/)
    - 轻量级跨平台WebView封装库，用于实时观看视频
 
-11. jieba (https://github.com/fxsjy/jieba)
+12. jieba (https://github.com/fxsjy/jieba)
     - 最好的Python中文分词组件
 
-12. wordcloud (https://amueller.github.io/word_cloud/)
+13. wordcloud (https://amueller.github.io/word_cloud/)
     - 词云生成库
 
-13. Matplotlib (https://matplotlib.org/)
+14. Matplotlib (https://matplotlib.org/)
     - Python绘图库，用于生成数据统计图表
 
-14. SnowNLP (https://github.com/isnowfy/snownlp)
+15. SnowNLP (https://github.com/isnowfy/snownlp)
     - Python中文文本情感分析库
 
-15. openpyxl (https://openpyxl.readthedocs.io/)
+16. openpyxl (https://openpyxl.readthedocs.io/)
     - 用于读写Excel 2010 xlsx/xlsm文件的Python库
 
 本软件作者：zxj
 作者gitee首页：https://gitee.com/bzJAVA/bilibili-downloader
-版本：v5.3
+版本：v5.5
 
 免责声明：
 本软件仅供学习和交流使用，不得用于任何商业用途。

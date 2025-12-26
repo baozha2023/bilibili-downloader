@@ -39,9 +39,14 @@ class BilibiliAPI:
             return response.get('data', [])
         return []
 
-    def get_bangumi_info(self, ep_id):
+    def get_bangumi_info(self, ep_id=None, season_id=None):
         """获取番剧/影视详细信息"""
-        url = f"https://api.bilibili.com/pgc/view/web/season?ep_id={ep_id}"
+        if season_id:
+             url = f"https://api.bilibili.com/pgc/view/web/season?season_id={season_id}"
+        elif ep_id:
+             url = f"https://api.bilibili.com/pgc/view/web/season?ep_id={ep_id}"
+        else:
+            return None
         return self.network.make_request(url)
     
     def get_video_download_url(self, bvid, quality_preference='1080p', codec_preference='H.264/AVC', audio_quality_preference='高音质 (Hi-Res/Dolby)'):
@@ -278,4 +283,25 @@ class BilibiliAPI:
         response = self.network.make_request(url)
         if isinstance(response, dict):
             return response.get('data', {}).get('list', [])
+        return []
+
+    def get_user_info(self, mid):
+        """获取用户信息"""
+        url = f'https://api.bilibili.com/x/space/acc/info?mid={mid}'
+        return self.network.make_request(url)
+        
+    def search_users(self, keyword, page=1):
+        """搜索用户"""
+        url = f'https://api.bilibili.com/x/web-interface/search/type?search_type=bili_user&keyword={keyword}&page={page}'
+        response = self.network.make_request(url)
+        if isinstance(response, dict):
+            return response.get('data', {}).get('result', [])
+        return []
+
+    def get_related_videos(self, bvid):
+        """获取相关推荐视频"""
+        url = f'https://api.bilibili.com/x/web-interface/archive/related?bvid={bvid}'
+        response = self.network.make_request(url)
+        if isinstance(response, dict):
+            return response.get('data', [])
         return []

@@ -6,11 +6,12 @@ import logging
 from PyQt5.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                              QPushButton, QLabel, QTabWidget, QGroupBox, 
                              QTextEdit, QCheckBox, QFileDialog, QDialog, 
-                             QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox, QAction)
-from PyQt5.QtGui import QIcon
+                             QTableWidget, QHeaderView, QTableWidgetItem, QMessageBox, QAction, QMenu)
+from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtCore import QTimer, Qt, QEvent
 
 from core.crawler import BilibiliCrawler
+from core.config import ConfigManager
 from ui.update_dialog import UpdateDialog
 from ui.tabs.download_tab import DownloadTab
 from ui.tabs.bangumi_tab import BangumiTab
@@ -19,6 +20,7 @@ from ui.tabs.account_tab import AccountTab
 from ui.tabs.settings_tab import SettingsTab
 from ui.tabs.video_edit import VideoEditTab
 from ui.tabs.analysis import AnalysisTab
+from ui.tabs.user_search_tab import UserSearchTab
 from ui.widgets.floating_window import FloatingWindow
 from ui.qt_logger import QtLogHandler
 
@@ -35,6 +37,7 @@ class BilibiliDesktop(QMainWindow):
     def __init__(self):
         super().__init__()
         self.crawler = BilibiliCrawler()
+        self.config_manager = ConfigManager()
         self.history_manager = HistoryManager(self.crawler.data_dir)
         self.download_history = self.history_manager.get_history()
         
@@ -64,7 +67,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v5.3")
+        self.setWindowTitle("bilibiliDownloader v5.5")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -175,7 +178,14 @@ class BilibiliDesktop(QMainWindow):
                 color: #fb7299;
             }
         """)
-        main_layout.addWidget(self.tabs)
+        
+        # 允许拖拽和右键菜单
+        self.tabs.setMovable(True)
+        self.tabs.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tabs.customContextMenuRequested.connect(self.show_tab_context_menu)
+        self.tabs.tabBar().tabMoved.connect(self.on_tab_moved)
+        
+        main_layout.addWidget(self.tabs, 1) # Set stretch factor to 1
         
         # 创建各个标签页
         # 注意：DownloadTab和PopularTab可能需要访问SettingsTab获取配置
@@ -187,14 +197,22 @@ class BilibiliDesktop(QMainWindow):
         self.account_tab = AccountTab(self)
         self.video_edit_tab = VideoEditTab(self)
         self.analysis_tab = AnalysisTab(self)
+        self.user_search_tab = UserSearchTab(self)
         
-        self.tabs.addTab(self.download_tab, "视频下载")
-        self.tabs.addTab(self.bangumi_tab, "番剧下载")
-        self.tabs.addTab(self.popular_tab, "热门视频")
-        self.tabs.addTab(self.analysis_tab, "视频分析")
-        self.tabs.addTab(self.account_tab, "我的账号")
-        self.tabs.addTab(self.video_edit_tab, "视频编辑")
-        self.tabs.addTab(self.settings_tab, "设置")
+        # 定义所有可用标签页
+        self.all_tabs = {
+            "视频下载": self.download_tab,
+            "番剧下载": self.bangumi_tab,
+            "热门视频": self.popular_tab,
+            "用户查询": self.user_search_tab,
+            "视频分析": self.analysis_tab,
+            "我的账号": self.account_tab,
+            "视频编辑": self.video_edit_tab,
+            "设置": self.settings_tab
+        }
+        
+        # 从配置加载标签页顺序和可见性
+        self.load_tabs()
         
         # 连接设置变更信号
         self.settings_tab.merge_check.stateChanged.connect(self.download_tab.update_progress_visibility)
@@ -208,7 +226,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用bilibiliDownloader v5.3！")
+        logger.info("欢迎使用bilibiliDownloader v5.4！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
@@ -219,14 +237,13 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v5.3"
+        version = "v5.5"
         updates = (
-            "1. 设置: 移除自动去水印选项，改为手动处理。\n"
-            "2. 编辑: 新增手动去水印功能（支持框选）。\n"
-            "3. 历史: 优化下载失败记录，保留BV号和标题。\n"
-            "4. 界面: 优化窗口最大化时的布局。\n"
-            "5. 分析: 新增评论用户性别分布和活跃时间分布图表。\n"
-            "6. 优化: 代码重构与清理。\n"
+            "1. 转换: 增强格式转换功能，新增音频格式提取与转换支持。\n"
+            "2. 番剧: 支持SS号解析下载，新增下载历史重新下载功能。\n"
+            "3. 查询: 新增用户查询模块，支持ID与昵称搜索。\n"
+            "4. 分析: 增强视频分析功能，新增相关视频推荐卡片。\n"
+            "5. 优化: 移除收藏夹右键菜单，优化代码结构，提升稳定性。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
@@ -358,6 +375,8 @@ class BilibiliDesktop(QMainWindow):
                 status_item.setForeground(Qt.green)
             elif item.get("status") == "失败":
                 status_item.setForeground(Qt.red)
+            elif item.get("status") == "已取消":
+                status_item.setForeground(QColor("#e6a23c")) # Orange
             status_item.setTextAlignment(Qt.AlignCenter)
             table.setItem(i, 3, status_item)
         
@@ -430,3 +449,131 @@ class BilibiliDesktop(QMainWindow):
                     QMessageBox.warning(self, "错误", "下载目录不存在，无法打开")
         except Exception as e:
             QMessageBox.warning(self, "错误", f"打开下载目录时出错: {str(e)}")
+
+    def load_tabs(self):
+        """加载Tab顺序和可见性"""
+        tab_order = self.config_manager.get('tab_order', [])
+        tab_visibility = self.config_manager.get('tab_visibility', {})
+        
+        # 默认顺序
+        default_order = ["视频下载", "番剧下载", "热门视频", "视频分析", "我的账号", "视频编辑", "设置"]
+        
+        # 如果没有保存的顺序，使用默认顺序
+        if not tab_order:
+            tab_order = default_order[:]
+            
+        # 确保所有Tab都在order中 (处理新版本增加Tab的情况)
+        for name in default_order:
+            if name not in tab_order:
+                tab_order.append(name)
+                
+        # 添加Tab
+        self.tabs.clear()
+        for name in tab_order:
+            if name in self.all_tabs:
+                # 默认显示，除非明确设置为隐藏
+                if tab_visibility.get(name, True):
+                    self.tabs.addTab(self.all_tabs[name], name)
+                    
+    def save_tab_order(self):
+        """保存Tab顺序"""
+        current_order = []
+        for i in range(self.tabs.count()):
+            current_order.append(self.tabs.tabText(i))
+            
+        # 添加隐藏的Tab到列表末尾，保持它们在列表中的存在
+        all_names = self.all_tabs.keys()
+        for name in all_names:
+            if name not in current_order:
+                current_order.append(name)
+                
+        self.config_manager.set('tab_order', current_order)
+        self.config_manager.save()
+        
+    def on_tab_moved(self, from_index, to_index):
+        """Tab移动事件"""
+        self.save_tab_order()
+        
+    def show_tab_context_menu(self, pos):
+        """显示Tab右键菜单"""
+        menu = QMenu(self)
+        menu.setStyleSheet("""
+            QMenu {
+                background-color: white;
+                border: 1px solid #eee;
+                border-radius: 5px;
+                padding: 5px;
+            }
+            QMenu::item {
+                padding: 8px 20px;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QMenu::item:selected {
+                background-color: #f0f0f0;
+                color: #fb7299;
+            }
+            QMenu::separator {
+                height: 1px;
+                background: #eee;
+                margin: 5px 0;
+            }
+        """)
+        
+        # 获取当前点击的Tab索引
+        tab_index = self.tabs.tabBar().tabAt(pos)
+        
+        # 如果点击了某个Tab，提供隐藏选项
+        if tab_index != -1:
+            tab_name = self.tabs.tabText(tab_index)
+            # 防止隐藏最后一个Tab
+            if self.tabs.count() > 1:
+                hide_action = QAction(f"隐藏 \"{tab_name}\"", self)
+                hide_action.triggered.connect(lambda: self.toggle_tab_visibility(tab_name, False))
+                menu.addAction(hide_action)
+                menu.addSeparator()
+            
+        # 显示"恢复显示"子菜单
+        restore_menu = QMenu("恢复显示", self)
+        tab_visibility = self.config_manager.get('tab_visibility', {})
+        
+        hidden_tabs = []
+        for name in self.all_tabs.keys():
+            if not tab_visibility.get(name, True):
+                hidden_tabs.append(name)
+                
+        if hidden_tabs:
+            for name in hidden_tabs:
+                action = QAction(name, self)
+                action.triggered.connect(lambda checked, n=name: self.toggle_tab_visibility(n, True))
+                restore_menu.addAction(action)
+        else:
+            no_hidden_action = QAction("无隐藏标签页", self)
+            no_hidden_action.setEnabled(False)
+            restore_menu.addAction(no_hidden_action)
+            
+        menu.addMenu(restore_menu)
+        
+        menu.exec_(self.tabs.mapToGlobal(pos))
+        
+    def toggle_tab_visibility(self, tab_name, visible):
+        """切换Tab可见性"""
+        tab_visibility = self.config_manager.get('tab_visibility', {})
+        tab_visibility[tab_name] = visible
+        self.config_manager.set('tab_visibility', tab_visibility)
+        self.config_manager.save()
+        
+        # 重新加载Tabs以反映更改
+        # 为了保持当前选中的Tab，记录下当前Tab的名称
+        current_index = self.tabs.currentIndex()
+        current_tab_name = ""
+        if current_index != -1:
+            current_tab_name = self.tabs.tabText(current_index)
+            
+        self.load_tabs()
+        
+        # 尝试恢复选中状态
+        for i in range(self.tabs.count()):
+            if self.tabs.tabText(i) == current_tab_name:
+                self.tabs.setCurrentIndex(i)
+                break

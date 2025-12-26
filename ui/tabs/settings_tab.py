@@ -438,7 +438,11 @@ class SettingsTab(QWidget):
             self.main_window.floating_window.set_visibility(visible)
 
     def save_config_to_file(self):
-        config = {
+        if not hasattr(self.main_window, 'config_manager'):
+            return
+
+        # Collect UI settings
+        ui_config = {
             'data_dir': self.data_dir_input.text().strip(),
             'max_retries': self.retry_count.value(),
             'timeout': self.timeout_spin.value(),
@@ -455,13 +459,13 @@ class SettingsTab(QWidget):
             'always_lock_account': self.always_lock_check.isChecked(),
             'hardware_acceleration': self.hardware_acceleration_check.isChecked()
         }
+        
         try:
-            config_dir = os.path.join(self.crawler.data_dir, 'config')
-            if not os.path.exists(config_dir):
-                os.makedirs(config_dir)
-            config_path = os.path.join(config_dir, 'settings.json')
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(config, f, ensure_ascii=False, indent=2)
+            # Update ConfigManager and save
+            self.main_window.config_manager.update(ui_config)
+            self.main_window.config_manager.save()
+            
+            config_path = self.main_window.config_manager.config_path
             logger.info(f"配置已保存到 {config_path}")
             self.main_window.log_to_console(f"配置文件已更新: {config_path}", "system")
         except Exception as e:
@@ -469,48 +473,49 @@ class SettingsTab(QWidget):
             self.main_window.log_to_console(f"保存配置文件失败: {e}", "error")
 
     def load_config_from_file(self):
-        config_path = os.path.join(self.crawler.data_dir, 'config', 'settings.json')
-        if os.path.exists(config_path):
-            try:
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config = json.load(f)
-                if 'data_dir' in config and os.path.exists(config['data_dir']):
-                    self.data_dir_input.setText(config['data_dir'])
-                    self.crawler.data_dir = config['data_dir']
-                    self.crawler.download_dir = os.path.join(config['data_dir'], 'downloads')
-                if 'max_retries' in config:
-                    self.retry_count.setValue(config['max_retries'])
-                if 'timeout' in config:
-                    self.timeout_spin.setValue(config['timeout'])
-                if 'retry_interval' in config:
-                    self.retry_interval_spin.setValue(config['retry_interval'])
-                if 'merge_video' in config:
-                    self.merge_check.setChecked(config['merge_video'])
-                if 'delete_original' in config:
-                    self.delete_original_check.setChecked(config['delete_original'])
-                if 'download_danmaku' in config:
-                    self.download_danmaku_check.setChecked(config['download_danmaku'])
-                if 'download_comments' in config:
-                    self.download_comments_check.setChecked(config['download_comments'])
-                if 'floating_window' in config:
-                    self.floating_window_check.setChecked(config['floating_window'])
-                    # 触发状态更新
-                    self.toggle_floating_window(Qt.Checked if config['floating_window'] else Qt.Unchecked)
-                if 'complete_action' in config:
-                    self.complete_action.setCurrentIndex(config['complete_action'])
-                if 'video_quality' in config:
-                    self.quality_combo.setCurrentText(config['video_quality'])
-                if 'video_codec' in config:
-                    self.codec_combo.setCurrentText(config['video_codec'])
-                if 'audio_quality' in config:
-                    self.audio_quality_combo.setCurrentText(config['audio_quality'])
-                if 'always_lock_account' in config:
-                    self.always_lock_check.setChecked(config['always_lock_account'])
-                if 'hardware_acceleration' in config:
-                    self.hardware_acceleration_check.setChecked(config['hardware_acceleration'])
-                    self.crawler.processor.set_hardware_acceleration(config['hardware_acceleration'])
-            except Exception as e:
-                logger.error(f"加载配置文件时出错: {e}")
+        if not hasattr(self.main_window, 'config_manager'):
+            return
+
+        config = self.main_window.config_manager.config
+        
+        try:
+            if 'data_dir' in config and os.path.exists(config['data_dir']):
+                self.data_dir_input.setText(config['data_dir'])
+                self.crawler.data_dir = config['data_dir']
+                self.crawler.download_dir = os.path.join(config['data_dir'], 'downloads')
+            if 'max_retries' in config:
+                self.retry_count.setValue(config['max_retries'])
+            if 'timeout' in config:
+                self.timeout_spin.setValue(config['timeout'])
+            if 'retry_interval' in config:
+                self.retry_interval_spin.setValue(config['retry_interval'])
+            if 'merge_video' in config:
+                self.merge_check.setChecked(config['merge_video'])
+            if 'delete_original' in config:
+                self.delete_original_check.setChecked(config['delete_original'])
+            if 'download_danmaku' in config:
+                self.download_danmaku_check.setChecked(config['download_danmaku'])
+            if 'download_comments' in config:
+                self.download_comments_check.setChecked(config['download_comments'])
+            if 'floating_window' in config:
+                self.floating_window_check.setChecked(config['floating_window'])
+                # 触发状态更新
+                self.toggle_floating_window(Qt.Checked if config['floating_window'] else Qt.Unchecked)
+            if 'complete_action' in config:
+                self.complete_action.setCurrentIndex(config['complete_action'])
+            if 'video_quality' in config:
+                self.quality_combo.setCurrentText(config['video_quality'])
+            if 'video_codec' in config:
+                self.codec_combo.setCurrentText(config['video_codec'])
+            if 'audio_quality' in config:
+                self.audio_quality_combo.setCurrentText(config['audio_quality'])
+            if 'always_lock_account' in config:
+                self.always_lock_check.setChecked(config['always_lock_account'])
+            if 'hardware_acceleration' in config:
+                self.hardware_acceleration_check.setChecked(config['hardware_acceleration'])
+                self.crawler.processor.set_hardware_acceleration(config['hardware_acceleration'])
+        except Exception as e:
+            logger.error(f"加载配置文件时出错: {e}")
 
     def show_credits(self):
         """显示作者声明和致谢"""

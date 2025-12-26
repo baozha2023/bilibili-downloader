@@ -113,8 +113,8 @@ class FavoritesWindow(QDialog):
         """)
         self.table.verticalHeader().setDefaultSectionSize(40)
         self.table.cellDoubleClicked.connect(self.on_video_double_clicked)
-        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.table.customContextMenuRequested.connect(self.show_context_menu)
+        # self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        # self.table.customContextMenuRequested.connect(self.show_context_menu)
         self.table.setMouseTracking(True)
         self.table.cellEntered.connect(self.on_cell_entered)
         self.table.installEventFilter(self)
@@ -174,7 +174,30 @@ class FavoritesWindow(QDialog):
         self.display_cover(pixmap)
         
     def display_cover(self, pixmap):
-        self.cover_label.setPixmap(pixmap)
+        # 自适应缩放逻辑
+        max_width = 320
+        max_height = 240
+        
+        orig_width = pixmap.width()
+        orig_height = pixmap.height()
+        
+        if orig_width == 0 or orig_height == 0:
+            return
+
+        aspect_ratio = orig_width / orig_height
+        
+        if aspect_ratio > 1: # 横屏
+            new_width = min(orig_width, max_width)
+            new_height = int(new_width / aspect_ratio)
+        else: # 竖屏
+            new_height = min(orig_height, max_height)
+            new_width = int(new_height * aspect_ratio)
+            
+        scaled_pixmap = pixmap.scaled(new_width, new_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        
+        self.cover_label.resize(new_width, new_height)
+        self.cover_label.setPixmap(scaled_pixmap)
+        
         cursor_pos = QCursor.pos()
         self.cover_label.move(cursor_pos.x() + 20, cursor_pos.y() + 20)
         self.cover_label.show()

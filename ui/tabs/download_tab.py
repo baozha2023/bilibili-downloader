@@ -211,6 +211,8 @@ class DownloadTab(QWidget):
         self.main_window.log_to_console(f"开始下载视频: {bvid}", "download")
         if title:
             self.main_window.log_to_console(f"视频标题: {title}", "info")
+            # 同时也设置 tooltip 以便取消时使用
+            self.bvid_input.setToolTip(title)
         self.main_window.log_to_console("正在获取视频信息...", "info")
         
         # 获取是否合并的选项（从设置界面获取）
@@ -396,6 +398,9 @@ class DownloadTab(QWidget):
             # Hide floating window
             if hasattr(self.main_window, 'floating_window'):
                 self.main_window.floating_window.reset()
+                
+            # 这里不需要再添加历史记录了，因为在 cancel_download 里已经添加了
+            # self.main_window.add_download_history(bvid, title, "已取消")
             
         else:
             error_message = f"下载失败: {result.get('message', '未知错误')}"
@@ -432,6 +437,20 @@ class DownloadTab(QWidget):
             # Hide floating window
             if hasattr(self.main_window, 'floating_window'):
                 self.main_window.floating_window.reset()
+            
+            # 记录到历史记录（如果能获取到标题）
+            bvid = self.bvid_input.text().strip()
+            # 尝试从 bvid_input 的 tooltip 获取标题，或者如果不为空的话
+            title = self.bvid_input.toolTip()
+            if not title:
+                 # 尝试从参数中获取，如果线程保存了的话（这里比较难获取到线程内部状态，除非我们保存了）
+                 pass
+                 
+            # 如果没有标题，就用 BV 号代替或者显示未知
+            if not title:
+                title = "未知标题 (取消下载)"
+            
+            self.main_window.add_download_history(bvid, title, "已取消")
             
             # 重置UI状态
             self.reset_progress_bars()

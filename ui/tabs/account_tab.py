@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
                              QHeaderView, QTabWidget, QMessageBox, QGraphicsOpacityEffect,
                              QMenu, QAction, QApplication)
 from PyQt5.QtGui import QPixmap, QPainter, QBrush, QDesktopServices, QCursor
-from PyQt5.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve
+from PyQt5.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve, QEvent
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from ui.workers import AccountInfoThread
 from ui.login_dialog import BilibiliLoginWindow
@@ -181,6 +181,10 @@ class AccountTab(QWidget):
         self.history_list.cellDoubleClicked.connect(self.on_history_video_clicked)
         self.history_list.setContextMenuPolicy(Qt.CustomContextMenu)
         self.history_list.customContextMenuRequested.connect(self.show_history_context_menu)
+        # 启用鼠标跟踪，用于显示悬停封面
+        self.history_list.setMouseTracking(True)
+        self.history_list.cellEntered.connect(self.on_cell_entered)
+        self.history_list.installEventFilter(self)
         self.history_list.setStyleSheet("""
             QTableWidget { 
                 font-size: 18px; 
@@ -195,6 +199,14 @@ class AccountTab(QWidget):
             QTableWidget::item { padding: 5px; }
         """)
         self.content_tabs.addTab(self.history_list, "历史记录")
+        
+        # 封面预览Label (悬浮显示)
+        self.cover_label = QLabel(self)
+        self.cover_label.setWindowFlags(Qt.ToolTip)
+        self.cover_label.setStyleSheet("border: 2px solid white; border-radius: 4px;")
+        self.cover_label.setScaledContents(True)
+        self.cover_label.resize(320, 200)
+        self.cover_label.hide()
         
         # --- Privacy Lock Implementation ---
         self.privacy_stack = QStackedWidget()
@@ -304,11 +316,6 @@ class AccountTab(QWidget):
                     decrypted_str = self._decrypt_data(saved_data["data"])
                     if decrypted_str:
                         config = json.loads(decrypted_str)
-                else:
-                    # Fallback for old plain text format (if any users still have it, though we are removing support, it doesn't hurt to keep reading for migration if we wanted, but user asked to remove support. 
-                    # Actually user said "remove legacy config support" in previous turn for LoginDialog.
-                    # Here we should consistent. But to be safe, I'll just support encrypted.)
-                    pass
 
                 if config:
                     cookies = config.get("cookies", {})
@@ -440,6 +447,82 @@ class AccountTab(QWidget):
             else:
                 settings_tab.quality_combo.setCurrentIndex(0)
 
+    def on_cell_entered(self, row, column):
+        """鼠标移入单元格显示封面"""
+        if row < 0:
+            self.cover_label.hide()
+            return
+            
+        # 获取BV号item，从中获取封面URL
+        bvid_item = self.history_list.item(row, 3)
+        if bvid_item:
+            cover_url = bvid_item.data(Qt.UserRole)
+            if cover_url:
+                self.show_cover_preview(cover_url)
+                
+    def show_cover_preview(self, url):
+        # 检查缓存
+        if not hasattr(self, 'cover_cache'):
+            self.cover_cache = {}
+            
+        if url in self.cover_cache:
+            self.display_cover(self.cover_cache[url])
+        else:
+            # Use avatar_network_manager or create a new one?
+            # Reuse avatar_network_manager for simplicity, but need to handle callback
+            # Create a separate manager for covers to avoid conflict
+            if not hasattr(self, 'cover_network_manager'):
+                self.cover_network_manager = QNetworkAccessManager(self)
+                self.cover_network_manager.finished.connect(self.on_cover_downloaded)
+            
+            self.cover_network_manager.get(QNetworkRequest(QUrl(url)))
+            
+    def on_cover_downloaded(self, reply):
+        url = reply.url().toString()
+        if reply.error():
+            reply.deleteLater()
+            return
+        data = reply.readAll()
+        pixmap = QPixmap()
+        pixmap.loadFromData(data)
+        self.cover_cache[url] = pixmap
+        self.display_cover(pixmap)
+        reply.deleteLater()
+        
+    def display_cover(self, pixmap):
+        # 自适应缩放逻辑
+        max_width = 320
+        max_height = 240
+        
+        orig_width = pixmap.width()
+        orig_height = pixmap.height()
+        
+        if orig_width == 0 or orig_height == 0:
+            return
+
+        aspect_ratio = orig_width / orig_height
+        
+        if aspect_ratio > 1: # 横屏
+            new_width = min(orig_width, max_width)
+            new_height = int(new_width / aspect_ratio)
+        else: # 竖屏
+            new_height = min(orig_height, max_height)
+            new_width = int(new_height * aspect_ratio)
+            
+        scaled_pixmap = pixmap.scaled(new_width, new_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        
+        self.cover_label.resize(new_width, new_height)
+        self.cover_label.setPixmap(scaled_pixmap)
+        
+        cursor_pos = QCursor.pos()
+        self.cover_label.move(cursor_pos.x() + 20, cursor_pos.y() + 20)
+        self.cover_label.show()
+        
+    def eventFilter(self, source, event):
+        if source == self.history_list and event.type() == QEvent.Leave:
+            self.cover_label.hide()
+        return super().eventFilter(source, event)
+
     def update_favorites_list(self, favorites):
         """更新收藏夹列表显示"""
         self.favorites_list.setRowCount(len(favorites))
@@ -485,10 +568,16 @@ class AccountTab(QWidget):
             if not bvid:
                 bvid = item.get("bvid", "")
                 
+            cover = item.get("cover", "") or item.get("pic", "")
+                
             self.history_list.setItem(i, 0, QTableWidgetItem(title))
             self.history_list.setItem(i, 1, QTableWidgetItem(author_name))
             self.history_list.setItem(i, 2, QTableWidgetItem(view_time))
-            self.history_list.setItem(i, 3, QTableWidgetItem(bvid))
+            
+            bvid_item = QTableWidgetItem(bvid)
+            if cover:
+                bvid_item.setData(Qt.UserRole, cover)
+            self.history_list.setItem(i, 3, bvid_item)
 
     def load_account_avatar(self, url):
         self.account_avatar.setText("加载中...")

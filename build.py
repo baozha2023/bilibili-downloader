@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 5.3
+版本: 5.5
 """
 
 import os
@@ -68,6 +68,7 @@ def build_executable():
         '--hidden-import=ui.tabs.video_edit.pages.remove_watermark_page',
         '--hidden-import=ui.tabs.settings_tab',
         '--hidden-import=ui.tabs.bangumi_tab',
+        '--hidden-import=ui.tabs.user_search_tab',
         '--hidden-import=ui.tabs.analysis',
         '--hidden-import=ui.tabs.analysis.analysis_tab',
         '--hidden-import=ui.tabs.analysis.worker',
@@ -154,7 +155,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v5.3_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v5.5_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -198,7 +199,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  bilibiliDownloader打包工具 v5.3")
+    print("  bilibiliDownloader打包工具 v5.5")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -223,13 +224,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v5.3 更新内容:")
-    print("- 设置：移除自动去水印选项")
-    print("- 编辑：新增手动去水印功能")
-    print("- 历史：优化下载失败记录")
-    print("- 界面：优化最大化布局")
-    print("- 分析：新增性别和活跃时间分布")
-    print("- 优化：代码重构与性能提升")
+    print("\n新版本 v5.5 更新内容:")
+    print("- 转换：增强格式转换功能，新增音频格式提取与转换支持")
+    print("- 番剧：支持SS号解析下载，新增下载历史重新下载功能")
+    print("- 查询：新增用户查询模块，支持ID与昵称搜索")
+    print("- 分析：增强视频分析功能，新增相关视频推荐卡片")
+    print("- 优化：移除收藏夹右键菜单，优化代码结构，提升稳定性")
 
 if __name__ == "__main__":
     main() 

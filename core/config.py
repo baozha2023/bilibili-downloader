@@ -18,7 +18,9 @@ class ConfigManager:
         'video_codec': 'H.264/AVC',
         'audio_quality': '高音质 (Hi-Res/Dolby)',
         'always_lock_account': False,
-        'hardware_acceleration': False
+        'hardware_acceleration': False,
+        'tab_order': [],
+        'tab_visibility': {}
     }
 
     def __new__(cls, data_dir=None):
@@ -28,7 +30,8 @@ class ConfigManager:
         return cls._instance
 
     def init(self, data_dir):
-        self.data_dir = data_dir or os.getcwd()
+        # Default to bilibili_data if not provided to avoid creating config in root
+        self.data_dir = data_dir or os.path.join(os.getcwd(), 'bilibili_data')
         self.config_dir = os.path.join(self.data_dir, 'config')
         self.config_path = os.path.join(self.config_dir, 'settings.json')
         self.config = self.DEFAULT_CONFIG.copy()

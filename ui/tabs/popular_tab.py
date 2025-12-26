@@ -4,6 +4,7 @@ from PyQt5.QtCore import Qt, QUrl, QEvent
 from PyQt5.QtGui import QCursor, QPixmap
 from ui.workers import WorkerThread
 from ui.widgets.video_player_window import VideoPlayerWindow
+from ui.widgets.loading_bar import LoadingBar
 from ui.styles import UIStyles
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
@@ -40,6 +41,10 @@ class PopularTab(QWidget):
         
         control_layout.addStretch()
         layout.addLayout(control_layout)
+        
+        # 加载进度条
+        self.loading_bar = LoadingBar(self)
+        layout.addWidget(self.loading_bar)
         
         # 视频列表
         self.popular_table = QTableWidget(0, 5)
@@ -112,7 +117,34 @@ class PopularTab(QWidget):
         self.display_cover(pixmap)
         
     def display_cover(self, pixmap):
-        self.cover_label.setPixmap(pixmap)
+        # 自适应缩放逻辑
+        max_width = 320
+        max_height = 240 # 稍微增加高度限制
+        
+        # 获取原始尺寸
+        orig_width = pixmap.width()
+        orig_height = pixmap.height()
+        
+        if orig_width == 0 or orig_height == 0:
+            return
+
+        # 计算宽高比
+        aspect_ratio = orig_width / orig_height
+        
+        # 根据宽高比计算目标尺寸
+        if aspect_ratio > 1: # 横屏
+            new_width = min(orig_width, max_width)
+            new_height = int(new_width / aspect_ratio)
+        else: # 竖屏
+            new_height = min(orig_height, max_height)
+            new_width = int(new_height * aspect_ratio)
+            
+        # 缩放图片
+        scaled_pixmap = pixmap.scaled(new_width, new_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        
+        self.cover_label.resize(new_width, new_height)
+        self.cover_label.setPixmap(scaled_pixmap)
+        
         # 显示在鼠标附近
         cursor_pos = QCursor.pos()
         self.cover_label.move(cursor_pos.x() + 20, cursor_pos.y() + 20)
@@ -130,6 +162,7 @@ class PopularTab(QWidget):
     def get_popular_videos(self):
         """获取热门视频"""
         self.popular_btn.setEnabled(False)
+        self.loading_bar.start()
         self.main_window.log_to_console("正在获取热门视频...", "info")
         
         pages = self.popular_pages.value()
@@ -155,6 +188,7 @@ class PopularTab(QWidget):
     
     def on_popular_finished(self, result):
         self.popular_btn.setEnabled(True)
+        self.loading_bar.stop()
         if result["status"] == "success":
             videos = result.get("data", [])
             self.main_window.log_to_console(f"成功获取 {len(videos)} 个热门视频", "success")

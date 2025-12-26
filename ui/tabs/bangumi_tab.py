@@ -82,14 +82,15 @@ class BangumiInfoThread(QThread):
     finished_signal = pyqtSignal(dict)
     error_signal = pyqtSignal(str)
     
-    def __init__(self, crawler, ep_id):
+    def __init__(self, crawler, ep_id=None, season_id=None):
         super().__init__()
         self.crawler = crawler
         self.ep_id = ep_id
+        self.season_id = season_id
         
     def run(self):
         try:
-            resp = self.crawler.api.get_bangumi_info(self.ep_id)
+            resp = self.crawler.api.get_bangumi_info(self.ep_id, self.season_id)
             if resp and resp.get('code') == 0:
                 result = resp.get('result', {})
                 self.finished_signal.emit(result)
@@ -256,23 +257,29 @@ class BangumiTab(QWidget):
             BilibiliMessageBox.warning(self, "提示", "请输入番剧地址")
             return
             
-        # Extract ep_id
+        # Extract ep_id or season_id
         ep_id = None
+        season_id = None
+        
         if url.isdigit():
             ep_id = url
         else:
             ep_match = re.search(r'ep(\d+)', url)
+            ss_match = re.search(r'ss(\d+)', url)
+            
             if ep_match:
                 ep_id = ep_match.group(1)
+            elif ss_match:
+                season_id = ss_match.group(1)
                 
-        if not ep_id:
-            BilibiliMessageBox.warning(self, "提示", "无法从输入中提取ep_id (请确保包含ep12345格式)")
+        if not ep_id and not season_id:
+            BilibiliMessageBox.warning(self, "提示", "无法从输入中提取ep_id或season_id (请确保包含ep123或ss123格式)")
             return
             
         self.info_label.setText("正在获取剧集信息...")
         self.parse_btn.setEnabled(False)
         
-        self.info_thread = BangumiInfoThread(self.crawler, ep_id)
+        self.info_thread = BangumiInfoThread(self.crawler, ep_id, season_id)
         self.info_thread.finished_signal.connect(self.on_info_fetched)
         self.info_thread.error_signal.connect(self.on_info_error)
         self.info_thread.start()
@@ -345,6 +352,37 @@ class BangumiTab(QWidget):
         self.is_downloading = True
         self.download_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
+        self.process_next_download()
+
+    def add_single_download_task(self, bvid, title, series_title):
+        """Add a single task from history re-download"""
+        # Construct a minimal episode data object
+        ep_data = {
+            'bvid': bvid,
+            'title': title,
+            'long_title': '' # Title usually includes index, so leave long_title empty or parse it?
+        }
+        
+        # If queue is empty and not downloading, start immediately
+        # If downloading, maybe append? But for simplicity, let's just start a new batch of 1 if idle.
+        if self.is_downloading:
+            BilibiliMessageBox.warning(self, "提示", "当前有下载任务正在进行，请稍后再试")
+            return
+
+        self.download_queue = [ep_data]
+        self.total_batch_count = 1
+        self.current_batch_index = 0
+        
+        # We need to set current_series_title so the folder is correct
+        self.current_series_title = series_title
+        
+        self.is_downloading = True
+        self.download_btn.setEnabled(False)
+        self.stop_btn.setEnabled(True)
+        
+        # Show progress group
+        self.progress_group.show()
+        
         self.process_next_download()
         
     def process_next_download(self):

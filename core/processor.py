@@ -14,7 +14,7 @@ logger = logging.getLogger('bilibili_core.processor')
 
 class MediaProcessor:
     """
-    负责媒体处理：合并、去水印、转码
+    负责媒体处理：合并、去水印、格式转换、剪辑、反转、剪辑
     """
     def __init__(self, hardware_acceleration=False):
         self.ffmpeg_path = self._find_ffmpeg()
@@ -457,7 +457,7 @@ class MediaProcessor:
 
     def merge_videos_with_range(self, file_list, output_path, progress_callback=None):
         """
-        合并多个视频文件，支持片段剪辑 (无转场)
+        合并多个视频文件，支持片段剪辑
         file_list: [{'path': str, 'start': float, 'end': float}, ...]
         """
         if not self.ffmpeg_available:
@@ -514,7 +514,7 @@ class MediaProcessor:
         cmd.extend(['-c:a', 'aac', '-b:a', '128k'])
         cmd.extend(['-y', output_path])
         
-        logger.info(f"合并视频(带剪辑): {cmd}")
+        logger.info(f"合并视频 {cmd}")
         if self._run_ffmpeg_with_progress(cmd, progress_callback):
             return True, output_path
         else:
