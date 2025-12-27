@@ -184,8 +184,7 @@ class AnalysisWorker(QThread):
                 'danmaku': danmaku,
                 'related': related,
                 'cover_data': cover_data,
-                'sentiment': sentiment_score,
-                'sentiment_trend': sentiment_trend,
+                'sentiment_score': sentiment_score,
                 'keywords': keywords,
                 'emojis': emojis
             }

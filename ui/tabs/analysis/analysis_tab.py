@@ -163,44 +163,39 @@ class AnalysisTab(QWidget):
         self.ratio_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.ratio_label, 0, 1)
         
-        # Row 2: Danmaku & Date
+        # Row 2: Danmaku & Level
         self.danmaku_label = QLabel()
         self.danmaku_label.setAlignment(Qt.AlignCenter)
         self.danmaku_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.danmaku_label, 1, 0)
         
-        self.date_label = QLabel()
-        self.date_label.setAlignment(Qt.AlignCenter)
-        self.date_label.setStyleSheet("background-color: transparent; padding: 10px;")
-        self.charts_layout.addWidget(self.date_label, 1, 1)
-        
-        # Row 3: Level & Sentiment
         self.level_label = QLabel()
         self.level_label.setAlignment(Qt.AlignCenter)
         self.level_label.setStyleSheet("background-color: transparent; padding: 10px;")
-        self.charts_layout.addWidget(self.level_label, 2, 0)
+        self.charts_layout.addWidget(self.level_label, 1, 1)
         
-        self.sentiment_label = QLabel()
-        self.sentiment_label.setAlignment(Qt.AlignCenter)
-        self.sentiment_label.setStyleSheet("background-color: transparent; padding: 10px;")
-        self.charts_layout.addWidget(self.sentiment_label, 2, 1)
-
         # Row 3: Location & Danmaku Color
         self.location_label = QLabel()
         self.location_label.setAlignment(Qt.AlignCenter)
         self.location_label.setStyleSheet("background-color: transparent; padding: 10px;")
-        self.charts_layout.addWidget(self.location_label, 3, 0)
+        self.charts_layout.addWidget(self.location_label, 2, 0)
         
         self.color_label = QLabel()
         self.color_label.setAlignment(Qt.AlignCenter)
         self.color_label.setStyleSheet("background-color: transparent; padding: 10px;")
-        self.charts_layout.addWidget(self.color_label, 3, 1)
+        self.charts_layout.addWidget(self.color_label, 2, 1)
+        
+        # Row 4: Sentiment & Emoji
+        self.sentiment_label = QLabel()
+        self.sentiment_label.setAlignment(Qt.AlignCenter)
+        self.sentiment_label.setStyleSheet("background-color: transparent; padding: 10px;")
+        self.charts_layout.addWidget(self.sentiment_label, 3, 0)
 
-        # Row 4: Emoji Analysis
         self.emoji_label = QLabel()
         self.emoji_label.setAlignment(Qt.AlignCenter)
         self.emoji_label.setStyleSheet("background-color: transparent; padding: 10px;")
-        self.charts_layout.addWidget(self.emoji_label, 4, 0, 1, 2) # Span 2 columns
+        self.charts_layout.addWidget(self.emoji_label, 3, 1)
+
         
         self.charts_card.add_layout(self.charts_layout)
         self.charts_card.hide()
@@ -306,25 +301,14 @@ class AnalysisTab(QWidget):
         # Danmaku & Date
         duration = info.get('duration', 0)
         ChartGenerator.generate_danmaku_chart(self.danmaku_label, danmaku, duration)
-        ChartGenerator.generate_date_chart(self.date_label, result.get('comment_dates', []))
-        
-        # Hour & Gender
-        ChartGenerator.generate_hour_chart(self.hour_label, result.get('comment_hours', []))
-        ChartGenerator.generate_gender_chart(self.gender_label, result.get('user_genders', []))
-        
-        # Level & Sentiment
         ChartGenerator.generate_level_chart(self.level_label, result.get('user_levels', []))
-        sentiment_score = result.get('sentiment', 0.5)
-        ChartGenerator.generate_sentiment_chart(self.sentiment_label, sentiment_score)
-        
+
         # Location & Danmaku Color
         ChartGenerator.generate_location_chart(self.location_label, result.get('locations', []))
         ChartGenerator.generate_danmaku_color_chart(self.color_label, result.get('danmaku', []))
-        
-        # Trend
-        ChartGenerator.generate_sentiment_trend_chart(self.trend_label, result.get('sentiment_trend', []))
-        
-        # Emoji
+
+        # Sentiment & Emoji
+        ChartGenerator.generate_sentiment_chart(self.sentiment_label, result.get('sentiment_score', 0.5))
         ChartGenerator.generate_emoji_chart(self.emoji_label, result.get('emojis', []))
         
         self.charts_card.show()

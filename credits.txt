@@ -50,7 +50,7 @@
 
 本软件作者：认真想的名字
 作者gitee首页：https://gitee.com/bzJAVA/bilibili-downloader
-版本：v5.6.1
+版本：v5.6.2
 
 免责声明：
 本软件仅供学习和交流使用，不得用于任何商业用途。

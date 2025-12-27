@@ -211,12 +211,12 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v5.6.1"
+        version = "v5.6.2"
         updates = (
-            "1. 修复: 修复扫码登录后未检测到登陆状态的bug。\n"
-            "2. 优化: 将版本管理按钮移动到作者声明旁边，并采用模块化设计。\n"
-            "3. 修复: 修复版本管理按钮不显示的bug。\n"
-            "4. 管理: 新增关于与版本管理独立模块，便于维护。\n"
+            "1. 修复: 番剧下载取消后进度条归零，并正确记录已取消状态。\n"
+            "2. 优化: 版本管理界面改为表格展示，显示详细更新日志和日期。\n"
+            "3. 修复: 修复视频分析界面部分图表无法显示的bug。\n"
+            "4. 优化: 代码结构优化，清理冗余代码。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()

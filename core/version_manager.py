@@ -26,31 +26,66 @@ class VersionManager:
 
     def get_versions(self):
         """
-        获取远程仓库的所有tag列表
+        获取远程仓库的所有tag列表，包含详细信息
+        返回: list of dict {'tag': str, 'date': str, 'message': str}
         """
         if not self.check_git_available():
             return []
 
         try:
             # 1. Fetch tags from remote to ensure we have latest
-            # 使用 capture_output=True 避免输出干扰
             subprocess.run(['git', 'fetch', '--tags'], cwd=self.cwd, check=True, capture_output=True)
             
-            # 2. List tags
-            result = subprocess.run(['git', 'tag', '-l'], cwd=self.cwd, check=True, capture_output=True, text=True)
-            tags = result.stdout.strip().split('\n')
+            # 2. List tags with details
+            # Format: tag|date|message
+            # Use a unique separator for records because contents may contain newlines
+            separator = "||||END_OF_TAG||||"
+            cmd = ['git', 'tag', '-l', f'--format=%(refname:short)|%(creatordate:short)|%(contents){separator}']
+            result = subprocess.run(cmd, cwd=self.cwd, check=True, capture_output=True, text=True, encoding='utf-8')
             
-            # 过滤空行
-            tags = [t.strip() for t in tags if t.strip()]
+            # Split by our custom separator
+            raw_entries = result.stdout.split(separator)
+            versions = []
             
-            # 简单的版本排序 (假设格式为 v1.0, v1.1 等)
-            # 尝试按语义版本排序，如果失败则按字母倒序
+            for entry in raw_entries:
+                entry = entry.strip()
+                if not entry:
+                    continue
+                    
+                try:
+                    # First split by | to get tag and date
+                    # Limit split to 2 because message (3rd part) may contain |
+                    parts = entry.split('|', 2)
+                    
+                    if len(parts) >= 3:
+                        tag = parts[0].strip()
+                        date = parts[1].strip()
+                        message = parts[2].strip()
+                        
+                        # Basic validation: tag should not be empty
+                        if tag:
+                            versions.append({
+                                'tag': tag,
+                                'date': date,
+                                'message': message
+                            })
+                    elif len(parts) == 1 and parts[0].strip():
+                        # Fallback for simple tags without message/date (unlikely with this format but safe to keep)
+                        versions.append({
+                            'tag': parts[0].strip(),
+                            'date': '',
+                            'message': ''
+                        })
+                except:
+                    continue
+            
+            # Sort versions
             try:
-                tags.sort(key=lambda s: [int(u) for u in s.lower().replace('v', '').split('.')], reverse=True)
+                versions.sort(key=lambda x: [int(u) for u in x['tag'].lower().replace('v', '').split('.')], reverse=True)
             except:
-                tags.sort(reverse=True)
+                versions.sort(key=lambda x: x['tag'], reverse=True)
                 
-            return tags
+            return versions
         except Exception as e:
             logger.error(f"获取版本列表失败: {e}")
             return []

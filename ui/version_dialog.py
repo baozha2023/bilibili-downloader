@@ -1,7 +1,8 @@
 import sys
 import os
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
-                             QComboBox, QGroupBox, QWidget)
+                             QTableWidget, QTableWidgetItem, QHeaderView, QGroupBox, QWidget,
+                             QAbstractItemView)
 from PyQt5.QtCore import Qt, QTimer
 from ui.message_box import BilibiliMessageBox
 from core.version_manager import VersionManager
@@ -15,7 +16,7 @@ class VersionDialog(QDialog):
         self.main_window = main_window
         self.version_manager = VersionManager(main_window)
         self.setWindowTitle("版本管理")
-        self.setMinimumSize(500, 300)
+        self.setMinimumSize(800, 500)
         self.init_ui()
         
     def init_ui(self):
@@ -24,7 +25,7 @@ class VersionDialog(QDialog):
         layout.setContentsMargins(30, 30, 30, 30)
         
         # Version Management Group
-        version_group = QGroupBox("版本切换与更新")
+        version_group = QGroupBox("版本列表")
         version_group.setStyleSheet("""
             QGroupBox {
                 font-weight: bold;
@@ -42,47 +43,56 @@ class VersionDialog(QDialog):
         """)
         version_layout = QVBoxLayout(version_group)
         version_layout.setContentsMargins(20, 30, 20, 20)
-        version_layout.setSpacing(20)
+        version_layout.setSpacing(10)
         
-        # Current Version Row
+        # Current Version Info
         curr_layout = QHBoxLayout()
         v_label = QLabel("当前版本:")
         v_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
         curr_layout.addWidget(v_label)
         
-        self.current_ver_display = QLabel("检测中...")
+        # Get version from window title as requested
+        title_ver = self.main_window.windowTitle().split(' ')[-1] if ' ' in self.main_window.windowTitle() else "未知"
+        self.current_ver_display = QLabel(f"{title_ver} (Git: 检测中...)")
         self.current_ver_display.setStyleSheet("font-size: 16px; color: #fb7299; font-weight: bold;")
         curr_layout.addWidget(self.current_ver_display)
         curr_layout.addStretch()
         version_layout.addLayout(curr_layout)
         
-        # Switch Version Row
-        switch_layout = QHBoxLayout()
-        s_label = QLabel("切换版本:")
-        s_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
-        switch_layout.addWidget(s_label)
-        
-        self.version_combo = QComboBox()
-        self.version_combo.setMinimumWidth(200)
-        self.version_combo.setStyleSheet("""
-            QComboBox {
-                padding: 6px 10px;
+        # Version Table
+        self.table = QTableWidget()
+        self.table.setColumnCount(2)
+        self.table.setHorizontalHeaderLabels(["版本号", "更新内容"])
+        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.table.verticalHeader().setVisible(False)
+        self.table.setStyleSheet("""
+            QTableWidget {
                 border: 1px solid #ddd;
                 border-radius: 4px;
-                font-size: 14px;
                 background-color: white;
+                selection-background-color: #f0f5ff;
+                selection-color: #333;
             }
-            QComboBox::drop-down {
+            QHeaderView::section {
+                background-color: #f6f7f8;
+                padding: 8px;
                 border: none;
-                width: 20px;
+                border-bottom: 1px solid #ddd;
+                font-weight: bold;
+                color: #666;
             }
         """)
-        switch_layout.addWidget(self.version_combo)
-        switch_layout.addStretch()
-        version_layout.addLayout(switch_layout)
+        self.table.itemSelectionChanged.connect(self.on_selection_changed)
+        version_layout.addWidget(self.table)
         
-        # Action Button
-        self.switch_btn = QPushButton("切换/更新")
+        # Action Buttons
+        btn_layout = QHBoxLayout()
+        
+        self.switch_btn = QPushButton("切换至选中版本")
         self.switch_btn.setCursor(Qt.PointingHandCursor)
         self.switch_btn.setStyleSheet("""
             QPushButton {
@@ -106,11 +116,9 @@ class VersionDialog(QDialog):
         """)
         self.switch_btn.clicked.connect(self.switch_version)
         self.switch_btn.setEnabled(False)
-        version_layout.addWidget(self.switch_btn)
+        btn_layout.addWidget(self.switch_btn)
         
-        layout.addWidget(version_group)
-        
-        layout.addStretch()
+        btn_layout.addStretch()
         
         # Close Button
         close_btn = QPushButton("关闭")
@@ -118,54 +126,77 @@ class VersionDialog(QDialog):
         close_btn.clicked.connect(self.accept)
         close_btn.setStyleSheet("""
             QPushButton {
-                background-color: #fb7299;
-                color: white;
-                padding: 10px 40px;
-                border-radius: 6px;
+                background-color: #f5f5f5;
+                color: #666;
+                padding: 10px 30px;
+                border-radius: 4px;
                 font-weight: bold;
                 font-size: 16px;
-                border: none;
+                border: 1px solid #ddd;
             }
             QPushButton:hover {
-                background-color: #fc8bab;
-            }
-            QPushButton:pressed {
-                background-color: #e45c84;
+                background-color: #e0e0e0;
+                color: #333;
             }
         """)
-        
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
         btn_layout.addWidget(close_btn)
-        layout.addLayout(btn_layout)
+        
+        version_layout.addLayout(btn_layout)
+        layout.addWidget(version_group)
         
         # Load version info asynchronously
         QTimer.singleShot(100, self.load_version_info)
 
     def load_version_info(self):
-        current = self.version_manager.get_current_version()
-        self.current_ver_display.setText(current)
+        current_git = self.version_manager.get_current_version()
+        title_ver = self.main_window.windowTitle().split(' ')[-1] if ' ' in self.main_window.windowTitle() else "未知"
+        self.current_ver_display.setText(f"{title_ver} (Git: {current_git})")
         
-        self.version_combo.clear()
-        self.version_combo.addItem("加载中...")
+        self.table.setRowCount(0)
         self.switch_btn.setEnabled(False)
+        self.switch_btn.setText("加载中...")
         
         QTimer.singleShot(100, self._fetch_versions)
         
     def _fetch_versions(self):
         versions = self.version_manager.get_versions()
-        self.version_combo.clear()
-        if versions:
-            self.version_combo.addItems(versions)
-            self.switch_btn.setEnabled(True)
-        else:
-            self.version_combo.addItem("无可用版本")
-            self.switch_btn.setEnabled(False)
+        self.table.setRowCount(len(versions))
+        
+        for i, ver in enumerate(versions):
+            tag = ver.get('tag', '')
+            # date = ver.get('date', '') # Not shown in 2-column layout
+            msg = ver.get('message', '')
+            
+            # Clean up message (remove newlines for display)
+            short_msg = msg.replace('\n', ' ').strip()
+            if len(short_msg) > 100:
+                short_msg = short_msg[:97] + "..."
+            
+            item_tag = QTableWidgetItem(tag)
+            item_tag.setTextAlignment(Qt.AlignCenter)
+            self.table.setItem(i, 0, item_tag)
+            
+            # item_date = QTableWidgetItem(date)
+            # item_date.setTextAlignment(Qt.AlignCenter)
+            # self.table.setItem(i, 1, item_date)
+            
+            item_msg = QTableWidgetItem(short_msg)
+            item_msg.setToolTip(msg) # Full message in tooltip
+            self.table.setItem(i, 1, item_msg)
+            
+        self.switch_btn.setText("切换至选中版本")
+        self.on_selection_changed() # Update button state
+            
+    def on_selection_changed(self):
+        selected = self.table.selectedItems()
+        self.switch_btn.setEnabled(len(selected) > 0)
             
     def switch_version(self):
-        tag = self.version_combo.currentText()
-        if not tag or tag == "无可用版本":
+        row = self.table.currentRow()
+        if row < 0:
             return
+            
+        tag = self.table.item(row, 0).text()
             
         reply = BilibiliMessageBox.question(
             self, "确认切换", 
@@ -180,7 +211,7 @@ class VersionDialog(QDialog):
     def _do_switch(self, tag):
         success, msg = self.version_manager.switch_version(tag)
         self.switch_btn.setEnabled(True)
-        self.switch_btn.setText("切换/更新")
+        self.switch_btn.setText("切换至选中版本")
         
         if success:
             BilibiliMessageBox.information(self, "切换成功", f"{msg}\n\n请手动重启程序以应用更改。")

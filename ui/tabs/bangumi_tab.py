@@ -419,29 +419,37 @@ class BangumiTab(QWidget):
         self.process_next_download()
         
     def process_next_download(self):
-        if not self.is_downloading or not self.download_queue:
+        """处理下一个下载任务"""
+        # 如果已停止下载，直接返回
+        if not self.is_downloading:
+            return
+
+        # 如果队列为空，则结束批量任务
+        if not self.download_queue:
             self.finish_batch_download()
             return
             
         ep_data = self.download_queue.pop(0)
-        self.current_ep_data = ep_data  # Store current episode data
+        self.current_ep_data = ep_data  # 保存当前剧集数据，用于错误处理
         self.current_batch_index += 1
         bvid = ep_data.get('bvid')
         title = f"{ep_data.get('title')} {ep_data.get('long_title')}"
         
+        # 更新UI状态
         self.current_task_label.setText(f"正在下载 ({self.current_batch_index}/{self.total_batch_count}): {title}")
         self.progress_bar.setValue(0)
         self.download_start_time = time.time()
         
-        # Configure download
+        # 获取配置信息
         settings_tab = self.main_window.settings_tab
         
-        # Calculate download directory
+        # 计算下载目录: base_dir/bangumi/series_title
         base_dir = settings_tab.data_dir_input.text().strip()
         series_title = self.current_series_title or "其他番剧"
         safe_series_title = re.sub(r'[\\/:*?"<>|]', '_', series_title)
         bangumi_dir = os.path.join(base_dir, 'bangumi', safe_series_title)
         
+        # 构建下载参数
         params = {
             "bvid": bvid, 
             "title": title,
@@ -454,6 +462,7 @@ class BangumiTab(QWidget):
             "audio_quality": settings_tab.audio_quality_combo.currentText()
         }
         
+        # 构建配置字典
         config = {
             'cookies': self.crawler.cookies,
             'data_dir': base_dir,
@@ -461,6 +470,7 @@ class BangumiTab(QWidget):
             'max_retries': settings_tab.retry_count.value()
         }
         
+        # 启动工作线程
         self.current_thread = WorkerThread("download_video", params, config=config)
         self.current_thread.finished_signal.connect(self.on_single_download_finished)
         self.current_thread.progress_signal.connect(self.update_progress)
@@ -506,6 +516,11 @@ class BangumiTab(QWidget):
              self.current_task_label.setText(f"正在下载评论 {prefix}... {percent}%")
             
     def on_single_download_finished(self, result):
+        # 如果任务已取消，直接处理下一步（将会在 process_next_download 中终止）
+        if result.get('status') == 'cancelled':
+            self.process_next_download()
+            return
+
         if result['status'] == 'success':
             title = result['data']['title']
             bvid = result['data'].get('bvid', '')
@@ -616,8 +631,17 @@ class BangumiTab(QWidget):
             self.is_downloading = False
             if hasattr(self, 'current_thread') and self.current_thread.isRunning():
                 self.current_thread.stop()
+            
+            # 保存当前任务状态为已取消
+            if hasattr(self, 'current_ep_data') and self.current_ep_data:
+                bvid = self.current_ep_data.get('bvid', '')
+                title = f"{self.current_ep_data.get('title')} {self.current_ep_data.get('long_title')}"
+                if bvid:
+                    self.save_history(self.current_series_title, title, bvid, "已取消", "")
+
             self.download_queue = []
             self.current_task_label.setText("下载已停止")
+            self.progress_bar.setValue(0) # 重置进度条
             self.download_btn.setEnabled(True)
             self.stop_btn.setEnabled(False)
             

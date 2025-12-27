@@ -29,7 +29,7 @@ class AboutDialog(QDialog):
                 color: #fb7299;
                 border: 1px solid #ddd;
                 border-radius: 8px;
-                margin-top: 12px;
+                margin-top: 2px;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
@@ -56,7 +56,7 @@ class AboutDialog(QDialog):
             QPushButton {
                 background-color: #fb7299;
                 color: white;
-                padding: 10px 40px;
+                padding: 10px 10px;
                 border-radius: 6px;
                 font-weight: bold;
                 font-size: 16px;
