@@ -6,13 +6,11 @@ v5.5
 """
 import ctypes
 import sys
-import os
 import argparse
 import logging
 from PyQt5.QtWidgets import QApplication
 # 导入项目模块
 from ui.main_window import BilibiliDesktop
-from core.crawler import BilibiliCrawler
 from core.cli import CliHandler
 
 # 配置日志
@@ -59,9 +57,24 @@ def main():
                         help='指定爬取的页数，用于热门视频')
     parser.add_argument('-V', '--version', action='version', version='%(prog)s 5.4')
     
+    # 播放器模式参数 (用于子进程调用)
+    parser.add_argument('--player-mode', action='store_true', help=argparse.SUPPRESS)
+    parser.add_argument('--player-url', help=argparse.SUPPRESS)
+    parser.add_argument('--player-title', help=argparse.SUPPRESS)
+    parser.add_argument('--player-cookies', help=argparse.SUPPRESS)
+    
     # 解析命令行参数
     args = parser.parse_args()
     
+    # 如果是播放器模式
+    if args.player_mode:
+        try:
+            from core.player_loader import run_player
+            run_player(args.player_url, args.player_title, args.player_cookies)
+        except Exception as e:
+            logger.error(f"Failed to start player: {e}")
+        return
+
     # 如果指定了gui参数或者没有指定任何参数，则启动图形界面
     if args.gui or len(sys.argv) == 1:
         start_gui()

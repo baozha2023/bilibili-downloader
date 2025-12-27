@@ -87,13 +87,6 @@ class BilibiliAPI:
         
         target_qn = quality_map.get(quality_preference, 80)
         
-        # 权限控制
-        if not is_login:
-            # 未登录强制 <= 720p
-            if target_qn > 64:
-                target_qn = 64
-                logger.info("未登录用户，画质限制为 720p")
-        
         # fnval参数说明: 4048 包含DASH, HDR, 4K等
         fnval = 4048
         # 如果请求的是4K或8K，确保fourk=1
@@ -265,7 +258,6 @@ class BilibiliAPI:
     def get_video_danmaku(self, cid):
         """获取视频弹幕"""
         url = f'https://api.bilibili.com/x/v1/dm/list.so?oid={cid}'
-        # 弹幕是XML，不需要JSON解析
         response = self.network.make_request(url, stream=False)
         # 注意：make_request在非JSON时可能返回bytes或None
         if isinstance(response, bytes):
@@ -276,7 +268,6 @@ class BilibiliAPI:
         """获取历史记录"""
 
         # 尝试使用cursor接口
-        # max=0 表示获取最新的
         url = f'https://api.bilibili.com/x/web-interface/history/cursor?ps=20&type=archive'
         # 如果需要翻页，通常需要传入 view_at (上一页最后一条的时间戳)
         # 暂时简单实现

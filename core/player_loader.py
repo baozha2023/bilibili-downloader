@@ -1,20 +1,70 @@
 import sys
 import argparse
-import webview
 import json
 import time
+import ctypes
+import webbrowser
+import logging
 
-def main():
-    parser = argparse.ArgumentParser(description="Bilibili Player Loader")
-    parser.add_argument("--url", required=True, help="Video URL")
-    parser.add_argument("--title", default="Bilibili Player", help="Window Title")
-    parser.add_argument("--cookies", help="JSON cookies")
-    args = parser.parse_args()
+# Configure logger
+logger = logging.getLogger('bilibili_player')
+
+def check_webview2():
+    """Check if WebView2 Runtime is installed via Registry"""
+    try:
+        import winreg
+        # Check machine-wide installation
+        key_path = r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+        try:
+            with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path) as key:
+                return True
+        except:
+            pass
+            
+        # Check per-user installation
+        key_path = r"Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+                return True
+        except:
+            pass
+            
+        return False
+    except Exception as e:
+        logger.error(f"Error checking WebView2: {e}")
+        return False # Assume false if registry check fails
+
+def show_webview2_error():
+    """Show error message and guide user to download"""
+    MB_ICONERROR = 0x10
+    MB_YESNO = 0x04
+    IDYES = 6
+    
+    title = "组件缺失"
+    message = "实时观看功能需要 Microsoft Edge WebView2 运行时。\n\n当前系统未检测到该组件，是否立即打开下载页面？"
+    
+    # Use ctypes to show native message box
+    result = ctypes.windll.user32.MessageBoxW(0, message, title, MB_ICONERROR | MB_YESNO)
+    if result == IDYES:
+        webbrowser.open("https://go.microsoft.com/fwlink/p/?LinkId=2124703")
+
+def run_player(url, title="Bilibili Player", cookies_json=None):
+    # 1. Check WebView2 availability on Windows
+    if sys.platform == 'win32' and not check_webview2():
+        show_webview2_error()
+        return
+
+    # 2. Import webview here to avoid import errors if dependency is missing in main process
+    try:
+        import webview
+    except ImportError:
+        ctypes.windll.user32.MessageBoxW(0, "缺少 pywebview 依赖库，无法启动播放器。", "错误", 0x10)
+        return
 
     cookies = {}
-    if args.cookies:
+    if cookies_json:
         try:
-            cookies = json.loads(args.cookies)
+            cookies = json.loads(cookies_json)
         except:
             pass
 
@@ -35,7 +85,7 @@ def main():
             time.sleep(0.5)
             
         # Load the actual video URL
-        window.load_url(args.url)
+        window.load_url(url)
         
         # Auto Web Fullscreen Logic
         # Wait for page to load and player to initialize
@@ -76,8 +126,17 @@ def main():
 
     # Create a window
     # Start with bilibili homepage to allow cookie setting
-    window = webview.create_window(args.title, "https://www.bilibili.com/", width=1280, height=720)
+    window = webview.create_window(title, "https://www.bilibili.com/", width=1280, height=720)
     webview.start(init_window, window)
+
+def main():
+    parser = argparse.ArgumentParser(description="Bilibili Player Loader")
+    parser.add_argument("--url", required=True, help="Video URL")
+    parser.add_argument("--title", default="Bilibili Player", help="Window Title")
+    parser.add_argument("--cookies", help="JSON cookies")
+    args = parser.parse_args()
+    
+    run_player(args.url, args.title, args.cookies)
 
 if __name__ == "__main__":
     main()

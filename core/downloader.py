@@ -13,7 +13,7 @@ class Downloader:
     def __init__(self, network_manager: NetworkManager):
         self.network = network_manager
 
-    def download_file(self, url, filepath, filename=None, progress_callback=None, stop_event=None):
+    def download_file(self, url: str, filepath: str, filename: str = None, progress_callback=None, stop_event=None) -> bool:
         """下载单个文件"""
         # 断点续传检查
         file_size = 0
@@ -39,6 +39,7 @@ class Downloader:
                 timeout=30
             )
             response.raise_for_status()
+
         except Exception as e:
             logger.error(f"下载请求失败: {e}")
             return False
@@ -82,8 +83,7 @@ class Downloader:
                             last_update_time = current_time
                             bytes_since_last_update = 0
                             
-            # 如果被中断，删除未完成的文件（如果是全新的下载）
-            # 这里简化处理：只要stop_event被设置，就认为中断
+            # 如果被中断，删除未完成的文件
             if stop_event and stop_event.is_set():
                  # 注意：文件句柄已关闭
                  return False
@@ -105,10 +105,3 @@ class Downloader:
         except Exception as e:
             logger.error(f"下载过程中断: {e}")
             return False
-
-    @staticmethod
-    def format_size(size_bytes):
-        if size_bytes < 1024: return f"{size_bytes} B"
-        elif size_bytes < 1024**2: return f"{size_bytes/1024:.1f} KB"
-        elif size_bytes < 1024**3: return f"{size_bytes/1024**2:.1f} MB"
-        return f"{size_bytes/1024**3:.2f} GB"

@@ -8,19 +8,40 @@ class ConfigManager:
     _instance = None
     
     DEFAULT_CONFIG = {
-        'max_retries': 3,
-        'merge_video': True,
-        'delete_original': True,
-        'download_danmaku': False,
-        'download_comments': False,
-        'complete_action': 1,
-        'video_quality': '1080P 高清',
-        'video_codec': 'H.264/AVC',
-        'audio_quality': '高音质 (Hi-Res/Dolby)',
-        'always_lock_account': False,
-        'hardware_acceleration': False,
-        'tab_order': [],
-        'tab_visibility': {}
+       "max_retries": 3,
+       "merge_video": True,
+       "delete_original": True,
+       "download_danmaku": False,
+       "download_comments": False,
+       "complete_action": 1,
+       "video_quality": "1080P 高清",
+       "video_codec": "H.264/AVC",
+       "audio_quality": "高音质 (Hi-Res/Dolby)",
+       "always_lock_account": False,
+       "hardware_acceleration": True,
+       "tab_order": [
+         "视频下载",
+         "番剧下载",
+         "热门视频",
+         "视频分析",
+         "我的账号",
+         "视频编辑",
+         "设置",
+         "用户查询"
+       ],
+       "tab_visibility": {
+         "设置": True,
+         "视频编辑": True,
+         "我的账号": True,
+         "热门视频": True,
+         "番剧下载": True,
+         "视频分析": True,
+         "视频下载": True,
+         "用户查询": True
+       },
+       "timeout": 30,
+       "retry_interval": 2,
+       "floating_window": True
     }
 
     def __new__(cls, data_dir=None):

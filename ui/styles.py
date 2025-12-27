@@ -12,36 +12,29 @@ class UIStyles:
     """
 
     TAB_WIDGET = """
-        QTabWidget {
-            background-color: #ffffff;
-            border: none;
-        }
         QTabWidget::pane {
             border: 1px solid #e7e7e7;
-            background-color: #ffffff;
-            border-radius: 8px;
-            top: -1px; 
+            background: white;
+            border-radius: 5px;
         }
         QTabBar::tab {
-            background-color: #f6f7f8;
-            color: #61666d;
-            padding: 10px 15px;
+            background: #f4f5f7;
             border: 1px solid #e7e7e7;
-            border-bottom: none;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-            margin-right: 4px;
-            font-size: 20px;
+            padding: 8px 15px;
+            margin-right: 2px;
+            border-top-left-radius: 4px;
+            border-top-right-radius: 4px;
+            color: #61666d;
+            font-size: 14px;
             min-width: 80px;
         }
         QTabBar::tab:selected {
-            background-color: #ffffff;
+            background: white;
+            border-bottom: 1px solid white;
             color: #fb7299;
             font-weight: bold;
-            border-bottom: 1px solid #ffffff;
         }
-        QTabBar::tab:hover:!selected {
-            background-color: #ffffff;
+        QTabBar::tab:hover {
             color: #fb7299;
         }
     """

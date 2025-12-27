@@ -424,8 +424,6 @@ class AccountTab(QWidget):
             self.main_window.log_to_console("检测到已登录，自动调整画质为 1080P", "info")
             target_quality = "1080P 高清"
         else:
-            # 未登录: 最高1080P (有时限制) -> 保持默认
-             # 自动设置为480P或保持默认
             target_quality = None
             
         settings_tab.quality_combo.addItems(qualities)

@@ -9,7 +9,7 @@ from core.crawler import BilibiliCrawler
 logger = logging.getLogger('bilibili_cli')
 
 class CliHandler:
-    """Handles Command Line Interface operations"""
+    """命令行"""
     
     def __init__(self):
         self.crawler = BilibiliCrawler()

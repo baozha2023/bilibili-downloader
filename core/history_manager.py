@@ -4,7 +4,7 @@ import os
 import time
 
 class HistoryManager:
-    """Manages download history"""
+    """管理下载历史"""
     
     def __init__(self, data_dir):
         self.data_dir = data_dir
@@ -25,7 +25,7 @@ class HistoryManager:
             with open(self.history_file, 'w', encoding='utf-8') as f:
                 json.dump(self.history, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"Failed to save download history: {e}")
+            print(f"保存下载历史失败: {e}")
 
     def add_history(self, bvid, title, status):
         history_item = {

@@ -50,7 +50,7 @@
 16. openpyxl (https://openpyxl.readthedocs.io/)
     - 用于读写Excel 2010 xlsx/xlsm文件的Python库
 
-本软件作者：zxj
+本软件作者：认真想的名字
 作者gitee首页：https://gitee.com/bzJAVA/bilibili-downloader
 版本：v5.5
 

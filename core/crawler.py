@@ -9,6 +9,7 @@ from .network import NetworkManager
 from .api import BilibiliAPI
 from .downloader import Downloader
 from .processor import MediaProcessor
+from .utils import parse_danmaku_xml
 
 # 配置日志
 logger = logging.getLogger('bilibili_crawler') # 保持旧名称以便兼容日志配置
@@ -85,35 +86,8 @@ class BilibiliCrawler:
         
     def get_video_danmaku(self, cid):
         # XML 解析逻辑保留在这里或移入API
-        # 这里简单处理，直接返回解析后的列表（旧代码逻辑）
-        # 为了简化，我们暂时复用旧代码的解析逻辑，或者如果不需要弹幕展示，只下载
         xml_bytes = self.api.get_video_danmaku(cid)
-        if not xml_bytes: return []
-        
-        try:
-            root = ET.fromstring(xml_bytes)
-            danmaku_list = []
-            for d in root.findall('./d'):
-                p_attr = d.get('p', '')
-                text = d.text or ''
-                if p_attr and text:
-                    p_parts = p_attr.split(',')
-                    if len(p_parts) >= 8:
-                        danmaku_list.append({
-                            'time': float(p_parts[0]),
-                            'mode': int(p_parts[1]),
-                            'fontsize': int(p_parts[2]),
-                            'color': int(p_parts[3]),
-                            'timestamp': int(p_parts[4]),
-                            'pool': int(p_parts[5]),
-                            'user_id': p_parts[6],
-                            'dmid': p_parts[7],
-                            'text': text
-                        })
-            return danmaku_list
-        except Exception as e:
-            logger.error(f"解析弹幕失败: {e}")
-            return []
+        return parse_danmaku_xml(xml_bytes)
 
     def get_history(self, page=1):
         return self.api.get_history(page)
@@ -171,14 +145,14 @@ class BilibiliCrawler:
                 return self._get_cancel_result(message="下载已取消")
             return self._get_cancel_result(message="流媒体下载失败")
 
-        # 5. 下载元数据 (弹幕和评论)
+        # 5. 下载弹幕和评论
         if not self._download_metadata(download_info, video_dir, safe_title, download_danmaku, 
                                        download_comments, danmaku_progress_callback, 
                                        comments_progress_callback, stop_event):
             if self._check_stop(stop_event):
                 self._cleanup_dir(video_dir)
                 return self._get_cancel_result(message="下载已取消")
-            return self._get_cancel_result(message="元数据下载失败")
+            return self._get_cancel_result(message="弹幕和评论下载失败")
         
         # 6. 合并/处理
         merge_success = self._process_media(video_path, audio_path, output_path, should_merge, 

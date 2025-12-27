@@ -52,7 +52,7 @@ class MergePage(BaseEditPage):
         layout.setContentsMargins(40, 30, 40, 30)
         layout.setSpacing(20)
         
-        self.setup_header(layout, "视频合并", "将多个视频拼接为一个文件")
+        self.setup_header(layout, "视频合并", "将多个视频拼接为一个文件，前提视频帧率相同")
         
         # Tip
         tip_label = QLabel("💡 提示：支持拖拽调整视频顺序")

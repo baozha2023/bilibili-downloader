@@ -348,9 +348,9 @@ class MediaProcessor:
         else:
             return False, "剪辑失败"
 
-    def merge_video_files_complex(self, file_list, output_path, transition=True, progress_callback=None):
+    def merge_video_files_complex(self, file_list, output_path, progress_callback=None):
         """
-        高级合并：支持每个片段的裁剪范围，以及片段间的转场
+        高级合并：支持每个片段的裁剪范围
         file_list: [{'path': str, 'start': float, 'end': float, 'unit': 'time'|'frame'}, ...]
         """
         if not self.ffmpeg_available:
@@ -397,14 +397,7 @@ class MediaProcessor:
                 end = duration
             
             duration = end - start
-            
-            # 检查时长是否足够转场
-            if transition and duration <= 1.0: # 假设转场需要1秒
-                 logger.warning(f"片段 {i} 时长 ({duration}s) 不足以进行转场 (需 > 1s)，将禁用此片段的转场效果或可能导致合并失败。")
-                 # 实际上如果任何中间片段 < 1s (如果是两端转场则需 > 2s)，xfade都会有问题。
-                 # 简单起见，如果发现短视频，强制关闭转场? 或者调整时长?
-                 # 这里暂时只打印警告，后续逻辑尝试容错。
-                 
+
             processed_clips.append({'index': i, 'start': start, 'end': end, 'duration': duration})
 
         # 构建 Filter Graph
@@ -554,7 +547,6 @@ class MediaProcessor:
         """运行ffmpeg并解析进度"""
         try:
             # 使用shell=False, cmd为列表
-            # 创建无窗口标志 (仅Windows)
             startupinfo = None
             if os.name == 'nt':
                 startupinfo = subprocess.STARTUPINFO()

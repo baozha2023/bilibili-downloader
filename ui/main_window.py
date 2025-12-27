@@ -150,34 +150,8 @@ class BilibiliDesktop(QMainWindow):
         # 2. 标签页
         # ---------------------------------------------------------------
         self.tabs = QTabWidget()
-        # 优化Tab样式，减小Padding以防文字截断
-        self.tabs.setStyleSheet("""
-            QTabWidget::pane {
-                border: 1px solid #e7e7e7;
-                background: white;
-                border-radius: 5px;
-            }
-            QTabBar::tab {
-                background: #f4f5f7;
-                border: 1px solid #e7e7e7;
-                padding: 8px 15px; /* 减小内边距 */
-                margin-right: 2px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-                color: #61666d;
-                font-size: 14px;
-                min-width: 80px;
-            }
-            QTabBar::tab:selected {
-                background: white;
-                border-bottom: 1px solid white;
-                color: #fb7299;
-                font-weight: bold;
-            }
-            QTabBar::tab:hover {
-                color: #fb7299;
-            }
-        """)
+        # 优化Tab样式
+        self.tabs.setStyleSheet(UIStyles.TAB_WIDGET)
         
         # 允许拖拽和右键菜单
         self.tabs.setMovable(True)

@@ -56,7 +56,7 @@ class ReversePage(BaseEditPage):
         self.reverse_btn.setEnabled(False)
         self.reverse_progress.setVisible(True)
         self.reverse_progress.setValue(0)
-        self.reverse_status.setText("正在反转中 (这可能需要一些时间)...")
+        self.reverse_status.setText("正在反转中 ...")
         
         self.main_window.log_to_console(f"开始反转视频: {os.path.basename(file_path)}", "info")
         

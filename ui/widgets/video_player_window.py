@@ -76,20 +76,31 @@ class VideoPlayerWindow(QMainWindow):
             # Use full video page for better compatibility and quality selection
             url = f"https://www.bilibili.com/video/{self.bvid}"
             
-            # Path to loader script
-            # Handle frozen env (PyInstaller) if needed, but for now assuming source or standard structure
+            # Determine command based on environment
             if getattr(sys, 'frozen', False):
-                base_path = sys._MEIPASS
+                # Packaged environment (PyInstaller)
+                # Call the executable itself with player mode arguments
+                cmd = [
+                    sys.executable, 
+                    "--player-mode",
+                    "--player-url", url,
+                    "--player-title", f"{self.video_title} - {self.bvid}"
+                ]
+                if self.cookies:
+                    cmd.extend(["--player-cookies", json.dumps(self.cookies)])
             else:
+                # Development environment
                 base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-            
-            loader_path = os.path.join(base_path, 'core', 'player_loader.py')
-            
-            # Command
-            cmd = [sys.executable, loader_path, "--url", url, "--title", f"{self.video_title} - {self.bvid}"]
-            
-            if self.cookies:
-                cmd.extend(["--cookies", json.dumps(self.cookies)])
+                loader_path = os.path.join(base_path, 'core', 'player_loader.py')
+                
+                cmd = [
+                    sys.executable, 
+                    loader_path, 
+                    "--url", url, 
+                    "--title", f"{self.video_title} - {self.bvid}"
+                ]
+                if self.cookies:
+                    cmd.extend(["--cookies", json.dumps(self.cookies)])
             
             # Launch
             # CREATE_NO_WINDOW to hide console on Windows

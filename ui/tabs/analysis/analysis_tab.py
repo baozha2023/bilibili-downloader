@@ -196,22 +196,11 @@ class AnalysisTab(QWidget):
         self.color_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.color_label, 3, 1)
 
-        # Row 4: Gender & Active Time
-        self.gender_label = QLabel()
-        self.gender_label.setAlignment(Qt.AlignCenter)
-        self.gender_label.setStyleSheet("background-color: transparent; padding: 10px;")
-        self.charts_layout.addWidget(self.gender_label, 4, 0)
-        
-        self.active_time_label = QLabel()
-        self.active_time_label.setAlignment(Qt.AlignCenter)
-        self.active_time_label.setStyleSheet("background-color: transparent; padding: 10px;")
-        self.charts_layout.addWidget(self.active_time_label, 4, 1)
-
-        # Row 5: Emoji Analysis
+        # Row 4: Emoji Analysis
         self.emoji_label = QLabel()
         self.emoji_label.setAlignment(Qt.AlignCenter)
         self.emoji_label.setStyleSheet("background-color: transparent; padding: 10px;")
-        self.charts_layout.addWidget(self.emoji_label, 5, 0, 1, 2) # Span 2 columns
+        self.charts_layout.addWidget(self.emoji_label, 4, 0, 1, 2) # Span 2 columns
         
         self.charts_card.add_layout(self.charts_layout)
         self.charts_card.hide()
@@ -328,10 +317,6 @@ class AnalysisTab(QWidget):
         ChartGenerator.generate_location_chart(self.location_label, result.get('locations', []))
         ChartGenerator.generate_danmaku_color_chart(self.color_label, result.get('danmaku', []))
         
-        # Gender & Active Time
-        ChartGenerator.generate_gender_chart(self.gender_label, result.get('genders', []))
-        ChartGenerator.generate_active_time_chart(self.active_time_label, result.get('comment_hours', []))
-
         # Emoji
         ChartGenerator.generate_emoji_chart(self.emoji_label, result.get('emojis', []))
         
