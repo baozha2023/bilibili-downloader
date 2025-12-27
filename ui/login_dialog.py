@@ -455,6 +455,8 @@ class BilibiliLoginWindow(QMainWindow):
             self.info_text.setStyleSheet("color: #1890ff; font-size: 22px; line-height: 1.6; font-weight: bold;")
         elif status == "success":
             # 登录成功
+            self.cookies = data.get("data", {}).get("cookies")
+            self.login_successful = True
             self.info_text.setText("登录成功！")
             self.info_text.setStyleSheet("color: #52c41a; font-size: 24px; line-height: 1.6; font-weight: bold;")
             

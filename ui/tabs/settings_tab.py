@@ -16,6 +16,8 @@ from PyQt5.QtCore import Qt
 logger = logging.getLogger('bilibili_desktop')
 
 from ui.widgets.custom_combobox import NoScrollComboBox
+from ui.about_module import AboutDialog
+from ui.version_dialog import VersionDialog
 
 class SettingsTab(QWidget):
     def __init__(self, main_window):
@@ -384,6 +386,27 @@ class SettingsTab(QWidget):
         credits_btn.clicked.connect(self.show_credits)
         bottom_layout.addWidget(credits_btn)
         
+        # 版本管理按钮
+        version_btn = QPushButton("版本管理")
+        version_btn.setCursor(Qt.PointingHandCursor)
+        version_btn.setStyleSheet("""
+            QPushButton {
+                font-size: 16px;
+                background-color: #f6f7f8;
+                color: #666;
+                border: 1px solid #ddd;
+                border-radius: 6px;
+                padding: 10px 20px;
+                margin-right: 15px;
+            }
+            QPushButton:hover {
+                background-color: #e0e0e0;
+                color: #333;
+            }
+        """)
+        version_btn.clicked.connect(self.show_version_manager)
+        bottom_layout.addWidget(version_btn)
+        
         save_btn = QPushButton("保存设置")
         save_btn.setCursor(Qt.PointingHandCursor)
         save_btn.setStyleSheet("""
@@ -517,136 +540,12 @@ class SettingsTab(QWidget):
         except Exception as e:
             logger.error(f"加载配置文件时出错: {e}")
 
-    def load_version_info(self):
-        """加载版本信息"""
-        # 获取当前版本
-        current = self.version_manager.get_current_version()
-        self.current_ver_display.setText(current)
-        
-        # 获取可用版本列表
-        self.version_combo.clear()
-        self.version_combo.addItem("加载中...")
-        self.switch_btn.setEnabled(False)
-        
-        # 使用 QTimer 异步加载或者简单地直接加载（这里为了简化直接加载，如果卡顿可以优化）
-        # 考虑到git fetch可能耗时，最好是异步的，但这里先同步实现
-        from PyQt5.QtCore import QTimer
-        QTimer.singleShot(100, self._fetch_versions)
-        
-    def _fetch_versions(self):
-        versions = self.version_manager.get_versions()
-        self.version_combo.clear()
-        if versions:
-            self.version_combo.addItems(versions)
-            self.switch_btn.setEnabled(True)
-        else:
-            self.version_combo.addItem("无可用版本")
-            self.switch_btn.setEnabled(False)
-            
-    def switch_version(self):
-        tag = self.version_combo.currentText()
-        if not tag or tag == "无可用版本":
-            return
-            
-        reply = BilibiliMessageBox.question(
-            self, "确认切换", 
-            f"确定要切换到版本 {tag} 吗？\n\n1. 这将强制覆盖本地代码\n2. 将清空配置文件\n3. 程序将需要重启"
-        )
-        
-        if reply == QDialog.Accepted:
-            self.switch_btn.setEnabled(False)
-            self.switch_btn.setText("切换中...")
-            
-            # 延时执行以允许UI更新
-            from PyQt5.QtCore import QTimer
-            QTimer.singleShot(100, lambda: self._do_switch(tag))
-            
-    def _do_switch(self, tag):
-        success, msg = self.version_manager.switch_version(tag)
-        self.switch_btn.setEnabled(True)
-        self.switch_btn.setText("切换/更新")
-        
-        if success:
-            BilibiliMessageBox.information(self, "切换成功", f"{msg}\n\n请手动重启程序以应用更改。")
-            self.load_version_info()
-        else:
-            BilibiliMessageBox.error(self, "切换失败", msg)
-
     def show_credits(self):
-        """显示作者声明和致谢"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("作者声明 / Credits")
-        dialog.setMinimumSize(600, 500)
-        
-        layout = QVBoxLayout(dialog)
-        
-        # 使用 QTextBrowser 以支持富文本和链接
-        text_browser = QTextBrowser()
-        text_browser.setOpenExternalLinks(True) # 允许打开外部链接
-        text_browser.setStyleSheet("font-size: 16px; padding: 10px; font-family: Consolas, 'Microsoft YaHei';")
-        
-        try:
-            # 兼容开发环境和打包后的环境
-            if getattr(sys, 'frozen', False):
-                # 打包后的路径
-                base_path = sys._MEIPASS
-            else:
-                # 开发环境路径
-                base_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-                
-            credits_path = os.path.join(base_path, 'credits.txt')
-            
-            if os.path.exists(credits_path):
-                with open(credits_path, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    
-                    # 1. 先进行HTML转义 (防止原文中包含 < > 等字符被误解析)
-                    import html
-                    content = html.escape(content)
-                    
-                    # 2. 将换行符转换为 <br>
-                    html_content = content.replace('\n', '<br>')
-                    
-                    # 3. 正则匹配URL并转换为HTML链接
-                    # 匹配 http:// 或 https:// 开头的链接
-                    url_pattern = re.compile(r'(https?://[^\s<]+)')
-                    
-                    def replace_url(match):
-                        url = match.group(1)
-                        # 去除可能的末尾标点 (如括号、句号等，视具体情况调整，这里简单处理)
-                        clean_url = url.rstrip(').,;]') 
-                        return f'<a href="{clean_url}" style="color: #fb7299; text-decoration: none;">{clean_url}</a>'
-                    
-                    html_content = url_pattern.sub(replace_url, html_content)
-                    
-                    text_browser.setHtml(html_content)
-            else:
-                text_browser.setText(f"credits.txt 文件未找到。\n路径: {credits_path}")
-        except Exception as e:
-            text_browser.setText(f"读取 credits.txt 失败: {str(e)}")
-            
-        layout.addWidget(text_browser)
-        
-        close_btn = QPushButton("关闭")
-        close_btn.clicked.connect(dialog.accept)
-        close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #fb7299;
-                color: white;
-                padding: 8px 20px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 16px;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #fc8bab;
-            }
-        """)
-        
-        btn_layout = QHBoxLayout()
-        btn_layout.addStretch()
-        btn_layout.addWidget(close_btn)
-        layout.addLayout(btn_layout)
-        
+        """显示作者声明对话框"""
+        dialog = AboutDialog(self)
+        dialog.exec_()
+
+    def show_version_manager(self):
+        """显示版本管理对话框"""
+        dialog = VersionDialog(self.main_window, self)
         dialog.exec_()

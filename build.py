@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 5.6
+版本: 5.6.1
 """
 
 import os
@@ -156,7 +156,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v5.6_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v5.6.1_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -200,7 +200,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  bilibiliDownloader打包工具 v5.6")
+    print("  bilibiliDownloader打包工具 v5.6.1")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -225,12 +225,11 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v5.6 更新内容:")
-    print("- 修复：修复视频合并中清空列表弹窗缺少确认/取消按钮的问题")
-    print("- 优化：番剧下载历史记录新增重新下载功能，修复双击修改bug")
-    print("- 分析：增强视频分析功能，新增性别分布、活跃时间、情感趋势等图表")
-    print("- 管理：新增版本管理功能，支持版本切换与更新")
-    print("- 代码：深度重构与优化，提升代码质量")
+    print("\n新版本 v5.6.1 更新内容:")
+    print("- 修复：修复扫码登录后未检测到登陆状态的bug")
+    print("- 优化：将版本管理按钮移动到作者声明旁边，并采用模块化设计")
+    print("- 修复：修复版本管理按钮不显示的bug")
+    print("- 管理：新增关于与版本管理独立模块，便于维护")
 
 if __name__ == "__main__":
     main() 

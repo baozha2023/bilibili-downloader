@@ -67,7 +67,7 @@ class BilibiliDesktop(QMainWindow):
 
     def init_ui(self):
         """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v5.5")
+        self.setWindowTitle("bilibiliDownloader v5.6.1")
         self.setMinimumSize(1100, 900)
         
         # 设置应用图标
@@ -211,13 +211,12 @@ class BilibiliDesktop(QMainWindow):
 
     def show_update_dialog(self):
         """显示更新公告"""
-        version = "v5.6"
+        version = "v5.6.1"
         updates = (
-            "1. 修复: 修复视频合并中清空列表弹窗缺少确认/取消按钮的问题。\n"
-            "2. 优化: 番剧下载历史记录新增重新下载功能，修复双击修改bug。\n"
-            "3. 分析: 增强视频分析功能，新增性别分布、活跃时间、情感趋势等图表。\n"
-            "4. 管理: 新增版本管理功能，支持版本切换与更新。\n"
-            "5. 代码: 深度重构与优化，提升代码质量。\n"
+            "1. 修复: 修复扫码登录后未检测到登陆状态的bug。\n"
+            "2. 优化: 将版本管理按钮移动到作者声明旁边，并采用模块化设计。\n"
+            "3. 修复: 修复版本管理按钮不显示的bug。\n"
+            "4. 管理: 新增关于与版本管理独立模块，便于维护。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
