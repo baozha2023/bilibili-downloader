@@ -44,7 +44,7 @@ def start_cli(args):
 def main():
     """主函数"""
     # 创建命令行参数解析器
-    parser = argparse.ArgumentParser(description='bilibiliDownloader v5.4')
+    parser = argparse.ArgumentParser(description='bilibiliDownloader v5.6')
     parser.add_argument('-g', '--gui', action='store_true', 
                         help='启动图形用户界面')
     parser.add_argument('-p', '--popular', action='store_true', 
@@ -55,7 +55,7 @@ def main():
                         help='下载指定BV号的视频')
     parser.add_argument('--pages', type=int, 
                         help='指定爬取的页数，用于热门视频')
-    parser.add_argument('-V', '--version', action='version', version='%(prog)s 5.4')
+    parser.add_argument('-V', '--version', action='version', version='%(prog)s 5.6')
     
     # 播放器模式参数 (用于子进程调用)
     parser.add_argument('--player-mode', action='store_true', help=argparse.SUPPRESS)

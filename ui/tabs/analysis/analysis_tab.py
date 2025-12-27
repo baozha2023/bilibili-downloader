@@ -308,6 +308,10 @@ class AnalysisTab(QWidget):
         ChartGenerator.generate_danmaku_chart(self.danmaku_label, danmaku, duration)
         ChartGenerator.generate_date_chart(self.date_label, result.get('comment_dates', []))
         
+        # Hour & Gender
+        ChartGenerator.generate_hour_chart(self.hour_label, result.get('comment_hours', []))
+        ChartGenerator.generate_gender_chart(self.gender_label, result.get('user_genders', []))
+        
         # Level & Sentiment
         ChartGenerator.generate_level_chart(self.level_label, result.get('user_levels', []))
         sentiment_score = result.get('sentiment', 0.5)
@@ -316,6 +320,9 @@ class AnalysisTab(QWidget):
         # Location & Danmaku Color
         ChartGenerator.generate_location_chart(self.location_label, result.get('locations', []))
         ChartGenerator.generate_danmaku_color_chart(self.color_label, result.get('danmaku', []))
+        
+        # Trend
+        ChartGenerator.generate_sentiment_trend_chart(self.trend_label, result.get('sentiment_trend', []))
         
         # Emoji
         ChartGenerator.generate_emoji_chart(self.emoji_label, result.get('emojis', []))

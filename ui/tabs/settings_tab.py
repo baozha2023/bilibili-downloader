@@ -517,6 +517,61 @@ class SettingsTab(QWidget):
         except Exception as e:
             logger.error(f"加载配置文件时出错: {e}")
 
+    def load_version_info(self):
+        """加载版本信息"""
+        # 获取当前版本
+        current = self.version_manager.get_current_version()
+        self.current_ver_display.setText(current)
+        
+        # 获取可用版本列表
+        self.version_combo.clear()
+        self.version_combo.addItem("加载中...")
+        self.switch_btn.setEnabled(False)
+        
+        # 使用 QTimer 异步加载或者简单地直接加载（这里为了简化直接加载，如果卡顿可以优化）
+        # 考虑到git fetch可能耗时，最好是异步的，但这里先同步实现
+        from PyQt5.QtCore import QTimer
+        QTimer.singleShot(100, self._fetch_versions)
+        
+    def _fetch_versions(self):
+        versions = self.version_manager.get_versions()
+        self.version_combo.clear()
+        if versions:
+            self.version_combo.addItems(versions)
+            self.switch_btn.setEnabled(True)
+        else:
+            self.version_combo.addItem("无可用版本")
+            self.switch_btn.setEnabled(False)
+            
+    def switch_version(self):
+        tag = self.version_combo.currentText()
+        if not tag or tag == "无可用版本":
+            return
+            
+        reply = BilibiliMessageBox.question(
+            self, "确认切换", 
+            f"确定要切换到版本 {tag} 吗？\n\n1. 这将强制覆盖本地代码\n2. 将清空配置文件\n3. 程序将需要重启"
+        )
+        
+        if reply == QDialog.Accepted:
+            self.switch_btn.setEnabled(False)
+            self.switch_btn.setText("切换中...")
+            
+            # 延时执行以允许UI更新
+            from PyQt5.QtCore import QTimer
+            QTimer.singleShot(100, lambda: self._do_switch(tag))
+            
+    def _do_switch(self, tag):
+        success, msg = self.version_manager.switch_version(tag)
+        self.switch_btn.setEnabled(True)
+        self.switch_btn.setText("切换/更新")
+        
+        if success:
+            BilibiliMessageBox.information(self, "切换成功", f"{msg}\n\n请手动重启程序以应用更改。")
+            self.load_version_info()
+        else:
+            BilibiliMessageBox.error(self, "切换失败", msg)
+
     def show_credits(self):
         """显示作者声明和致谢"""
         dialog = QDialog(self)

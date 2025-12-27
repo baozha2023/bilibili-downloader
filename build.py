@@ -3,7 +3,7 @@
 
 """
 bilibiliDownloader打包脚本
-版本: 5.5
+版本: 5.6
 """
 
 import os
@@ -53,6 +53,7 @@ def build_executable():
         '--hidden-import=core.api',
         '--hidden-import=core.downloader',
         '--hidden-import=core.processor',
+        '--hidden-import=core.version_manager', # 新增版本管理模块
         '--hidden-import=ui.main_window',
         '--hidden-import=ui.workers',
         '--hidden-import=ui.login_dialog',
@@ -155,7 +156,7 @@ def create_zip_archive():
     today = datetime.datetime.now().strftime("%Y%m%d")
     
     # 创建zip文件名
-    zip_filename = f"bilibili_downloader_v5.5_{system}_{architecture}_{today}.zip"
+    zip_filename = f"bilibili_downloader_v5.6_{system}_{architecture}_{today}.zip"
     
     # 创建压缩文件
     with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -199,7 +200,7 @@ def verify_build():
 def main():
     """主函数"""
     print("\n" + "=" * 60)
-    print("  bilibiliDownloader打包工具 v5.5")
+    print("  bilibiliDownloader打包工具 v5.6")
     print("=" * 60 + "\n")
     
     # 1. 清理旧的构建目录
@@ -224,12 +225,12 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print("\n新版本 v5.5 更新内容:")
-    print("- 转换：增强格式转换功能，新增音频格式提取与转换支持")
-    print("- 番剧：支持SS号解析下载，新增下载历史重新下载功能")
-    print("- 查询：新增用户查询模块，支持ID与昵称搜索")
-    print("- 分析：增强视频分析功能，新增相关视频推荐卡片")
-    print("- 优化：移除收藏夹右键菜单，优化代码结构，提升稳定性")
+    print("\n新版本 v5.6 更新内容:")
+    print("- 修复：修复视频合并中清空列表弹窗缺少确认/取消按钮的问题")
+    print("- 优化：番剧下载历史记录新增重新下载功能，修复双击修改bug")
+    print("- 分析：增强视频分析功能，新增性别分布、活跃时间、情感趋势等图表")
+    print("- 管理：新增版本管理功能，支持版本切换与更新")
+    print("- 代码：深度重构与优化，提升代码质量")
 
 if __name__ == "__main__":
     main() 

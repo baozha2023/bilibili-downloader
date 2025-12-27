@@ -1,8 +1,9 @@
 import os
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QListWidget, 
-                             QAbstractItemView, QListWidgetItem, QMessageBox, QGraphicsOpacityEffect, QFileDialog)
+                             QAbstractItemView, QListWidgetItem, QMessageBox, QGraphicsOpacityEffect, QFileDialog, QDialog)
 from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, pyqtSignal
 from ui.widgets.edit_widgets import MergeItemWidget
+from ui.message_box import BilibiliMessageBox
 from .base_page import BaseEditPage
 from ..workers import GenericWorker
 

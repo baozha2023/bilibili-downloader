@@ -256,9 +256,10 @@ class BilibiliCrawler:
         return success
 
     def _save_danmaku(self, cid, video_dir, safe_title, progress_callback, stop_event):
+        """保存弹幕"""
         if stop_event and stop_event.is_set(): return False
         
-        print("正在获取视频弹幕...")
+        logger.info("正在获取视频弹幕...")
         if progress_callback: progress_callback(0, 100)
         danmaku_list = self.get_video_danmaku(cid)
         if danmaku_list:
@@ -267,16 +268,17 @@ class BilibiliCrawler:
 
                 with open(danmaku_path, 'w', encoding='utf-8') as f:
                     json.dump(danmaku_list, f, ensure_ascii=False, indent=2)
-                print(f"弹幕已保存到: {danmaku_path}")
+                logger.info(f"弹幕已保存到: {danmaku_path}")
             except Exception as e:
                 logger.error(f"保存弹幕失败: {e}")
         if progress_callback: progress_callback(100, 100)
         return True
 
     def _save_comments(self, aid, video_dir, safe_title, progress_callback, stop_event):
+        """保存评论"""
         if stop_event and stop_event.is_set(): return False
         
-        print("正在获取视频评论...")
+        logger.info("正在获取视频评论...")
         if progress_callback: progress_callback(0, 100)
         
         all_comments = []
@@ -292,7 +294,7 @@ class BilibiliCrawler:
             try:
                 with open(comments_path, 'w', encoding='utf-8') as f:
                     json.dump(all_comments, f, ensure_ascii=False, indent=2)
-                print(f"评论已保存到: {comments_path}")
+                logger.info(f"评论已保存到: {comments_path}")
             except Exception as e:
                 logger.error(f"保存评论失败: {e}")
         if progress_callback: progress_callback(100, 100)

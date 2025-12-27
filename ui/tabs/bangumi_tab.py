@@ -32,6 +32,12 @@ class HistoryDialog(QDialog):
         
         # Button layout
         btn_layout = QHBoxLayout()
+        
+        self.redownload_btn = QPushButton("重新下载")
+        self.redownload_btn.setStyleSheet("background-color: #fb7299; color: white; padding: 5px 15px; border-radius: 4px;")
+        self.redownload_btn.clicked.connect(self.redownload_selected)
+        btn_layout.addWidget(self.redownload_btn)
+        
         self.clear_btn = QPushButton("清空历史")
         self.clear_btn.setStyleSheet("background-color: #f56c6c; color: white; padding: 5px 15px; border-radius: 4px;")
         self.clear_btn.clicked.connect(self.clear_history)
@@ -41,6 +47,20 @@ class HistoryDialog(QDialog):
         layout.addLayout(btn_layout)
         
         self.load_history()
+        
+    def redownload_selected(self):
+        row = self.table.currentRow()
+        if row < 0:
+            QMessageBox.warning(self, "提示", "请先选择要下载的记录")
+            return
+            
+        series_title = self.table.item(row, 0).text()
+        title = self.table.item(row, 1).text()
+        bvid = self.table.item(row, 2).text()
+        
+        if self.parent():
+            self.parent().add_single_download_task(bvid, title, series_title)
+            self.accept()
         
     def load_history(self):
         self.table.setRowCount(0)
@@ -53,12 +73,25 @@ class HistoryDialog(QDialog):
                 
             self.table.setRowCount(len(history))
             for i, item in enumerate(reversed(history)): # Show latest first
-                self.table.setItem(i, 0, QTableWidgetItem(item.get('series_title', '')))
-                self.table.setItem(i, 1, QTableWidgetItem(item.get('title', '')))
-                self.table.setItem(i, 2, QTableWidgetItem(item.get('bvid', '')))
-                self.table.setItem(i, 3, QTableWidgetItem(item.get('time', '')))
+                # Make items read-only
+                s_title = QTableWidgetItem(item.get('series_title', ''))
+                s_title.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                self.table.setItem(i, 0, s_title)
+                
+                t_item = QTableWidgetItem(item.get('title', ''))
+                t_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                self.table.setItem(i, 1, t_item)
+                
+                b_item = QTableWidgetItem(item.get('bvid', ''))
+                b_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                self.table.setItem(i, 2, b_item)
+                
+                tm_item = QTableWidgetItem(item.get('time', ''))
+                tm_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                self.table.setItem(i, 3, tm_item)
                 
                 status_item = QTableWidgetItem(item.get('status', ''))
+                status_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
                 if item.get('status') == '成功':
                     status_item.setForeground(Qt.green)
                 else:

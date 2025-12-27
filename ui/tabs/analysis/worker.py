@@ -33,6 +33,8 @@ class AnalysisWorker(QThread):
             comments = []
             comment_dates = []
             user_levels = []
+            user_genders = []  # 新增：性别
+            comment_hours = [] # 新增：评论时间段
             locations = []
             
             if aid:
@@ -176,11 +178,14 @@ class AnalysisWorker(QThread):
                 'comments': comments,
                 'comment_dates': comment_dates,
                 'user_levels': user_levels,
+                'user_genders': user_genders,
+                'comment_hours': comment_hours,
                 'locations': locations,
                 'danmaku': danmaku,
                 'related': related,
                 'cover_data': cover_data,
                 'sentiment': sentiment_score,
+                'sentiment_trend': sentiment_trend,
                 'keywords': keywords,
                 'emojis': emojis
             }

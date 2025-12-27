@@ -53,10 +53,122 @@ class ChartGenerator:
             image = QImage.fromData(buf.getvalue())
             pixmap = QPixmap.fromImage(image)
             label.setPixmap(pixmap)
-            
         except Exception as e:
-            logger.error(f"Generate chart error: {e}")
-            label.setText(f"图表生成失败: {e}")
+            logger.error(f"Generate word cloud error: {e}")
+            label.setText(f"词云生成失败: {e}")
+
+    @staticmethod
+    def generate_gender_chart(label: QLabel, genders: list):
+        try:
+            if not genders:
+                label.setText("无性别数据")
+                return
+
+            counts = Counter(genders)
+            labels = list(counts.keys())
+            values = list(counts.values())
+            
+            plt.figure(figsize=(6, 4))
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            
+            colors = []
+            for l in labels:
+                if l == '男': colors.append('#409eff')
+                elif l == '女': colors.append('#fb7299')
+                else: colors.append('#909399')
+
+            plt.pie(values, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
+            plt.title('评论用户性别分布')
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=100)
+            buf.seek(0)
+            plt.close()
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+            label.setPixmap(pixmap)
+        except Exception as e:
+            logger.error(f"Generate gender chart error: {e}")
+            label.setText("图表生成失败")
+
+    @staticmethod
+    def generate_hour_chart(label: QLabel, hours: list):
+        try:
+            if not hours:
+                label.setText("无活跃时间数据")
+                return
+
+            counts = Counter(hours)
+            # Fill 0-23
+            x_labels = [str(i) for i in range(24)]
+            values = [counts.get(i, 0) for i in range(24)]
+            
+            plt.figure(figsize=(8, 4))
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            
+            plt.bar(x_labels, values, color='#67c23a', alpha=0.7)
+            plt.title('评论活跃时间段分布 (24h)')
+            plt.xlabel('小时')
+            plt.ylabel('评论数')
+            plt.grid(axis='y', linestyle='--', alpha=0.5)
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=100)
+            buf.seek(0)
+            plt.close()
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+            label.setPixmap(pixmap)
+        except Exception as e:
+            logger.error(f"Generate hour chart error: {e}")
+            label.setText("图表生成失败")
+            
+    @staticmethod
+    def generate_sentiment_trend_chart(label: QLabel, trend: list):
+        try:
+            if not trend or len(trend) < 2:
+                label.setText("数据不足以生成趋势图")
+                return
+
+            # Moving average for smoother trend
+            window_size = max(1, len(trend) // 20)
+            
+            dates = [datetime.datetime.fromtimestamp(t[0]) for t in trend]
+            scores = [t[1] for t in trend]
+            
+            # Simple moving average
+            smooth_scores = []
+            if window_size > 1:
+                for i in range(len(scores)):
+                    start = max(0, i - window_size // 2)
+                    end = min(len(scores), i + window_size // 2 + 1)
+                    smooth_scores.append(sum(scores[start:end]) / (end - start))
+            else:
+                smooth_scores = scores
+                
+            plt.figure(figsize=(8, 4))
+            plt.rcParams['font.sans-serif'] = ['SimHei']
+            
+            plt.plot(dates, smooth_scores, color='#e6a23c', linewidth=2)
+            plt.title('评论情感趋势 (移动平均)')
+            plt.ylim(0, 1)
+            plt.axhline(y=0.5, color='gray', linestyle='--', alpha=0.5)
+            plt.gcf().autofmt_xdate()
+            plt.grid(True, linestyle='--', alpha=0.5)
+            
+            buf = io.BytesIO()
+            plt.savefig(buf, format='png', dpi=100)
+            buf.seek(0)
+            plt.close()
+            
+            image = QImage.fromData(buf.getvalue())
+            pixmap = QPixmap.fromImage(image)
+            label.setPixmap(pixmap)
+        except Exception as e:
+            logger.error(f"Generate sentiment trend chart error: {e}")
+            label.setText("图表生成失败")
 
     @staticmethod
     def generate_ratio_chart(label: QLabel, stat: dict):
