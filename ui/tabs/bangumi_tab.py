@@ -2,7 +2,6 @@ import time
 import os
 import re
 import json
-import subprocess
 
 from datetime import datetime
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
@@ -28,21 +27,32 @@ class HistoryDialog(QDialog):
         self.table.setHorizontalHeaderLabels(["番剧名", "集名", "BV号", "下载时间", "状态"])
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setSelectionMode(QTableWidget.SingleSelection)
         layout.addWidget(self.table)
         
         # Button layout
         btn_layout = QHBoxLayout()
         
         self.redownload_btn = QPushButton("重新下载")
+        self.redownload_btn.setCursor(Qt.PointingHandCursor)
         self.redownload_btn.setStyleSheet("background-color: #fb7299; color: white; padding: 5px 15px; border-radius: 4px;")
         self.redownload_btn.clicked.connect(self.redownload_selected)
         btn_layout.addWidget(self.redownload_btn)
         
         self.clear_btn = QPushButton("清空历史")
+        self.clear_btn.setCursor(Qt.PointingHandCursor)
         self.clear_btn.setStyleSheet("background-color: #f56c6c; color: white; padding: 5px 15px; border-radius: 4px;")
         self.clear_btn.clicked.connect(self.clear_history)
         btn_layout.addWidget(self.clear_btn)
+        
         btn_layout.addStretch()
+        
+        self.close_btn = QPushButton("关闭")
+        self.close_btn.setCursor(Qt.PointingHandCursor)
+        self.close_btn.setStyleSheet("background-color: #909399; color: white; padding: 5px 15px; border-radius: 4px;")
+        self.close_btn.clicked.connect(self.accept)
+        btn_layout.addWidget(self.close_btn)
         
         layout.addLayout(btn_layout)
         

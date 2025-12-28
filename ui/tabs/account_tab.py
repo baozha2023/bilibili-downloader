@@ -14,6 +14,7 @@ from ui.workers import AccountInfoThread
 from ui.login_dialog import BilibiliLoginWindow
 from ui.favorites_window import FavoritesWindow
 from ui.styles import UIStyles
+from ui.utils.image_loader import ImageLoader
 
 logger = logging.getLogger('bilibili_desktop')
 
@@ -23,9 +24,8 @@ class AccountTab(QWidget):
         self.main_window = main_window
         self.crawler = main_window.crawler
         
-        # 初始化网络管理器
-        self.avatar_network_manager = QNetworkAccessManager(self)
-        self.avatar_network_manager.finished.connect(self.on_account_avatar_downloaded)
+        # 初始化图片加载器
+        self.image_loader = ImageLoader(self)
         
         self.init_ui()
         self.check_login_status()
@@ -579,14 +579,11 @@ class AccountTab(QWidget):
 
     def load_account_avatar(self, url):
         self.account_avatar.setText("加载中...")
-        self.avatar_network_manager.get(QNetworkRequest(QUrl(url)))
+        self.image_loader.load_image(url, self.on_avatar_loaded)
     
-    def on_account_avatar_downloaded(self, reply):
+    def on_avatar_loaded(self, pixmap):
         try:
-            if reply.error() == QNetworkReply.NoError:
-                data = reply.readAll()
-                pixmap = QPixmap()
-                pixmap.loadFromData(data)
+            if not pixmap.isNull():
                 scaled_pixmap = pixmap.scaled(80, 80, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation)
                 rounded_pixmap = QPixmap(80, 80)
                 rounded_pixmap.fill(Qt.transparent)
@@ -601,8 +598,8 @@ class AccountTab(QWidget):
                 self.account_avatar.setText("加载失败")
         except Exception as e:
             self.account_avatar.setText("加载错误")
-        finally:
-            reply.deleteLater()
+
+    # def on_account_avatar_downloaded(self, reply): ... (Removed)
 
     def refresh_account_info(self):
         try:

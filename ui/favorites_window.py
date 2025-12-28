@@ -5,6 +5,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl, QEvent
 from PyQt5.QtGui import QCursor, QPixmap
 from ui.message_box import BilibiliMessageBox
 from ui.widgets.video_player_window import VideoPlayerWindow
+from ui.utils.image_loader import ImageLoader
 import csv
 import logging
 
@@ -149,29 +150,12 @@ class FavoritesWindow(QDialog):
                 self.show_cover_preview(cover_url)
 
     def show_cover_preview(self, url):
-        from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
-        
-        if not hasattr(self, 'network_manager'):
-            self.network_manager = QNetworkAccessManager(self)
-            self.network_manager.finished.connect(self.on_cover_downloaded)
+        if not hasattr(self, 'image_loader'):
+            self.image_loader = ImageLoader(self)
             
-        if not hasattr(self, 'cover_cache'):
-            self.cover_cache = {}
+        self.image_loader.load_image(url, self.display_cover)
             
-        if url in self.cover_cache:
-            self.display_cover(self.cover_cache[url])
-        else:
-            self.network_manager.get(QNetworkRequest(QUrl(url)))
-            
-    def on_cover_downloaded(self, reply):
-        url = reply.url().toString()
-        if reply.error():
-            return
-        data = reply.readAll()
-        pixmap = QPixmap()
-        pixmap.loadFromData(data)
-        self.cover_cache[url] = pixmap
-        self.display_cover(pixmap)
+    # def on_cover_downloaded(self, reply): ... (Removed)
         
     def display_cover(self, pixmap):
         # 自适应缩放逻辑

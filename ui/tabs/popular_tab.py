@@ -7,6 +7,7 @@ from ui.widgets.video_player_window import VideoPlayerWindow
 from ui.widgets.loading_bar import LoadingBar
 from ui.styles import UIStyles
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from ui.utils.image_loader import ImageLoader
 
 class PopularTab(QWidget):
     def __init__(self, main_window):
@@ -14,6 +15,7 @@ class PopularTab(QWidget):
         self.main_window = main_window
         self.crawler = main_window.crawler
         self.init_ui()
+        self.image_loader = ImageLoader(self)
         
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -93,28 +95,9 @@ class PopularTab(QWidget):
                 self.show_cover_preview(cover_url)
                 
     def show_cover_preview(self, url):
-        if not hasattr(self, 'network_manager'):
-            self.network_manager = QNetworkAccessManager(self)
-            self.network_manager.finished.connect(self.on_cover_downloaded)
+        self.image_loader.load_image(url, self.display_cover)
             
-        # 检查缓存
-        if not hasattr(self, 'cover_cache'):
-            self.cover_cache = {}
-            
-        if url in self.cover_cache:
-            self.display_cover(self.cover_cache[url])
-        else:
-            self.network_manager.get(QNetworkRequest(QUrl(url)))
-            
-    def on_cover_downloaded(self, reply):
-        url = reply.url().toString()
-        if reply.error():
-            return
-        data = reply.readAll()
-        pixmap = QPixmap()
-        pixmap.loadFromData(data)
-        self.cover_cache[url] = pixmap
-        self.display_cover(pixmap)
+    # def on_cover_downloaded(self, reply): ... (Removed)
         
     def display_cover(self, pixmap):
         # 自适应缩放逻辑

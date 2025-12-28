@@ -24,10 +24,11 @@ def start_gui():
     """启动图形用户界面"""
     try:
         # 设置AppUserModelID，确保任务栏图标正常显示
-        myappid = 'mycompany.myproduct.subproduct.version'
+        # 格式：Company.Product.SubProduct.Version
+        myappid = f'bilibili.downloader.gui.{APP_VERSION}'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    except:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to set AppUserModelID: {e}")
         
 
     app = QApplication(sys.argv)

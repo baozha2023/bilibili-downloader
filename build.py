@@ -284,10 +284,10 @@ def main():
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
     print(f"\n新版本 {APP_VERSION} 更新内容:")
-    print("- 重构：重写版本管理逻辑，自动检测本地Python环境")
-    print("- 优化：无本地Python环境时不显示版本管理按钮，避免误操作")
-    print("- 优化：版本切换优先使用用户本地Python环境进行编译")
-    print("- 优化：自动检测并安装缺失的依赖库，确保编译成功率")
+    print("- 新增：用户查询支持使用UID、用户名及弹幕哈希(CRC32)反查用户")
+    print("- 新增：用户查询支持双击查看详细信息")
+    print("- 优化：移除用户查询结果的右键菜单")
+    print("- 优化：番剧下载历史记录支持重新下载")
     print("- 优化：代码结构优化，提升稳定性")
 
 if __name__ == "__main__":
