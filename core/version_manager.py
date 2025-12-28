@@ -168,6 +168,35 @@ class VersionManager:
         # Since local .git is removed, we rely on APP_VERSION
         return f"{APP_VERSION}"
 
+    def _get_system_python(self):
+        """
+        获取系统 Python 可执行文件路径
+        Get system Python executable path
+        """
+        # 1. 检查环境变量
+        env_python = os.environ.get('PYTHON_EXECUTABLE')
+        if env_python and os.path.exists(env_python):
+            return env_python
+            
+        # 2. 检查系统 PATH
+        system_python = shutil.which('python')
+        if system_python:
+            # 验证是否可用
+            try:
+                subprocess.run([system_python, '--version'], check=True, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+                return system_python
+            except:
+                pass
+                
+        return None
+
+    def check_python_available(self):
+        """
+        检查是否有可用的 Python 环境 (用于编译)
+        Check if usable Python environment exists (for compilation)
+        """
+        return self._get_system_python() is not None
+
     def switch_version(self, tag):
         """
         切换版本：下载源码 -> 编译 -> 替换
@@ -176,27 +205,12 @@ class VersionManager:
         if not self.check_git_available():
             return False, "Git环境不可用，无法切换版本"
             
-        # 检查是否有名为 python 的命令可用 (编译需要)
-        # Check if python is available
-        python_exe = "python"
-        
-        # 优先使用集成的 Python 环境
-        # Prioritize bundled Python environment
-        bundled_python = os.path.join(self.cwd, 'python_embed', 'python.exe')
-        if os.path.exists(bundled_python):
-            python_exe = bundled_python
-            logger.info(f"使用集成的 Python 环境: {python_exe}")
-        else:
-             # Fallback to system python
-             python_exe = sys.executable if not getattr(sys, 'frozen', False) else "python"
-             try:
-                # 如果是打包环境，sys.executable 是 exe 本身，不能用来运行 py 脚本
-                # 所以我们需要假设系统中有 python 环境
-                if getattr(sys, 'frozen', False):
-                     subprocess.run(["python", "--version"], check=True, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
-                     python_exe = "python"
-             except:
-                 return False, "切换版本需要编译环境，未检测到集成的 Python 或系统 Python。"
+        # 获取系统 Python
+        python_exe = self._get_system_python()
+        if not python_exe:
+             return False, "未检测到本地 Python 环境，无法进行编译打包。"
+             
+        logger.info(f"使用本地 Python 环境: {python_exe}")
 
         temp_dir = tempfile.mkdtemp(prefix="bilibili_update_")
         try:
@@ -208,12 +222,13 @@ class VersionManager:
             clone_cmd = [self.git_exe, 'clone', '--depth', '1', '--branch', tag, self.repo_url, temp_dir]
             subprocess.run(clone_cmd, check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
             
-            # 2. 安装依赖 (可选，为了保险)
+            # 2. 安装依赖 (自动安装缺失库)
             # Install dependencies
             requirements_file = os.path.join(temp_dir, 'requirements.txt')
             if os.path.exists(requirements_file):
-                logger.info("正在安装/更新依赖...")
-                pip_cmd = [python_exe, '-m', 'pip', 'install', '-r', requirements_file, '-i', 'https://pypi.tuna.tsinghua.edu.cn/simple']
+                logger.info("正在检查并安装依赖...")
+                # 使用阿里云镜像加速
+                pip_cmd = [python_exe, '-m', 'pip', 'install', '-r', requirements_file, '-i', 'https://mirrors.aliyun.com/pypi/simple/']
                 subprocess.run(pip_cmd, check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
 
             # 3. 执行编译
@@ -263,8 +278,18 @@ class VersionManager:
 @echo off
 chcp 65001
 echo 正在更新 Bilibili Downloader...
+
+:check_lock
 echo 等待主程序关闭...
-timeout /t 3 /nobreak > nul
+timeout /t 2 /nobreak > nul
+2>nul (
+  >>"{os.path.join(current_dir, 'bilibili_downloader.exe')}" (call )
+) && (
+  echo 主程序已关闭。
+) || (
+  echo 主程序仍在运行，正在重试...
+  goto check_lock
+)
 
 echo 正在复制文件...
 echo 源: "{new_build_dir}"

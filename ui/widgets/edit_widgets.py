@@ -67,6 +67,7 @@ class MergeItemWidget(QWidget):
         self.unit_combo.addItems(["秒", "帧"])
         self.unit_combo.setFixedWidth(60)
         self.unit_combo.currentIndexChanged.connect(self.update_inputs)
+        self.style_combobox(self.unit_combo)
         range_layout.addWidget(self.unit_combo)
         
         # Input Stack
@@ -178,6 +179,46 @@ class MergeItemWidget(QWidget):
              end = end_f / self.fps if self.fps > 0 else 0
              return start, end
 
+    def style_combobox(self, combo):
+        combo.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 2px 5px;
+                background-color: white;
+                color: #333;
+            }
+            QComboBox:hover {
+                border-color: #fb7299;
+            }
+            QComboBox::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left-width: 1px;
+                border-left-color: #ddd;
+                border-left-style: solid;
+                border-top-right-radius: 3px;
+                border-bottom-right-radius: 3px;
+            }
+            QComboBox::down-arrow {
+                width: 0; 
+                height: 0;
+                border-left: 4px solid transparent;
+                border-right: 4px solid transparent;
+                border-top: 5px solid #666;
+                margin-right: 2px;
+            }
+            QComboBox QAbstractItemView {
+                background-color: white;
+                color: #333;
+                selection-background-color: #fb7299;
+                selection-color: white;
+                border: 1px solid #ddd;
+                outline: none;
+            }
+        """)
+
     def style_spinbox(self, spin):
         spin.setStyleSheet("""
             QDoubleSpinBox, QSpinBox {
@@ -185,6 +226,7 @@ class MergeItemWidget(QWidget):
                 border-radius: 4px;
                 padding: 2px 5px;
                 background: white;
+                color: #333;
                 selection-background-color: #fb7299;
             }
             QDoubleSpinBox:focus, QSpinBox:focus, QDoubleSpinBox:hover, QSpinBox:hover {

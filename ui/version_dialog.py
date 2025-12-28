@@ -214,8 +214,7 @@ class VersionDialog(QDialog):
         self.switch_btn.setText("切换至选中版本")
         
         if success:
-            BilibiliMessageBox.information(self, "更新准备就绪", f"{msg}\n\n点击确定后程序将自动退出并开始更新。")
-            # 退出程序以便批处理脚本可以替换文件
+            # 自动退出程序以便批处理脚本可以替换文件
             sys.exit(0)
         else:
             BilibiliMessageBox.error(self, "切换失败", msg)

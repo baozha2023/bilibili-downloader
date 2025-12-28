@@ -47,9 +47,11 @@ def build_executable():
         '--add-data=credits.txt;.',  # 添加致谢文件 / Add credits
         '--add-data=resource;resource',  # 添加资源文件夹 / Add resource folder
         '--collect-data=snownlp',  # 收集snownlp数据文件 / Collect snownlp data
+        '--collect-data=fake_useragent', # 收集fake_useragent数据 / Collect fake_useragent data
         '--collect-all=jieba',     # 收集jieba数据 / Collect jieba data
         '--collect-all=wordcloud', # 收集wordcloud数据 / Collect wordcloud data
         '--hidden-import=cv2',     # OpenCV
+        '--hidden-import=fake_useragent', # fake_useragent
         '--hidden-import=openpyxl', # Excel Export
         '--hidden-import=core.crawler',
         '--hidden-import=core.network',
@@ -282,11 +284,11 @@ def main():
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
     print(f"\n新版本 {APP_VERSION} 更新内容:")
-    print("- 修复：修复打包后版本管理无法获取版本列表的Bug (集成Git环境)")
-    print("- 优化：集成Git环境，支持在无Git环境的电脑上运行版本管理")
-    print("- 优化：核心代码增加详细中文注释，便于阅读和维护")
-    print("- 优化：代码结构优化，清理冗余代码，提升代码质量")
-    print("- 优化：版本号统一管理，避免版本号不一致问题")
+    print("- 重构：重写版本管理逻辑，自动检测本地Python环境")
+    print("- 优化：无本地Python环境时不显示版本管理按钮，避免误操作")
+    print("- 优化：版本切换优先使用用户本地Python环境进行编译")
+    print("- 优化：自动检测并安装缺失的依赖库，确保编译成功率")
+    print("- 优化：代码结构优化，提升稳定性")
 
 if __name__ == "__main__":
     main() 

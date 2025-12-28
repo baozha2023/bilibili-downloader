@@ -18,6 +18,7 @@ logger = logging.getLogger('bilibili_desktop')
 from ui.widgets.custom_combobox import NoScrollComboBox
 from ui.about_module import AboutDialog
 from ui.version_dialog import VersionDialog
+from core.version_manager import VersionManager
 
 class SettingsTab(QWidget):
     def __init__(self, main_window):
@@ -387,25 +388,29 @@ class SettingsTab(QWidget):
         bottom_layout.addWidget(credits_btn)
         
         # 版本管理按钮
-        version_btn = QPushButton("版本管理")
-        version_btn.setCursor(Qt.PointingHandCursor)
-        version_btn.setStyleSheet("""
-            QPushButton {
-                font-size: 16px;
-                background-color: #f6f7f8;
-                color: #666;
-                border: 1px solid #ddd;
-                border-radius: 6px;
-                padding: 10px 20px;
-                margin-right: 15px;
-            }
-            QPushButton:hover {
-                background-color: #e0e0e0;
-                color: #333;
-            }
-        """)
-        version_btn.clicked.connect(self.show_version_manager)
-        bottom_layout.addWidget(version_btn)
+        # 仅在检测到本地 Python 环境时显示
+        # Only show if local Python environment is detected
+        vm = VersionManager(self.main_window)
+        if vm.check_python_available():
+            version_btn = QPushButton("版本管理")
+            version_btn.setCursor(Qt.PointingHandCursor)
+            version_btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 16px;
+                    background-color: #f6f7f8;
+                    color: #666;
+                    border: 1px solid #ddd;
+                    border-radius: 6px;
+                    padding: 10px 20px;
+                    margin-right: 15px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                    color: #333;
+                }
+            """)
+            version_btn.clicked.connect(self.show_version_manager)
+            bottom_layout.addWidget(version_btn)
         
         save_btn = QPushButton("保存设置")
         save_btn.setCursor(Qt.PointingHandCursor)
