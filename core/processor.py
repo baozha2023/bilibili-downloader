@@ -192,23 +192,6 @@ class MediaProcessor:
         
         return self._run_ffmpeg_with_progress(full_cmd, progress_callback)
 
-    def _get_video_resolution(self, video_path):
-        """获取视频分辨率 (w, h)"""
-        try:
-            cmd = [self.ffmpeg_path, '-i', video_path]
-            # 必须使用shell=False并传入列表
-            p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-            _, stderr = p.communicate()
-            
-            # 查找 Stream #0:0... Video: ... 1920x1080
-            # 注意：有时会有多个流，或者格式不同，这里匹配最常见的
-            match = re.search(r'Stream #\d+:\d+.*Video:.* (\d{3,5})x(\d{3,5})', stderr)
-            if match:
-                return int(match.group(1)), int(match.group(2))
-        except Exception as e:
-            logger.error(f"获取分辨率失败: {e}")
-        return None
-
     def get_video_duration(self, video_path):
         """获取视频时长(秒)"""
         try:

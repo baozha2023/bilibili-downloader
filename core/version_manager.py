@@ -4,8 +4,9 @@ import shutil
 import logging
 import sys
 import tempfile
-import time
+import zipfile
 import requests
+import re
 from core.config import APP_VERSION
 
 logger = logging.getLogger('bilibili_desktop')
@@ -13,268 +14,426 @@ logger = logging.getLogger('bilibili_desktop')
 class VersionManager:
     """
     版本管理核心类
-    负责与Git交互，获取版本列表，切换版本等操作
-    Version Management Core Class
-    Responsible for interacting with Git, retrieving version lists, switching versions, etc.
+    负责与Gitee/GitHub交互，获取版本列表，切换版本等操作
     """
+    
+    SOURCE_GITEE = "gitee"
+    SOURCE_GITHUB = "github"
+    
+    GITEE_REPO = "bzJAVA/bilibili-downloader"
+    GITHUB_REPO = "baozha2023/bilibili-downloader"
+
     def __init__(self, main_window):
         self.main_window = main_window
-        self.repo_url = "https://gitee.com/bzJAVA/bilibili-downloader.git"
-        self.api_url = "https://gitee.com/api/v5/repos/bzJAVA/bilibili-downloader/tags"
-        # 确定当前工作目录
-        # Determine current working directory
-        if getattr(sys, 'frozen', False):
-            # 如果是打包后的环境，使用可执行文件所在目录
-            # If running in a frozen (packaged) environment, use the directory of the executable
-            self.cwd = os.path.dirname(sys.executable)
-        else:
-            self.cwd = os.getcwd()
-        
+        self.cwd = self._get_base_dir()
         self.git_exe = self._get_git_executable()
 
+    def _get_base_dir(self):
+        """获取当前运行的基础目录"""
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)
+        return os.getcwd()
+
     def _get_git_executable(self):
-        """
-        获取Git可执行文件路径
-        优先查找打包环境下的本地Git，否则查找系统Git
-        Get Git executable path
-        Prioritize local Git in packaged environment, otherwise use system Git
-        """
-        # 1. 检查是否有环境变量指定的GIT
+        """获取Git可执行文件路径"""
+        # 1. 环境变量
         env_git = os.environ.get('GIT_PYTHON_GIT_EXECUTABLE')
         if env_git and os.path.exists(env_git):
             return env_git
 
-        # 2. 检查应用目录下的Git (打包集成模式)
-        # MinGit通常结构: git/cmd/git.exe 或 git/bin/git.exe
-        # Check relative to CWD
+        # 2. 打包环境下的集成Git
         paths_to_check = [
             os.path.join(self.cwd, 'git', 'cmd', 'git.exe'),
             os.path.join(self.cwd, 'git', 'bin', 'git.exe'),
-            # Also check relative to project root if running from source
             os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'git', 'cmd', 'git.exe'),
-            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'git', 'bin', 'git.exe'),
         ]
         
         for path in paths_to_check:
             if os.path.exists(path):
                 return path
 
-        # 3. 检查系统PATH中的Git
+        # 3. 系统PATH
         system_git = shutil.which('git')
-        if system_git:
-            return system_git
-
-        # 4. 默认返回 'git'
-        return 'git'
+        return system_git if system_git else 'git'
 
     def check_git_available(self):
-        """
-        检查git是否可用
-        Check if git is available
-        """
+        """检查git是否可用"""
         try:
-            subprocess.run([self.git_exe, '--version'], check=True, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+            subprocess.run([self.git_exe, '--version'], check=True, capture_output=True, 
+                         creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
             return True
-        except Exception as e:
-            logger.debug(f"Git不可用: {e}")
+        except Exception:
             return False
 
-    def get_versions(self):
-        """
-        获取远程仓库的所有tag列表
-        优先使用 Gitee API 获取详细信息（包括Tag描述），失败则回退到 git ls-remote
-        Get all tags from remote repository
-        Prioritize Gitee API to get details (including description), fallback to git ls-remote if failed
-        """
+    def get_versions(self, source=SOURCE_GITEE):
+        """根据源获取版本列表"""
+        if source == self.SOURCE_GITHUB:
+            return self._get_github_versions()
+        else:
+            return self._get_gitee_versions()
+
+    def _get_gitee_versions(self):
+        """从Gitee获取版本列表"""
+        api_url = f"https://gitee.com/api/v5/repos/{self.GITEE_REPO}/tags"
         versions = []
         
-        # 1. 尝试使用 Gitee API
-        # 1. Try Gitee API
         try:
-            logger.info(f"正在通过API获取版本列表: {self.api_url}")
-            response = requests.get(self.api_url, timeout=10)
+            logger.info(f"正在从Gitee获取版本: {api_url}")
+            response = requests.get(api_url, timeout=10)
+            
             if response.status_code == 200:
-                tags = response.json()
-                for tag_info in tags:
-                    tag_name = tag_info.get('name')
-                    message = tag_info.get('message', '').strip()
-                    commit_date = tag_info.get('commit', {}).get('date', '')
-                    
-                    if tag_name:
+                for tag_info in response.json():
+                    versions.append({
+                        'tag': tag_info.get('name'),
+                        'date': tag_info.get('commit', {}).get('date', ''),
+                        'message': tag_info.get('message', '').strip() or "暂无描述"
+                    })
+                return self._sort_versions(versions)
+        except Exception as e:
+            logger.error(f"Gitee API失败: {e}")
+
+        # Fallback to git ls-remote if API fails
+        return self._get_remote_tags_via_git(f"https://gitee.com/{self.GITEE_REPO}.git")
+
+    def _get_github_versions(self):
+        """从GitHub获取版本列表 (使用Releases API，失败则回退到HTML解析)"""
+        api_url = f"https://api.github.com/repos/{self.GITHUB_REPO}/releases"
+        versions = []
+        
+        try:
+            logger.info(f"正在从GitHub获取版本: {api_url}")
+            response = requests.get(api_url, timeout=10)
+            
+            if response.status_code == 200:
+                for release in response.json():
+                    versions.append({
+                        'tag': release.get('tag_name'),
+                        'date': release.get('published_at', ''),
+                        'message': release.get('body', '').strip() or release.get('name', '暂无描述'),
+                        'assets': release.get('assets', [])
+                    })
+                return self._sort_versions(versions)
+            else:
+                logger.warning(f"GitHub API返回非200状态码: {response.status_code}, {response.text}")
+                logger.info("尝试使用HTML解析作为Fallback...")
+                return self._get_github_versions_html_fallback()
+                
+        except Exception as e:
+            logger.error(f"GitHub API失败: {e}")
+            logger.info("尝试使用HTML解析作为Fallback...")
+            return self._get_github_versions_html_fallback()
+            
+        return []
+
+    def _get_github_versions_html_fallback(self):
+        """GitHub HTML解析 (Fallback)"""
+        tags_url = f"https://github.com/{self.GITHUB_REPO}/tags"
+        versions = []
+        
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            logger.info(f"正在解析Tags页面: {tags_url}")
+            response = requests.get(tags_url, headers=headers, timeout=10)
+            
+            if response.status_code == 200:
+                html = response.text
+                tag_pattern = r'href=["\'](.*?/releases/tag/([^"\']+))["\']'
+                tags = re.findall(tag_pattern, html)
+                
+                seen_tags = set()
+                for _, tag_name in tags:
+                    if tag_name not in seen_tags:
                         versions.append({
                             'tag': tag_name,
-                            'date': commit_date,
-                            'message': message if message else "暂无描述"
+                            'date': 'N/A',
+                            'message': 'GitHub Tag (API Limited)',
+                            'assets': None # 标记为None，后续按需获取
                         })
-                
-                logger.info(f"API获取成功，共 {len(versions)} 个版本")
+                        seen_tags.add(tag_name)
+                        
+                return self._sort_versions(versions)
             else:
-                logger.warning(f"API请求失败: {response.status_code}")
+                logger.error(f"Tags页面解析失败: {response.status_code}")
+                
         except Exception as e:
-            logger.error(f"API获取版本列表出错: {e}")
+            logger.error(f"HTML解析失败: {e}")
+            
+        return []
 
-        # 如果API获取成功，直接返回
-        if versions:
-             # 排序 / Sort
-            try:
-                versions.sort(key=lambda x: [int(u) for u in x['tag'].lower().replace('v', '').split('.')], reverse=True)
-            except:
-                versions.sort(key=lambda x: x['tag'], reverse=True)
-            return versions
-
-        # 2. API失败，回退到 git ls-remote
-        # 2. API failed, fallback to git ls-remote
+    def _get_remote_tags_via_git(self, repo_url):
+        """使用git ls-remote获取版本 (备用方案)"""
         if not self.check_git_available():
             return []
-
+            
+        versions = []
         try:
-            logger.info("API失败，正在使用 git ls-remote 获取远程版本列表...")
-            # 使用 ls-remote 获取远程tags
-            # git ls-remote --tags --refs https://...
-            cmd = [self.git_exe, 'ls-remote', '--tags', '--refs', self.repo_url]
-            result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8', creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+            cmd = [self.git_exe, 'ls-remote', '--tags', '--refs', repo_url]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True, encoding='utf-8',
+                                  creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
             
             for line in result.stdout.strip().split('\n'):
                 parts = line.split('\t')
                 if len(parts) > 1:
-                    ref = parts[1]
-                    # ref format: refs/tags/v1.0.0
-                    tag = ref.replace('refs/tags/', '')
-                    
-                    # 由于 ls-remote 无法直接获取日期和提交信息，我们只能显示Tag
+                    tag = parts[1].replace('refs/tags/', '')
                     versions.append({
                         'tag': tag,
-                        'date': 'N/A', # 无法获取
-                        'message': 'Remote Tag (API Unavailable)' # 标记为API不可用
+                        'date': 'N/A',
+                        'message': 'Remote Tag (API Unavailable)'
                     })
-            
-            # 排序 / Sort
-            try:
-                versions.sort(key=lambda x: [int(u) for u in x['tag'].lower().replace('v', '').split('.')], reverse=True)
-            except:
-                versions.sort(key=lambda x: x['tag'], reverse=True)
-                
-            return versions
+            return self._sort_versions(versions)
         except Exception as e:
-            logger.error(f"获取版本列表失败: {e}")
+            logger.error(f"Git ls-remote失败: {e}")
             return []
 
+    def _sort_versions(self, versions):
+        """版本号排序"""
+        try:
+            versions.sort(key=lambda x: [int(u) for u in x['tag'].lower().replace('v', '').split('.')], reverse=True)
+        except:
+            versions.sort(key=lambda x: x['tag'], reverse=True)
+        return versions
+
     def get_current_version(self):
-        """
-        获取当前版本信息
-        Get current version info
-        """
-        # 由于移除了本地 .git，我们只能依赖配置文件中的版本号
-        # Since local .git is removed, we rely on APP_VERSION
-        return f"{APP_VERSION}"
+        return APP_VERSION
+
+    def check_python_available(self):
+        """检查是否有可用的 Python 环境"""
+        return self._get_system_python() is not None
 
     def _get_system_python(self):
-        """
-        获取系统 Python 可执行文件路径
-        Get system Python executable path
-        """
-        # 1. 检查环境变量
+        """获取系统 Python 路径"""
+        # 1. 环境变量
         env_python = os.environ.get('PYTHON_EXECUTABLE')
         if env_python and os.path.exists(env_python):
             return env_python
             
-        # 2. 检查系统 PATH
+        # 2. 系统PATH
         system_python = shutil.which('python')
         if system_python:
-            # 验证是否可用
             try:
-                subprocess.run([system_python, '--version'], check=True, capture_output=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+                subprocess.run([system_python, '--version'], check=True, capture_output=True, 
+                             creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
                 return system_python
             except:
                 pass
-                
         return None
 
-    def check_python_available(self):
+    def switch_version(self, tag, source=SOURCE_GITEE, release_assets=None):
         """
-        检查是否有可用的 Python 环境 (用于编译)
-        Check if usable Python environment exists (for compilation)
+        切换版本
+        Gitee: 下载源码 -> 编译 -> 替换
+        GitHub: 下载Release -> 解压 -> 替换 (Fallback: 源码编译)
         """
-        return self._get_system_python() is not None
+        if source == self.SOURCE_GITEE:
+            return self._update_from_source_code(tag)
+        else:
+            return self._update_from_github_release(tag, release_assets)
 
-    def switch_version(self, tag):
-        """
-        切换版本：下载源码 -> 编译 -> 替换
-        Switch version: Download Source -> Compile -> Replace
-        """
+    def _update_from_source_code(self, tag):
+        """从源码编译更新 (Gitee)"""
         if not self.check_git_available():
-            return False, "Git环境不可用，无法切换版本"
+            return False, "Git环境不可用"
             
-        # 获取系统 Python
         python_exe = self._get_system_python()
         if not python_exe:
-             return False, "未检测到本地 Python 环境，无法进行编译打包。"
-             
-        logger.info(f"使用本地 Python 环境: {python_exe}")
+            return False, "未检测到本地Python环境，无法从Gitee编译更新。\n请安装Python或选择GitHub源下载编译好的版本。"
 
-        temp_dir = tempfile.mkdtemp(prefix="bilibili_update_")
+        temp_dir = tempfile.mkdtemp(prefix="bilibili_update_src_")
         try:
-            logger.info(f"创建临时目录: {temp_dir}")
+            logger.info(f"正在下载源码: {tag}")
+            repo_url = f"https://gitee.com/{self.GITEE_REPO}.git"
+            subprocess.run([self.git_exe, 'clone', '--depth', '1', '--branch', tag, repo_url, temp_dir], 
+                         check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
             
-            # 1. Clone 指定 Tag 的源码
-            # Clone source code of specified Tag
-            logger.info(f"正在下载版本 {tag} 的源码...")
-            clone_cmd = [self.git_exe, 'clone', '--depth', '1', '--branch', tag, self.repo_url, temp_dir]
-            subprocess.run(clone_cmd, check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+            return self._build_and_update(temp_dir, python_exe)
             
-            # 2. 安装依赖 (自动安装缺失库)
-            # Install dependencies
-            requirements_file = os.path.join(temp_dir, 'requirements.txt')
-            if os.path.exists(requirements_file):
-                logger.info("正在检查并安装依赖...")
-                # 使用阿里云镜像加速
-                pip_cmd = [python_exe, '-m', 'pip', 'install', '-r', requirements_file, '-i', 'https://mirrors.aliyun.com/pypi/simple/']
-                subprocess.run(pip_cmd, check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+        except Exception as e:
+            logger.error(f"源码更新失败: {e}")
+            return False, f"更新失败: {e}"
 
-            # 3. 执行编译
-            # Execute build
-            build_script = os.path.join(temp_dir, 'build.py')
+    def _build_and_update(self, source_dir, python_exe):
+        """执行编译和更新流程"""
+        try:
+            # 安装依赖
+            req_file = os.path.join(source_dir, 'requirements.txt')
+            if os.path.exists(req_file):
+                logger.info("安装依赖...")
+                subprocess.run([python_exe, '-m', 'pip', 'install', '-r', req_file, 
+                              '-i', 'https://mirrors.aliyun.com/pypi/simple/'], 
+                              check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+
+            # 编译
+            build_script = os.path.join(source_dir, 'build.py')
             if not os.path.exists(build_script):
-                 return False, "下载的源码中不存在 build.py，无法编译。"
+                return False, "源码中缺少build.py"
+                
+            logger.info("开始编译...")
+            subprocess.run([python_exe, build_script], cwd=source_dir, check=True)
             
-            logger.info("开始编译新版本...")
-            # 注意：build.py 会在 temp_dir/dist/bilibili_downloader 生成文件
-            build_cmd = [python_exe, build_script]
-            # 我们需要在 temp_dir 下运行 build.py
-            subprocess.run(build_cmd, cwd=temp_dir, check=True) # build.py might print to stdout, so we let it
-            
-            # 4. 验证编译结果
-            # Verify build result
-            new_build_dir = os.path.join(temp_dir, 'dist', 'bilibili_downloader')
-            if not os.path.exists(new_build_dir):
-                return False, "编译失败，未生成目标目录。"
-            
-            new_exe = os.path.join(new_build_dir, 'bilibili_downloader.exe')
-            if not os.path.exists(new_exe):
-                return False, "编译失败，未生成可执行文件。"
+            new_build_dir = os.path.join(source_dir, 'dist', 'bilibili_downloader')
+            return self._apply_update(new_build_dir, source_dir)
+        except Exception as e:
+             return False, f"编译失败: {e}"
 
-            # 5. 准备更新脚本 (Update Script)
-            # Prepare update script
-            logger.info("准备更新...")
-            current_dir = self.cwd
+    def _update_from_github_release(self, tag, assets):
+        """从GitHub Release下载更新 (支持 fallback 到源码下载)"""
+        
+        # 1. 尝试寻找预编译包 (.zip)
+        target_asset = None
+        
+        # 如果 assets 是 None (来自 HTML Fallback)，尝试获取 expanded assets
+        if assets is None:
+             logger.info(f"正在检查版本 {tag} 的 Assets...")
+             assets = self._fetch_github_assets_html(tag)
+        
+        if assets:
+            # Priority 1: Look for zip with 'bilibili_downloader' in name
+            for asset in assets:
+                if asset.get('name', '').endswith('.zip') and 'bilibili_downloader' in asset.get('name', ''):
+                    target_asset = asset
+                    break
             
-            # 构造更新批处理脚本
-            # Create update batch script
-            bat_path = os.path.join(os.path.dirname(current_dir), 'update_bilibili.bat')
-            # 如果是在开发环境(未打包)，current_dir 是项目根目录，不要覆盖自己
-            # 但 switch_version 主要是给打包后的用户用的。
-            # 假设 current_dir 是 .../bilibili_downloader/ (exe所在目录)
-            # 这里的逻辑是：把 new_build_dir 的内容 覆盖到 current_dir
+            # Priority 2: Look for any zip file
+            if not target_asset:
+                for asset in assets:
+                    if asset.get('name', '').endswith('.zip'):
+                        target_asset = asset
+                        break
+        
+        # 2. 如果找到了预编译包 -> 直接下载
+        if target_asset:
+            return self._download_and_extract_zip(target_asset['browser_download_url'])
             
-            # 注意：temp_dir 会在脚本结束后被清理吗？
-            # 不，如果是 subprocess 调用 bat，bat 还在运行，temp_dir 不能被 python 删除
-            # 我们让 bat 负责移动文件，然后 bat 自己退出
+        # 3. 如果没找到 -> Fallback 到源码编译
+        logger.warning(f"版本 {tag} 未找到预编译包，尝试源码编译...")
+        python_exe = self._get_system_python()
+        if not python_exe:
+            return False, f"版本 {tag} 未提供预编译包(exe)，且检测到您的电脑未安装Python，无法进行源码编译。"
             
-            # 但是 temp_dir 是在临时文件夹，跨分区移动可能慢。
-            # 我们先把 new_build_dir 移动到 current_dir 的上级目录的一个临时名，然后再覆盖？
-            # 简单点：xcopy
+        return self._update_from_github_source_zip(tag, python_exe)
+
+    def _fetch_github_assets_html(self, tag):
+        """从Expanded Assets页面解析下载链接"""
+        url = f"https://github.com/{self.GITHUB_REPO}/releases/expanded_assets/{tag}"
+        assets = []
+        try:
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            resp = requests.get(url, headers=headers, timeout=10)
+            if resp.status_code == 200:
+                html = resp.text
+                # Match download links
+                pattern = r'href=["\'](.*?/releases/download/.*?/(.*?\.zip))["\']'
+                matches = re.findall(pattern, html)
+                for url_part, filename in matches:
+                    if url_part.startswith('http'):
+                        download_url = url_part
+                    else:
+                        download_url = f"https://github.com{url_part}"
+                        
+                    assets.append({
+                        'name': filename,
+                        'browser_download_url': download_url
+                    })
+        except Exception as e:
+            logger.error(f"解析Assets失败: {e}")
+        return assets
+
+    def _update_from_github_source_zip(self, tag, python_exe):
+        """下载GitHub源码Zip并编译"""
+        download_url = f"https://github.com/{self.GITHUB_REPO}/archive/refs/tags/{tag}.zip"
+        temp_dir = tempfile.mkdtemp(prefix="bilibili_gh_src_")
+        zip_path = os.path.join(temp_dir, "source.zip")
+        
+        try:
+            logger.info(f"正在下载源码Zip: {download_url}")
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            with requests.get(download_url, headers=headers, stream=True) as r:
+                r.raise_for_status()
+                with open(zip_path, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
             
-            batch_content = f"""
+            logger.info("解压源码...")
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+                
+            # GitHub zip 解压后通常是 repo-tag 文件夹
+            extracted_root = None
+            for item in os.listdir(temp_dir):
+                if os.path.isdir(os.path.join(temp_dir, item)) and item != "__MACOSX":
+                    extracted_root = os.path.join(temp_dir, item)
+                    break
+            
+            if not extracted_root:
+                return False, "源码解压结构异常"
+                
+            return self._build_and_update(extracted_root, python_exe)
+            
+        except Exception as e:
+            logger.error(f"GitHub源码更新失败: {e}")
+            return False, f"下载源码失败: {e}"
+
+    def _download_and_extract_zip(self, download_url):
+        """下载并解压预编译包"""
+        temp_dir = tempfile.mkdtemp(prefix="bilibili_update_pkg_")
+        zip_path = os.path.join(temp_dir, "update.zip")
+        
+        try:
+            logger.info(f"正在下载: {download_url}")
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            with requests.get(download_url, headers=headers, stream=True) as r:
+                r.raise_for_status()
+                with open(zip_path, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        f.write(chunk)
+            
+            logger.info("正在解压...")
+            extract_dir = os.path.join(temp_dir, "extracted")
+            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                zip_ref.extractall(extract_dir)
+            
+            # 寻找解压后的根目录
+            new_build_dir = os.path.join(extract_dir, 'bilibili_downloader')
+            if not os.path.exists(new_build_dir):
+                if os.path.exists(os.path.join(extract_dir, 'bilibili_downloader.exe')):
+                    new_build_dir = extract_dir
+                else:
+                    # 尝试查找任意包含exe的子目录
+                    found = False
+                    for root, dirs, files in os.walk(extract_dir):
+                        if 'bilibili_downloader.exe' in files:
+                            new_build_dir = root
+                            found = True
+                            break
+                    
+                    if not found:
+                        logger.error(f"解压后未找到exe. 目录结构: {os.listdir(extract_dir)}")
+                        return False, "解压后的文件结构不正确"
+            
+            return self._apply_update(new_build_dir, temp_dir)
+
+        except Exception as e:
+            logger.error(f"下载更新包失败: {e}")
+            return False, f"下载或解压失败: {e}"
+
+    def _apply_update(self, new_dir, temp_root):
+        """应用更新 (生成批处理脚本并重启)"""
+        if not os.path.exists(os.path.join(new_dir, 'bilibili_downloader.exe')):
+            return False, "新版本中未找到可执行文件"
+
+        current_dir = self.cwd
+        bat_path = os.path.join(os.path.dirname(current_dir), 'update_bilibili.bat')
+        
+        # 批处理脚本：等待主程序退出 -> 复制文件 -> 重启 -> 清理
+        batch_content = f"""
 @echo off
 chcp 65001
 echo 正在更新 Bilibili Downloader...
@@ -292,10 +451,7 @@ timeout /t 2 /nobreak > nul
 )
 
 echo 正在复制文件...
-echo 源: "{new_build_dir}"
-echo 目标: "{current_dir}"
-
-xcopy /E /Y /I "{new_build_dir}" "{current_dir}"
+xcopy /E /Y /I "{new_dir}" "{current_dir}"
 
 if %errorlevel% neq 0 (
     echo 更新失败！
@@ -307,36 +463,14 @@ echo 更新完成，正在重启...
 start "" "{os.path.join(current_dir, 'bilibili_downloader.exe')}"
 
 echo 清理临时文件...
-rd /s /q "{temp_dir}"
+rd /s /q "{temp_root}"
 del "%~f0"
 """
-            with open(bat_path, 'w', encoding='gbk') as f: # Bat needs ANSI/GBK usually, or chcp 65001
+        try:
+            with open(bat_path, 'w', encoding='gbk') as f:
                 f.write(batch_content)
-                
-            logger.info(f"更新脚本已生成: {bat_path}")
             
-            # 6. 启动更新脚本并退出
-            # Launch update script and exit
             subprocess.Popen(['cmd', '/c', bat_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
-            
-            # 返回 True 告诉调用者准备退出了
             return True, "更新准备就绪，程序即将重启..."
-            
-        except subprocess.CalledProcessError as e:
-            return False, f"执行命令失败: {e}"
         except Exception as e:
-            logger.error(f"更新过程出错: {e}")
-            return False, f"更新过程出错: {str(e)}"
-        # finally:
-            # Do not clean up temp_dir here because the batch script needs it!
-            # pass
-
-    def get_latest_remote_tag(self):
-        """
-        获取远程最新Tag (复用 get_versions 逻辑)
-        Get latest remote tag
-        """
-        versions = self.get_versions()
-        if versions:
-            return versions[0]['tag']
-        return None
+            return False, f"生成更新脚本失败: {e}"
