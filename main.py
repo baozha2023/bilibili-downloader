@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 """
 bilibiliDownloader主程序入口
-v5.6.1
 """
 import ctypes
 import sys
@@ -12,6 +11,7 @@ from PyQt5.QtWidgets import QApplication
 # 导入项目模块
 from ui.main_window import BilibiliDesktop
 from core.cli import CliHandler
+from core.config import APP_VERSION
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, 

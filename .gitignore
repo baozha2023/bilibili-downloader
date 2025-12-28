@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 *.so
 .Python
+git/
 build/
 develop-eggs/
 dist/
@@ -135,3 +136,4 @@ bilibili_data/
 *.spec
 *.zip
 *.exe
+/git/

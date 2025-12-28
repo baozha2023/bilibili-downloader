@@ -11,7 +11,7 @@ from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtCore import QTimer, Qt, QEvent
 
 from core.crawler import BilibiliCrawler
-from core.config import ConfigManager
+from core.config import ConfigManager, APP_VERSION
 from ui.update_dialog import UpdateDialog
 from ui.tabs.download_tab import DownloadTab
 from ui.tabs.bangumi_tab import BangumiTab
@@ -27,12 +27,14 @@ from ui.qt_logger import QtLogHandler
 from ui.styles import UIStyles
 from core.history_manager import HistoryManager
 
-# 配置日志
+# 配置日志 / Configure logging
 logger = logging.getLogger('bilibili_desktop')
-# 移除旧的配置，将在 init_ui 中统一配置
 
 class BilibiliDesktop(QMainWindow):
-    """哔哩哔哩桌面端主窗口"""
+    """
+    哔哩哔哩桌面端主窗口
+    Bilibili Desktop Main Window
+    """
     
     def __init__(self):
         super().__init__()
@@ -46,11 +48,14 @@ class BilibiliDesktop(QMainWindow):
         self.init_ui()
         self.set_style()
         
-        # 显示更新公告
+        # 显示更新公告 / Show update dialog
         QTimer.singleShot(500, self.show_update_dialog)
 
     def closeEvent(self, event):
-        """关闭窗口事件"""
+        """
+        关闭窗口事件
+        Close window event
+        """
         # 移除 QtLogHandler 以避免关闭时出错
         root_logger = logging.getLogger()
         if hasattr(self, 'qt_log_handler') and self.qt_log_handler in root_logger.handlers:
@@ -59,18 +64,24 @@ class BilibiliDesktop(QMainWindow):
         event.accept()
         
     def resource_path(self, relative_path):
-        """获取资源文件的绝对路径"""
+        """
+        获取资源文件的绝对路径
+        Get absolute path of resource file
+        """
         if hasattr(sys, '_MEIPASS'):
             # PyInstaller打包后的路径
             return os.path.join(sys._MEIPASS, relative_path)
         return os.path.join(os.path.abspath("."), relative_path)
 
     def init_ui(self):
-        """初始化UI"""
-        self.setWindowTitle("bilibiliDownloader v5.6.1")
+        """
+        初始化UI
+        Initialize UI
+        """
+        self.setWindowTitle(f"bilibiliDownloader {APP_VERSION}")
         self.setMinimumSize(1100, 900)
         
-        # 设置应用图标
+        # 设置应用图标 / Set application icon
         icon_path = self.resource_path("resource/icon.ico")
         logo_jpg = self.resource_path("resource/logo.jpg")
         logo_png = self.resource_path("resource/logo.png")
@@ -82,14 +93,14 @@ class BilibiliDesktop(QMainWindow):
         elif os.path.exists(logo_png):
             self.setWindowIcon(QIcon(logo_png))
         
-        # 主布局
+        # 主布局 / Main layout
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
         main_layout.setContentsMargins(10, 10, 10, 10) # 默认边距
         
         # ---------------------------------------------------------------
-        # 1. 初始化控制台日志
+        # 1. 初始化控制台日志 / Initialize console log
         # ---------------------------------------------------------------
         log_group = QGroupBox("系统日志")
         log_layout = QVBoxLayout(log_group)
@@ -99,7 +110,7 @@ class BilibiliDesktop(QMainWindow):
         self.console_log.setStyleSheet("background-color: #1e1e1e; color: #f0f0f0; font-family: Consolas, Monospace; font-size: 20px;")
         log_layout.addWidget(self.console_log)
         
-        # 日志控制按钮
+        # 日志控制按钮 / Log control buttons
         log_ctrl_layout = QHBoxLayout()
         
         self.auto_scroll_check = QCheckBox("自动滚动")
@@ -123,7 +134,7 @@ class BilibiliDesktop(QMainWindow):
         log_layout.addLayout(log_ctrl_layout)
         
         # ---------------------------------------------------------------
-        # 1.1 初始化日志系统
+        # 1.1 初始化日志系统 / Initialize logging system
         # ---------------------------------------------------------------
         # 配置根日志，使其包含控制台输出和UI输出
         root_logger = logging.getLogger()
@@ -147,7 +158,7 @@ class BilibiliDesktop(QMainWindow):
         root_logger.addHandler(self.qt_log_handler)
         
         # ---------------------------------------------------------------
-        # 2. 标签页
+        # 2. 标签页 / Tabs
         # ---------------------------------------------------------------
         self.tabs = QTabWidget()
         # 优化Tab样式
@@ -200,7 +211,7 @@ class BilibiliDesktop(QMainWindow):
         main_layout.addWidget(log_group)
         
         # 欢迎信息 (通过logger输出)
-        logger.info("欢迎使用bilibiliDownloader v5.4！")
+        logger.info(f"欢迎使用bilibiliDownloader {APP_VERSION}！")
         logger.info(f"数据存储目录: {self.crawler.data_dir}")
         
         # 检查ffmpeg
@@ -210,23 +221,24 @@ class BilibiliDesktop(QMainWindow):
             logger.warning("未检测到ffmpeg，视频合并功能将不可用")
 
     def show_update_dialog(self):
-        """显示更新公告"""
-        version = "v5.6.2"
+        """显示更新公告 / Show update announcement"""
+        version = APP_VERSION
         updates = (
-            "1. 修复: 番剧下载取消后进度条归零，并正确记录已取消状态。\n"
-            "2. 优化: 版本管理界面改为表格展示，显示详细更新日志和日期。\n"
-            "3. 修复: 修复视频分析界面部分图表无法显示的bug。\n"
-            "4. 优化: 代码结构优化，清理冗余代码。\n"
+            "1. 修复：修复打包后版本管理无法获取版本列表的Bug (集成Git环境)。\n"
+            "2. 优化：集成Git环境，支持在无Git环境的电脑上运行版本管理。\n"
+            "3. 优化：核心代码增加详细中文注释，便于阅读和维护。\n"
+            "4. 优化：代码结构优化，清理冗余代码，提升代码质量。\n"
+            "5. 优化：版本号统一管理，避免版本号不一致问题。\n"
         )
         dialog = UpdateDialog(version, updates, self)
         dialog.exec_()
 
     def set_style(self):
-        """设置应用样式"""
+        """设置应用样式 / Set application style"""
         self.setStyleSheet(UIStyles.get_main_style())
 
     def log_to_console(self, message, level="info"):
-        """向控制台日志添加消息"""
+        """向控制台日志添加消息 / Log message to console"""
         timestamp = time.strftime("%H:%M:%S", time.localtime())
         
         # 根据日志级别设置颜色
@@ -267,18 +279,14 @@ class BilibiliDesktop(QMainWindow):
             self.console_log.verticalScrollBar().setValue(
                 self.console_log.verticalScrollBar().maximum()
             )
-        
-        # 同时记录到系统日志 (避免递归调用)
-        # logger.info(message) # 已由QtLogHandler处理，这里不需要再调用
-
 
     def clear_console_log(self):
-        """清除控制台日志"""
+        """清除控制台日志 / Clear console log"""
         self.console_log.clear()
         self.log_to_console("日志已清除", "system")
     
     def save_console_log(self):
-        """保存控制台日志到文件"""
+        """保存控制台日志到文件 / Save console log to file"""
         # 获取当前时间作为文件名
         timestamp = time.strftime("%Y%m%d_%H%M%S", time.localtime())
         default_filename = f"bilibili_download_log_{timestamp}.txt"
@@ -303,10 +311,12 @@ class BilibiliDesktop(QMainWindow):
                 QMessageBox.warning(self, "保存失败", f"保存日志失败: {str(e)}")
 
     def add_download_history(self, bvid, title, status):
+        """添加下载历史 / Add download history"""
         self.history_manager.add_history(bvid, title, status)
         self.download_history = self.history_manager.get_history()
 
     def show_download_history(self):
+        """显示下载历史对话框 / Show download history dialog"""
         dialog = QDialog(self)
         dialog.setWindowTitle("下载历史记录")
         dialog.setMinimumSize(900, 600)
@@ -391,6 +401,7 @@ class BilibiliDesktop(QMainWindow):
         dialog.exec_()
 
     def redownload_from_history(self, table):
+        """从历史重新下载 / Redownload from history"""
         selected_rows = table.selectedIndexes()
         if not selected_rows:
             QMessageBox.warning(self, "警告", "请先选择要重新下载的视频")
@@ -404,6 +415,7 @@ class BilibiliDesktop(QMainWindow):
             self.download_tab.download_video()
 
     def clear_download_history(self, table):
+        """清空历史 / Clear history"""
         reply = QMessageBox.question(self, "确认清空", "确定要清空所有下载历史记录吗？", QMessageBox.Yes | QMessageBox.No)
         if reply == QMessageBox.Yes:
             self.history_manager.clear_history()
@@ -411,6 +423,7 @@ class BilibiliDesktop(QMainWindow):
             table.setRowCount(0)
 
     def open_download_dir(self, specific_dir=None):
+        """打开下载目录 / Open download directory"""
         try:
             if specific_dir and os.path.exists(specific_dir):
                 os.startfile(specific_dir)
@@ -424,7 +437,7 @@ class BilibiliDesktop(QMainWindow):
             QMessageBox.warning(self, "错误", f"打开下载目录时出错: {str(e)}")
 
     def load_tabs(self):
-        """加载Tab顺序和可见性"""
+        """加载Tab顺序和可见性 / Load tabs order and visibility"""
         tab_order = self.config_manager.get('tab_order', [])
         tab_visibility = self.config_manager.get('tab_visibility', {})
         
@@ -449,7 +462,7 @@ class BilibiliDesktop(QMainWindow):
                     self.tabs.addTab(self.all_tabs[name], name)
                     
     def save_tab_order(self):
-        """保存Tab顺序"""
+        """保存Tab顺序 / Save tab order"""
         current_order = []
         for i in range(self.tabs.count()):
             current_order.append(self.tabs.tabText(i))
@@ -464,11 +477,11 @@ class BilibiliDesktop(QMainWindow):
         self.config_manager.save()
         
     def on_tab_moved(self, from_index, to_index):
-        """Tab移动事件"""
+        """Tab移动事件 / Tab moved event"""
         self.save_tab_order()
         
     def show_tab_context_menu(self, pos):
-        """显示Tab右键菜单"""
+        """显示Tab右键菜单 / Show tab context menu"""
         menu = QMenu(self)
         menu.setStyleSheet("""
             QMenu {
@@ -530,7 +543,7 @@ class BilibiliDesktop(QMainWindow):
         menu.exec_(self.tabs.mapToGlobal(pos))
         
     def toggle_tab_visibility(self, tab_name, visible):
-        """切换Tab可见性"""
+        """切换Tab可见性 / Toggle tab visibility"""
         tab_visibility = self.config_manager.get('tab_visibility', {})
         tab_visibility[tab_name] = visible
         self.config_manager.set('tab_visibility', tab_visibility)

@@ -4,6 +4,7 @@ import sys
 import logging
 
 from core.crawler import BilibiliCrawler
+from core.config import APP_VERSION
 
 
 logger = logging.getLogger('bilibili_cli')
