@@ -44,7 +44,7 @@ def start_cli(args):
 def main():
     """主函数"""
     # 创建命令行参数解析器
-    parser = argparse.ArgumentParser(description='bilibiliDownloader v5.6.6')
+    parser = argparse.ArgumentParser(description='bilibiliDownloader {APP_VERSION}')
     parser.add_argument('-g', '--gui', action='store_true', 
                         help='启动图形用户界面')
     parser.add_argument('-p', '--popular', action='store_true', 

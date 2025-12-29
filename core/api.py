@@ -7,12 +7,16 @@ class BilibiliAPI:
     """
     负责B站API调用
     """
+    BASE_URL = 'https://www.bilibili.com'
+    API_BASE = 'https://api.bilibili.com'
+    PASSPORT_BASE = 'https://passport.bilibili.com'
+    
     def __init__(self, network_manager: NetworkManager):
         self.network = network_manager
         
     def get_popular_videos(self, page=1):
         """获取B站热门视频列表"""
-        url = f'https://api.bilibili.com/x/web-interface/popular?ps=20&pn={page}'
+        url = f'{self.API_BASE}/x/web-interface/popular?ps=20&pn={page}'
         response = self.network.make_request(url)
         if isinstance(response, dict):
             return response.get('data', {}).get('list', [])
@@ -20,7 +24,7 @@ class BilibiliAPI:
 
     def get_favorite_resources(self, media_id, page=1):
         """获取收藏夹内容"""
-        url = f'https://api.bilibili.com/x/v3/fav/resource/list?media_id={media_id}&pn={page}&ps=20'
+        url = f'{self.API_BASE}/x/v3/fav/resource/list?media_id={media_id}&pn={page}&ps=20'
         response = self.network.make_request(url)
         if isinstance(response, dict):
             return response.get('data', {}).get('medias', [])
@@ -28,12 +32,12 @@ class BilibiliAPI:
     
     def get_video_info(self, bvid):
         """获取视频详细信息"""
-        url = f'https://api.bilibili.com/x/web-interface/view?bvid={bvid}'
+        url = f'{self.API_BASE}/x/web-interface/view?bvid={bvid}'
         return self.network.make_request(url)
 
     def get_video_tags(self, aid):
         """获取视频标签"""
-        url = f'https://api.bilibili.com/x/web-interface/view/detail/tag?aid={aid}'
+        url = f'{self.API_BASE}/x/web-interface/view/detail/tag?aid={aid}'
         response = self.network.make_request(url)
         if isinstance(response, dict):
             return response.get('data', [])
@@ -42,9 +46,9 @@ class BilibiliAPI:
     def get_bangumi_info(self, ep_id=None, season_id=None):
         """获取番剧/影视详细信息"""
         if season_id:
-             url = f"https://api.bilibili.com/pgc/view/web/season?season_id={season_id}"
+             url = f"{self.API_BASE}/pgc/view/web/season?season_id={season_id}"
         elif ep_id:
-             url = f"https://api.bilibili.com/pgc/view/web/season?ep_id={ep_id}"
+             url = f"{self.API_BASE}/pgc/view/web/season?ep_id={ep_id}"
         else:
             return None
         return self.network.make_request(url)
@@ -92,7 +96,7 @@ class BilibiliAPI:
         # 如果请求的是4K或8K，确保fourk=1
         fourk = 1 if target_qn >= 120 else 0
         
-        download_url_api = f'https://api.bilibili.com/x/player/playurl?bvid={bvid}&cid={cid}&qn={target_qn}&fnval={fnval}&fourk={fourk}'
+        download_url_api = f'{self.API_BASE}/x/player/playurl?bvid={bvid}&cid={cid}&qn={target_qn}&fnval={fnval}&fourk={fourk}'
         download_info = self.network.make_request(download_url_api)
         
         if not download_info or 'data' not in download_info:
@@ -111,12 +115,13 @@ class BilibiliAPI:
         if not video_streams:
             # Try PGC API if UGC fails (for Bangumi)
             logger.info(f"UGC PlayURL failed, trying PGC PlayURL for {bvid}")
-            download_url_api = f'https://api.bilibili.com/pgc/player/web/playurl?bvid={bvid}&cid={cid}&qn={target_qn}&fnval={fnval}&fourk={fourk}'
+            download_url_api = f'{self.API_BASE}/pgc/player/web/playurl?bvid={bvid}&cid={cid}&qn={target_qn}&fnval={fnval}&fourk={fourk}'
             download_info = self.network.make_request(download_url_api)
             
             if not download_info or ('data' not in download_info and 'result' not in download_info):
                 logger.error(f"无法获取视频 {bvid} 的下载链接 (PGC)")
                 return None
+
                 
             # PGC returns 'result' instead of 'data'
             data_block = download_info.get('result') or download_info.get('data')
@@ -249,7 +254,7 @@ class BilibiliAPI:
 
     def get_video_comments(self, aid, page=1):
         """获取视频评论"""
-        url = f'https://api.bilibili.com/x/v2/reply?pn={page}&type=1&oid={aid}&sort=2'
+        url = f'{self.API_BASE}/x/v2/reply?pn={page}&type=1&oid={aid}&sort=2'
         response = self.network.make_request(url)
         if isinstance(response, dict):
             return response.get('data', {}).get('replies', [])
@@ -257,7 +262,7 @@ class BilibiliAPI:
 
     def get_video_danmaku(self, cid):
         """获取视频弹幕"""
-        url = f'https://api.bilibili.com/x/v1/dm/list.so?oid={cid}'
+        url = f'{self.API_BASE}/x/v1/dm/list.so?oid={cid}'
         response = self.network.make_request(url, stream=False)
         # 注意：make_request在非JSON时可能返回bytes或None
         if isinstance(response, bytes):
@@ -268,7 +273,7 @@ class BilibiliAPI:
         """获取历史记录"""
 
         # 尝试使用cursor接口
-        url = f'https://api.bilibili.com/x/web-interface/history/cursor?ps=20&type=archive'
+        url = f'{self.API_BASE}/x/web-interface/history/cursor?ps=20&type=archive'
         # 如果需要翻页，通常需要传入 view_at (上一页最后一条的时间戳)
         # 暂时简单实现
         response = self.network.make_request(url)
@@ -278,12 +283,12 @@ class BilibiliAPI:
 
     def get_user_info(self, mid):
         """获取用户信息"""
-        url = f'https://api.bilibili.com/x/space/acc/info?mid={mid}'
+        url = f'{self.API_BASE}/x/space/acc/info?mid={mid}'
         return self.network.make_request(url)
         
     def search_users(self, keyword, page=1):
         """搜索用户"""
-        url = f'https://api.bilibili.com/x/web-interface/search/type?search_type=bili_user&keyword={keyword}&page={page}'
+        url = f'{self.API_BASE}/x/web-interface/search/type?search_type=bili_user&keyword={keyword}&page={page}'
         response = self.network.make_request(url)
         if isinstance(response, dict):
             return response.get('data', {}).get('result', [])
@@ -291,8 +296,29 @@ class BilibiliAPI:
 
     def get_related_videos(self, bvid):
         """获取相关推荐视频"""
-        url = f'https://api.bilibili.com/x/web-interface/archive/related?bvid={bvid}'
+        url = f'{self.API_BASE}/x/web-interface/archive/related?bvid={bvid}'
         response = self.network.make_request(url)
         if isinstance(response, dict):
             return response.get('data', [])
         return []
+
+    def get_login_qrcode(self):
+        """获取登录二维码"""
+        url = f"{self.PASSPORT_BASE}/x/passport-login/web/qrcode/generate"
+        return self.network.make_request(url)
+
+    def poll_login_qrcode(self, qrcode_key):
+        """检查二维码登录状态"""
+        url = f"{self.PASSPORT_BASE}/x/passport-login/web/qrcode/poll"
+        params = {"qrcode_key": qrcode_key}
+        return self.network.make_request(url, params=params)
+
+    def get_nav_info(self):
+        """获取导航/用户信息"""
+        url = f"{self.API_BASE}/x/web-interface/nav"
+        return self.network.make_request(url)
+
+    def get_fav_folder_list(self, up_mid):
+        """获取用户收藏夹列表"""
+        url = f"{self.API_BASE}/x/v3/fav/folder/created/list-all?up_mid={up_mid}"
+        return self.network.make_request(url)

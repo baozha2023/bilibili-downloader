@@ -284,10 +284,11 @@ def main():
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
     print(f"\n新版本 {APP_VERSION} 更新内容:")
-    print("- 新增：版本管理支持选择代码源 (Gitee/GitHub)")
-    print("- 新增：GitHub源支持直接下载编译好的程序，无需本地Python环境")
-    print("- 优化：版本管理界面及逻辑重构")
-    print("- 优化：代码结构清理与性能优化")
+    print("- 修复：用户查询CRC32反查后未使用UID查询的Bug")
+    print("- 修复：视频下载历史记录存储BV号而不是网址")
+    print("- 优化：用户查询列表签名仅展示首行，头像加载优化")
+    print("- 优化：用户查询重试机制，支持从设置获取配置")
+    print("- 更新：版本号更新至 v5.7")
 
 if __name__ == "__main__":
     main() 

@@ -541,8 +541,7 @@ class AccountInfoThread(QThread):
                 self.crawler.cookies = self.cookies
                 
                 # 获取用户信息
-                url = "https://api.bilibili.com/x/web-interface/nav"
-                response = self.crawler.make_request(url)
+                response = self.crawler.api.get_nav_info()
                 
                 if not response or response.get("code") != 0:
                     error_msg = response.get("message", "未知错误") if response else "请求失败"
@@ -568,8 +567,7 @@ class AccountInfoThread(QThread):
                     mid = user_data.get("mid")
                     if mid:
                         self.update_signal.emit({"status": "info", "message": "正在获取收藏夹信息..."})
-                        fav_url = f"https://api.bilibili.com/x/v3/fav/folder/created/list-all?up_mid={mid}"
-                        fav_response = self.crawler.make_request(fav_url)
+                        fav_response = self.crawler.api.get_fav_folder_list(mid)
                         if fav_response and fav_response.get("code") == 0:
                             fav_list = fav_response.get("data", {}).get("list", [])
                             user_data["favorites"] = fav_list

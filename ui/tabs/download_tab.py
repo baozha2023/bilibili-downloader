@@ -350,7 +350,14 @@ class DownloadTab(QWidget):
         formatted_time = self.format_time(int(execution_time)) if execution_time else "未知"
         
         data = result.get("data", {})
-        bvid = self.bvid_input.text().strip()
+        
+        # 修复：从输入框中提取BV号，而不是直接使用文本（可能是URL）
+        raw_input = self.bvid_input.text().strip()
+        bvid = raw_input
+        bv_match = re.search(r'(BV\w{10})', raw_input, re.IGNORECASE)
+        if bv_match:
+            bvid = bv_match.group(1)
+            
         title = data.get("title", "未知视频")
         
         # 只有在非取消状态下才将进度条设为100%
@@ -439,7 +446,12 @@ class DownloadTab(QWidget):
                 self.main_window.floating_window.reset()
             
             # 记录到历史记录（如果能获取到标题）
-            bvid = self.bvid_input.text().strip()
+            raw_input = self.bvid_input.text().strip()
+            bvid = raw_input
+            bv_match = re.search(r'(BV\w{10})', raw_input, re.IGNORECASE)
+            if bv_match:
+                bvid = bv_match.group(1)
+                
             # 尝试从 bvid_input 的 tooltip 获取标题，或者如果不为空的话
             title = self.bvid_input.toolTip()
             if not title:

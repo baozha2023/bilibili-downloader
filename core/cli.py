@@ -43,7 +43,7 @@ class CliHandler:
     def run_interactive(self):
         """Run interactive CLI"""
         while True:
-            print("bilibili-downloader v5.0")
+            print("bilibili-downloader {APP_VERSION}")
             print("1. 爬取热门视频")
             print("2. 爬取指定视频详情")
             print("3. 下载视频")

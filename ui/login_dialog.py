@@ -12,6 +12,8 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QGroupBox, QMessageBox, QStackedWidget, QFileDialog, QGridLayout, QFrame)
 from PyQt5.QtGui import QPixmap, QIcon, QImage, QPainter, QColor, QBrush, QPen
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QUrl, QSize, QPropertyAnimation, QEasingCurve, QRect
+from core.network import NetworkManager
+from core.api import BilibiliAPI
 
 # 配置日志
 logger = logging.getLogger('login_dialog')
@@ -28,12 +30,8 @@ class QRCodeLoginThread(QThread):
     def __init__(self):
         super().__init__()
         self.is_running = True
-        self.session = requests.Session()
-        # 设置User-Agent防止412错误
-        self.session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Referer': 'https://www.bilibili.com/'
-        })
+        self.network = NetworkManager()
+        self.api = BilibiliAPI(self.network)
         
     def run(self):
         try:
@@ -93,7 +91,7 @@ class QRCodeLoginThread(QThread):
                 code = status.get('data', {}).get('code', 0)
                 
                 if code == 0:  # 已扫码并确认登录
-                    cookies = self.session.cookies.get_dict()
+                    cookies = self.network.session.cookies.get_dict()
                     self.update_signal.emit({
                         "status": "success", 
                         "message": "登录成功！", 
@@ -143,12 +141,10 @@ class QRCodeLoginThread(QThread):
     def get_login_qr(self):
         """获取登录二维码URL"""
         try:
-            url = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate"
-            logger.info(f"正在请求二维码URL: {url}")
-            response = self.session.get(url, timeout=10)
-            response.raise_for_status()
-            result = response.json()
-            logger.info(f"二维码URL获取成功: {result.get('code')}")
+            logger.info("正在请求二维码URL...")
+            result = self.api.get_login_qrcode()
+            if result:
+                logger.info(f"二维码URL获取成功: {result.get('code')}")
             return result
         except Exception as e:
             logger.error(f"获取登录二维码失败: {str(e)}")
@@ -157,15 +153,10 @@ class QRCodeLoginThread(QThread):
     def check_qr_status(self, qr_key):
         """检查二维码扫描状态"""
         try:
-            url = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll"
-            params = {
-                "qrcode_key": qr_key
-            }
-            logger.info(f"正在检查二维码状态: {url}, key={qr_key[:5]}...")
-            response = self.session.get(url, params=params, timeout=10)
-            response.raise_for_status()
-            result = response.json()
-            logger.info(f"二维码状态: code={result.get('data', {}).get('code', '未知')}")
+            logger.info(f"正在检查二维码状态, key={qr_key[:5]}...")
+            result = self.api.poll_login_qrcode(qr_key)
+            if result:
+                logger.info(f"二维码状态: code={result.get('data', {}).get('code', '未知')}")
             return result
         except Exception as e:
             logger.error(f"检查二维码状态失败: {str(e)}")

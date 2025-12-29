@@ -10,6 +10,7 @@ from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkRepl
 from ui.widgets.card_widget import CardWidget
 from ui.widgets.loading_bar import LoadingBar
 from ui.message_box import BilibiliMessageBox
+from ui.utils.image_loader import ImageLoader
 
 logger = logging.getLogger('bilibili_desktop')
 
@@ -27,28 +28,62 @@ class UserSearchWorker(QThread):
             results = []
             keyword = self.keyword.strip()
             
+            logger.info(f"开始搜索用户，关键词: {keyword}")
+            
             # 1. Check if keyword is UID (digits)
             if keyword.isdigit():
+                logger.info(f"识别为UID: {keyword}")
                 self.progress_signal.emit(f"正在查询UID: {keyword}...")
                 info = self.crawler.api.get_user_info(keyword)
                 if info and info.get('code') == 0:
                     data = info.get('data', {})
                     user_item = self._parse_user_data(data)
                     results.append(user_item)
+                    logger.info(f"UID查询成功: {data.get('name')}")
+                else:
+                    logger.warning(f"UID查询失败: {keyword}")
             
             # 2. Check if keyword is CRC32 Hash (8 hex chars)
             # Danmaku usually provides the CRC32 hash of the UID
             elif len(keyword) == 8 and self._is_hex(keyword):
+                logger.info(f"识别为CRC32哈希: {keyword}")
                 self.progress_signal.emit(f"检测到CRC32哈希，正在尝试反查UID (可能需要几十秒)...")
                 uid = self._crack_crc32(keyword)
                 if uid:
+                    logger.info(f"CRC32反查成功: {keyword} -> {uid}")
                     self.progress_signal.emit(f"反查成功! UID: {uid}, 正在获取用户信息...")
-                    info = self.crawler.api.get_user_info(str(uid))
+                    # 修复 Bug: 确保使用反查出的 UID 进行查询
+                    # 增加重试机制，防止偶发失败
+                    max_retries = 3
+                    info = None
+                    
+                    # 获取重试配置
+                    retry_interval = 1
+                    try:
+                        config = self.crawler.network.config
+                        if config:
+                            max_retries = config.get('max_retries', 3)
+                            retry_interval = config.get('retry_interval', 2)
+                    except:
+                        pass
+                        
+                    for i in range(max_retries):
+                        info = self.crawler.api.get_user_info(str(uid))
+                        if info and info.get('code') == 0:
+                            break
+                        
+                        logger.warning(f"第 {i+1} 次查询UID失败: {info}, 正在重试...")
+                        time.sleep(retry_interval) # 稍作等待
+                    
                     if info and info.get('code') == 0:
                         data = info.get('data', {})
                         user_item = self._parse_user_data(data)
                         results.append(user_item)
+                        logger.info(f"用户查询成功: {data.get('name')}")
+                    else:
+                        logger.warning(f"用户查询最终失败 (UID: {uid}), 返回信息: {info}")
                 else:
+                    logger.warning(f"CRC32反查失败: {keyword}")
                     self.progress_signal.emit("反查失败，未找到对应的UID")
 
             # 3. Search by name (always try this as well unless it's a confirmed UID/Hash)
@@ -58,17 +93,22 @@ class UserSearchWorker(QThread):
             # For now, if we found a direct match, we skip broad search to be precise.
             
             if not results:
+                logger.info(f"尝试按昵称搜索: {keyword}")
                 self.progress_signal.emit(f"正在按昵称搜索: {keyword}...")
                 search_results = self.crawler.api.search_users(keyword)
                 if search_results:
+                    logger.info(f"昵称搜索找到 {len(search_results)} 个结果")
                     # Avoid duplicate if MID found
                     existing_mids = [str(r['mid']) for r in results]
                     for user in search_results:
                         if str(user.get('mid')) not in existing_mids:
                             results.append(user)
+                else:
+                    logger.info("昵称搜索未找到结果")
                         
             self.finished_signal.emit(results, "")
         except Exception as e:
+            logger.error(f"搜索过程出错: {e}", exc_info=True)
             self.finished_signal.emit([], str(e))
 
     def _is_hex(self, s):
@@ -224,6 +264,8 @@ class UserSearchTab(QWidget):
         self.main_window = main_window
         self.crawler = main_window.crawler
         self.avatar_cache = {}
+        # 初始化图片加载器
+        self.image_loader = ImageLoader(self)
         self.init_ui()
         
     def init_ui(self):
@@ -388,9 +430,11 @@ class UserCardWidget(QFrame):
         info_layout.addLayout(name_layout)
         
         sign = self.user.get('usign', '')
-        sign_label = QLabel(sign if sign else "这个人很懒，什么都没有写")
+        # 只展示第一行签名
+        display_sign = sign.split('\n')[0] if sign else "这个人很懒，什么都没有写"
+        sign_label = QLabel(display_sign)
         sign_label.setStyleSheet("color: #999; font-size: 14px;")
-        sign_label.setWordWrap(True)
+        sign_label.setWordWrap(False) # 不换行
         info_layout.addWidget(sign_label)
         
         # Stats

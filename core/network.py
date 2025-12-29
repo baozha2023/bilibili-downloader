@@ -6,6 +6,7 @@ import random
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
 from fake_useragent import UserAgent
+from core.config import ConfigManager
 
 # 配置日志
 logger = logging.getLogger('bilibili_core.network')
@@ -15,6 +16,8 @@ class NetworkManager:
     负责网络请求、会话管理、代理和Headers
     """
     def __init__(self, use_proxy=False, cookies=None):
+        self.config = ConfigManager()
+        
         # 使用fake_useragent生成随机User-Agent
         try:
             self.ua = UserAgent()
@@ -52,8 +55,11 @@ class NetworkManager:
     def _create_session(self):
         """创建会话对象，配置重试机制"""
         session = requests.Session()
+        # 获取配置
+        max_retries = self.config.get('max_retries', 3)
+        
         retry_strategy = Retry(
-            total=5,
+            total=max_retries,
             backoff_factor=0.5,
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["GET", "POST"],
@@ -62,7 +68,9 @@ class NetworkManager:
         adapter = HTTPAdapter(max_retries=retry_strategy)
         session.mount("http://", adapter)
         session.mount("https://", adapter)
-        session.timeout = (5, 30)
+        
+        timeout = self.config.get('timeout', 30)
+        session.timeout = (5, timeout)
         return session
     
     def _get_random_ua(self):
@@ -93,19 +101,24 @@ class NetworkManager:
             headers = self.headers.copy()
         headers['User-Agent'] = self._get_random_ua()
         
-        for retry in range(5):
+        # 从配置获取重试参数
+        max_retries = self.config.get('max_retries', 3)
+        retry_interval = self.config.get('retry_interval', 2)
+        timeout = self.config.get('timeout', 30)
+        
+        for retry in range(max_retries):
             try:
                 if method.upper() == 'GET':
                     response = self.session.get(
                         url, headers=headers, params=params, 
                         cookies=self.cookies, stream=stream, proxies=self.proxies,
-                        timeout=(5, 30)
+                        timeout=(5, timeout)
                     )
                 else:
                     response = self.session.post(
                         url, headers=headers, params=params, data=data,
                         cookies=self.cookies, stream=stream, proxies=self.proxies,
-                        timeout=(5, 30)
+                        timeout=(5, timeout)
                     )
                 
                 response.raise_for_status()
@@ -128,8 +141,10 @@ class NetworkManager:
                 return response.content
                 
             except Exception as e:
-                logger.warning(f"请求失败: {url}, 重试 {retry+1}/5. 错误: {e}")
-                time.sleep(random.uniform(1, 3))
+                logger.warning(f"请求失败: {url}, 重试 {retry+1}/{max_retries}. 错误: {e}")
+                # 使用配置的间隔 + 随机抖动
+                sleep_time = retry_interval + random.uniform(0, 1)
+                time.sleep(sleep_time)
                 
                 # 每次重试更换UA
                 headers['User-Agent'] = self._get_random_ua()

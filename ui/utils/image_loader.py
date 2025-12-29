@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QObject, pyqtSignal, QUrl
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+from core.api import BilibiliAPI
 
 class ImageLoader(QObject):
     """
@@ -45,7 +46,7 @@ class ImageLoader(QObject):
 
         request = QNetworkRequest(QUrl(url))
         # 设置Referer，防止防盗链 (B站图片通常需要)
-        request.setRawHeader(b"Referer", b"https://www.bilibili.com/")
+        request.setRawHeader(b"Referer", f"{BilibiliAPI.BASE_URL}/".encode())
         request.setRawHeader(b"User-Agent", b"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
         
         reply = self.network_manager.get(request)

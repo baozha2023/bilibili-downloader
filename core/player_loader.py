@@ -5,14 +5,13 @@ import time
 import ctypes
 import webbrowser
 import logging
+import winreg
 
-# Configure logger
 logger = logging.getLogger('bilibili_player')
 
 def check_webview2():
     """Check if WebView2 Runtime is installed via Registry"""
     try:
-        import winreg
         # Check machine-wide installation
         key_path = r"SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
         try:

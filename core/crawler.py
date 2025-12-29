@@ -85,7 +85,6 @@ class BilibiliCrawler:
         return self.api.get_video_comments(aid, page)
         
     def get_video_danmaku(self, cid):
-        # XML 解析逻辑保留在这里或移入API
         xml_bytes = self.api.get_video_danmaku(cid)
         return parse_danmaku_xml(xml_bytes)
 
@@ -300,18 +299,12 @@ class BilibiliCrawler:
         if progress_callback: progress_callback(100, 100)
         return True
 
-    # 兼容旧方法名
-    def download_file(self, *args, **kwargs):
-        return self.downloader.download_file(*args, **kwargs)
-        
     def save_to_json(self, data, filename):
-        # 简易实现
         path = os.path.join(self.data_dir, f"{filename}.json")
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
             
     def crawl_popular_videos(self, pages=3):
-        # 复用API
         videos = []
         for p in range(1, pages+1):
             v = self.get_popular_videos(p)

@@ -85,7 +85,6 @@ class Downloader:
                             
             # 如果被中断，删除未完成的文件
             if stop_event and stop_event.is_set():
-                 # 注意：文件句柄已关闭
                  return False
 
             # 下载完成校验
