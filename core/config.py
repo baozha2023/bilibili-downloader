@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger('bilibili_core')
 
-APP_VERSION = 'v5.7.1'
+APP_VERSION = 'v5.7.2'
 
 class ConfigManager:
     _instance = None

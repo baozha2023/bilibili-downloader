@@ -144,22 +144,6 @@ def copy_resources():
     
     # 复制 .git 文件夹 (已禁用：不再依赖本地 .git 文件夹)
     # Copy .git folder (Disabled: No longer rely on local .git folder)
-    # if os.path.exists('.git'):
-    #     git_dest = os.path.join(dist_dir, '.git')
-    #     if os.path.exists(git_dest):
-    #         # 防止权限问题，先尝试修改权限
-    #         # Prevent permission issues
-    #         def on_rm_error(func, path, exc_info):
-    #             os.chmod(path, 0o777)
-    #             func(path)
-    #         shutil.rmtree(git_dest, onerror=on_rm_error)
-    #     
-    #     try:
-    #         shutil.copytree('.git', git_dest)
-    #         print(f"已复制 .git 目录 到 {git_dest}")
-    #     except Exception as e:
-    #         print(f"复制 .git 目录失败: {e}")
-    #         print("警告: 版本管理功能可能受限")
     
     # 复制集成式 Git (MinGit)
     # Copy bundled Git (MinGit)
@@ -296,10 +280,11 @@ def main():
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
     print(f"\n新版本 {APP_VERSION} 更新内容:")
-    print("- 修复：视频分析中相关视频推荐未显示的问题")
-    print("- 优化：视频编辑各功能页面样式统一")
+    print("- 新增：用户查询CRC32反推本地缓存")
+    print("- 新增：番剧下载支持BV号输入及合集检测")
+    print("- 新增：视频下载支持合集检测跳转")
     print("- 优化：代码结构清理和优化")
-    print("- 更新：版本号更新至 v5.7.1")
+    print(f"- 更新：版本号更新至 {APP_VERSION}")
 
 if __name__ == "__main__":
     main() 

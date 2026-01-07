@@ -125,21 +125,62 @@ class BangumiInfoThread(QThread):
     finished_signal = pyqtSignal(dict)
     error_signal = pyqtSignal(str)
     
-    def __init__(self, crawler, ep_id=None, season_id=None):
+    def __init__(self, crawler, ep_id=None, season_id=None, bvid=None):
         super().__init__()
         self.crawler = crawler
         self.ep_id = ep_id
         self.season_id = season_id
+        self.bvid = bvid
         
     def run(self):
         try:
-            resp = self.crawler.api.get_bangumi_info(self.ep_id, self.season_id)
-            if resp and resp.get('code') == 0:
-                result = resp.get('result', {})
-                self.finished_signal.emit(result)
+            if self.bvid:
+                # Handle BV input (Check for Collection/Season)
+                resp = self.crawler.api.get_video_info(self.bvid)
+                if resp and resp.get('code') == 0:
+                    data = resp.get('data', {})
+                    
+                    # Check for UGC Season (Collection)
+                    if 'ugc_season' in data:
+                        season = data['ugc_season']
+                        # Transform to match Bangumi structure
+                        result = {
+                            'title': season.get('title', data.get('title')),
+                            'season_title': '', # UGC seasons usually don't have separate season titles
+                            'episodes': []
+                        }
+                        
+                        # Flatten sections into episodes
+                        sections = season.get('sections', [])
+                        for section in sections:
+                            for ep in section.get('episodes', []):
+                                # Adapt episode data
+                                episode = {
+                                    'title': str(ep.get('title', '')),
+                                    'long_title': '',
+                                    'bvid': ep.get('bvid'),
+                                    'cid': ep.get('cid'),
+                                    'aid': ep.get('aid')
+                                }
+                                result['episodes'].append(episode)
+                                
+                        self.finished_signal.emit(result)
+                    else:
+                        # It is a single video
+                        self.finished_signal.emit({'type': 'single', 'bvid': self.bvid})
+                else:
+                     msg = resp.get('message', '未知错误') if resp else '网络请求失败'
+                     self.error_signal.emit(msg)
+            
             else:
-                msg = resp.get('message', '未知错误') if resp else '网络请求失败'
-                self.error_signal.emit(msg)
+                # Handle EP/SS input
+                resp = self.crawler.api.get_bangumi_info(self.ep_id, self.season_id)
+                if resp and resp.get('code') == 0:
+                    result = resp.get('result', {})
+                    self.finished_signal.emit(result)
+                else:
+                    msg = resp.get('message', '未知错误') if resp else '网络请求失败'
+                    self.error_signal.emit(msg)
         except Exception as e:
             self.error_signal.emit(str(e))
 
@@ -300,35 +341,54 @@ class BangumiTab(QWidget):
             BilibiliMessageBox.warning(self, "提示", "请输入番剧地址")
             return
             
-        # Extract ep_id or season_id
+        # Extract ep_id, season_id or bvid
         ep_id = None
         season_id = None
+        bvid = None
         
         if url.isdigit():
             ep_id = url
         else:
             ep_match = re.search(r'ep(\d+)', url)
             ss_match = re.search(r'ss(\d+)', url)
+            bvid_match = re.search(r'(BV\w+)', url, re.IGNORECASE)
             
             if ep_match:
                 ep_id = ep_match.group(1)
             elif ss_match:
                 season_id = ss_match.group(1)
+            elif bvid_match:
+                bvid = bvid_match.group(1)
                 
-        if not ep_id and not season_id:
-            BilibiliMessageBox.warning(self, "提示", "无法从输入中提取ep_id或season_id (请确保包含ep123或ss123格式)")
+        if not ep_id and not season_id and not bvid:
+            BilibiliMessageBox.warning(self, "提示", "无法从输入中提取ep_id, season_id 或 BV号")
             return
             
         self.info_label.setText("正在获取剧集信息...")
         self.parse_btn.setEnabled(False)
         
-        self.info_thread = BangumiInfoThread(self.crawler, ep_id, season_id)
+        self.info_thread = BangumiInfoThread(self.crawler, ep_id, season_id, bvid)
         self.info_thread.finished_signal.connect(self.on_info_fetched)
         self.info_thread.error_signal.connect(self.on_info_error)
         self.info_thread.start()
 
     def on_info_fetched(self, result):
         self.parse_btn.setEnabled(True)
+        
+        # Check if it is a single video redirect
+        if result.get('type') == 'single':
+            self.info_label.setText("非番剧/合集")
+            reply = QMessageBox.question(self, '提示', 
+                                       '该BV号不是合集，是否前往视频下载？',
+                                       QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            if reply == QMessageBox.Yes:
+                # Switch to Download Tab
+                self.main_window.tabs.setCurrentWidget(self.main_window.download_tab)
+                # Set input
+                if result.get('bvid'):
+                    self.main_window.download_tab.bvid_input.setText(result.get('bvid'))
+            return
+
         title = result.get('title', '未知番剧')
         self.current_series_title = title
         season_title = result.get('season_title', '')
@@ -460,17 +520,9 @@ class BangumiTab(QWidget):
         bangumi_dir = os.path.join(base_dir, 'bangumi', safe_series_title)
         
         # 构建下载参数
-        params = {
-            "bvid": bvid, 
-            "title": title,
-            "should_merge": settings_tab.merge_check.isChecked(),
-            "delete_original": settings_tab.delete_original_check.isChecked(),
-            "download_danmaku": settings_tab.download_danmaku_check.isChecked(),
-            "download_comments": settings_tab.download_comments_check.isChecked(),
-            "video_quality": settings_tab.quality_combo.currentText(),
-            "video_codec": settings_tab.codec_combo.currentText(),
-            "audio_quality": settings_tab.audio_quality_combo.currentText()
-        }
+        params = settings_tab.get_download_params()
+        params["bvid"] = bvid
+        params["title"] = title
         
         # 构建配置字典
         config = {

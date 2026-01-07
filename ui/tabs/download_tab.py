@@ -10,6 +10,28 @@ from ui.workers import WorkerThread
 from ui.message_box import BilibiliMessageBox
 from ui.styles import UIStyles
 
+class CheckCollectionThread(QtCore.QThread):
+    finished_signal = QtCore.pyqtSignal(dict)
+    
+    def __init__(self, crawler, bvid):
+        super().__init__()
+        self.crawler = crawler
+        self.bvid = bvid
+        
+    def run(self):
+        try:
+            resp = self.crawler.api.get_video_info(self.bvid)
+            if resp and resp.get('code') == 0:
+                data = resp.get('data', {})
+                if 'ugc_season' in data:
+                    self.finished_signal.emit({'is_collection': True, 'bvid': self.bvid, 'title': data.get('title', '')})
+                else:
+                    self.finished_signal.emit({'is_collection': False, 'bvid': self.bvid})
+            else:
+                 self.finished_signal.emit({'is_collection': False, 'bvid': self.bvid})
+        except:
+             self.finished_signal.emit({'is_collection': False, 'bvid': self.bvid})
+
 class DownloadTab(QWidget):
     def __init__(self, main_window):
         super().__init__()
@@ -171,7 +193,7 @@ class DownloadTab(QWidget):
             self.comments_container.hide()
 
     def download_video(self, title=None):
-        """下载视频"""
+        """下载视频 - 第一步：检查是否为合集"""
         raw_input = self.bvid_input.text().strip()
         if not raw_input:
             BilibiliMessageBox.warning(self, "警告", "请输入视频BV号或链接")
@@ -192,6 +214,40 @@ class DownloadTab(QWidget):
             if reply == QDialog.Rejected:
                 return
         
+        # Disable button during check
+        self.download_btn.setEnabled(False)
+        self.download_btn.setText("正在检查...")
+        
+        # Start Check Thread
+        self.check_thread = CheckCollectionThread(self.crawler, bvid)
+        self.check_thread.finished_signal.connect(lambda res: self.on_check_finished(res, title))
+        self.check_thread.start()
+
+    def on_check_finished(self, result, title=None):
+        self.download_btn.setEnabled(True)
+        self.download_btn.setText("开始下载")
+        
+        if result.get('is_collection'):
+            reply = QMessageBox.question(self, '提示', 
+                                       '该BV号属于一个合集，是否前往番剧下载以获取完整列表？',
+                                       QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+            if reply == QMessageBox.Yes:
+                # Switch to Bangumi Tab
+                self.main_window.tabs.setCurrentWidget(self.main_window.bangumi_tab)
+                # Set input
+                if result.get('bvid'):
+                    self.main_window.bangumi_tab.url_input.setText(result.get('bvid'))
+                # Trigger parse
+                self.main_window.bangumi_tab.parse_bangumi()
+                return
+
+        # Proceed to download single video
+        # Use title from result if not provided
+        download_title = title if title else result.get('title')
+        self.start_download_worker(result['bvid'], download_title)
+
+    def start_download_worker(self, bvid, title=None):
+        """实际开始下载任务"""
         # 禁用下载按钮，启用取消按钮
         self.download_btn.setEnabled(False)
         self.cancel_btn.setEnabled(True)
@@ -227,16 +283,8 @@ class DownloadTab(QWidget):
             self.main_window.log_to_console("已设置不合并视频和音频，将保留原始文件", "info")
         
         # 创建并启动工作线程
-        params = {
-            "bvid": bvid, 
-            "should_merge": should_merge,
-            "delete_original": settings_tab.delete_original_check.isChecked(),
-            "download_danmaku": settings_tab.download_danmaku_check.isChecked(),
-            "download_comments": settings_tab.download_comments_check.isChecked(),
-            "video_quality": settings_tab.quality_combo.currentText(),
-            "video_codec": settings_tab.codec_combo.currentText(),
-            "audio_quality": settings_tab.audio_quality_combo.currentText()
-        }
+        params = settings_tab.get_download_params()
+        params["bvid"] = bvid
         if title:
             params["title"] = title
             

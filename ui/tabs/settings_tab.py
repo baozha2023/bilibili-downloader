@@ -550,3 +550,15 @@ class SettingsTab(QWidget):
         """显示版本管理对话框"""
         dialog = VersionDialog(self.main_window, self)
         dialog.exec_()
+
+    def get_download_params(self):
+        """获取当前下载参数配置"""
+        return {
+            "should_merge": self.merge_check.isChecked(),
+            "delete_original": self.delete_original_check.isChecked(),
+            "download_danmaku": self.download_danmaku_check.isChecked(),
+            "download_comments": self.download_comments_check.isChecked(),
+            "video_quality": self.quality_combo.currentText(),
+            "video_codec": self.codec_combo.currentText(),
+            "audio_quality": self.audio_quality_combo.currentText()
+        }

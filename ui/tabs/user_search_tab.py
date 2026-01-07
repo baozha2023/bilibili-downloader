@@ -1,6 +1,8 @@
 import logging
 import binascii
 import time
+import json
+import os
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QLineEdit, QListWidget, QListWidgetItem, QGroupBox, QFrame,
                              QDialog, QScrollArea, QGridLayout)
@@ -47,11 +49,24 @@ class UserSearchWorker(QThread):
             # Danmaku usually provides the CRC32 hash of the UID
             elif len(keyword) == 8 and self._is_hex(keyword):
                 logger.info(f"识别为CRC32哈希: {keyword}")
-                self.progress_signal.emit(f"检测到CRC32哈希，正在尝试反查UID (可能需要几十秒)...")
-                uid = self._crack_crc32(keyword)
+                
+                # Try cache first
+                uid = self._get_from_cache(keyword)
+                
                 if uid:
-                    logger.info(f"CRC32反查成功: {keyword} -> {uid}")
-                    self.progress_signal.emit(f"反查成功! UID: {uid}, 正在获取用户信息...")
+                    logger.info(f"CRC32缓存命中: {keyword} -> {uid}")
+                    self.progress_signal.emit(f"缓存命中! UID: {uid}, 正在获取用户信息...")
+                else:
+                    self.progress_signal.emit(f"检测到CRC32哈希，正在尝试反查UID (可能需要几十秒)...")
+                    uid = self._crack_crc32(keyword)
+                    if uid:
+                        self._save_to_cache(keyword, uid)
+                
+                if uid:
+                    if not self._get_from_cache(keyword): # Only log if not from cache to avoid duplicate logs or just log success
+                        logger.info(f"CRC32反查成功: {keyword} -> {uid}")
+                        self.progress_signal.emit(f"反查成功! UID: {uid}, 正在获取用户信息...")
+                    
                     # 修复 Bug: 确保使用反查出的 UID 进行查询
                     # 增加重试机制，防止偶发失败
                     max_retries = 3
@@ -110,6 +125,41 @@ class UserSearchWorker(QThread):
         except Exception as e:
             logger.error(f"搜索过程出错: {e}", exc_info=True)
             self.finished_signal.emit([], str(e))
+
+    def _get_cache_path(self):
+        try:
+            return os.path.join(self.crawler.data_dir, 'crc32_cache.json')
+        except:
+            return 'crc32_cache.json'
+
+    def _get_from_cache(self, crc32_hash):
+        try:
+            cache_path = self._get_cache_path()
+            if os.path.exists(cache_path):
+                with open(cache_path, 'r', encoding='utf-8') as f:
+                    cache = json.load(f)
+                    return cache.get(crc32_hash)
+        except Exception as e:
+            logger.error(f"Error reading CRC32 cache: {e}")
+        return None
+
+    def _save_to_cache(self, crc32_hash, uid):
+        try:
+            cache_path = self._get_cache_path()
+            cache = {}
+            if os.path.exists(cache_path):
+                try:
+                    with open(cache_path, 'r', encoding='utf-8') as f:
+                        cache = json.load(f)
+                except:
+                    pass
+            
+            cache[crc32_hash] = uid
+            
+            with open(cache_path, 'w', encoding='utf-8') as f:
+                json.dump(cache, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving CRC32 cache: {e}")
 
     def _is_hex(self, s):
         try:
