@@ -33,8 +33,8 @@ class AnalysisWorker(QThread):
             comments = []
             comment_dates = []
             user_levels = []
-            user_genders = []  # 新增：性别
-            comment_hours = [] # 新增：评论时间段
+            user_genders = []
+            comment_hours = []
             locations = []
             
             if aid:

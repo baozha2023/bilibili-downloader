@@ -108,7 +108,7 @@ class AnalysisTab(QWidget):
         self.content_layout = QVBoxLayout(self.content_widget)
         self.content_layout.setAlignment(Qt.AlignTop)
         
-        # 1. Basic Info Card
+        # 1. 视频基本信息
         self.info_card = CardWidget("视频基本信息")
         self.info_layout = QGridLayout()
         
@@ -146,7 +146,7 @@ class AnalysisTab(QWidget):
         
         self.add_separator(self.content_layout)
         
-        # 2. Charts Grid
+        # 2. 深度数据分析
         self.charts_card = CardWidget("深度数据分析")
         self.charts_layout = QGridLayout()
         self.charts_layout.setVerticalSpacing(30)
@@ -196,14 +196,13 @@ class AnalysisTab(QWidget):
         self.emoji_label.setStyleSheet("background-color: transparent; padding: 10px;")
         self.charts_layout.addWidget(self.emoji_label, 3, 1)
 
-        
         self.charts_card.add_layout(self.charts_layout)
         self.charts_card.hide()
         self.content_layout.addWidget(self.charts_card)
         
         self.add_separator(self.content_layout)
 
-        # 4. Keywords Card
+        # 3. 评论关键词
         self.keyword_card = CardWidget("评论关键词")
         self.keyword_layout = QHBoxLayout() # Horizontal tags
         self.keyword_card.add_layout(self.keyword_layout)
@@ -212,7 +211,7 @@ class AnalysisTab(QWidget):
         
         self.add_separator(self.content_layout)
         
-        # 5. Word Cloud Card
+        # 4. 评论词云分析
         self.cloud_card = CardWidget("评论词云分析")
         self.cloud_layout = QVBoxLayout()
         self.cloud_label = QLabel()
@@ -224,7 +223,7 @@ class AnalysisTab(QWidget):
 
         self.add_separator(self.content_layout)
 
-        # 6. Related Videos Card
+        # 5. 相关视频推荐
         self.related_card = CardWidget("相关视频推荐")
         self.related_layout = QGridLayout()
         self.related_card.add_layout(self.related_layout)
@@ -311,6 +310,10 @@ class AnalysisTab(QWidget):
         ChartGenerator.generate_sentiment_chart(self.sentiment_label, result.get('sentiment_score', 0.5))
         ChartGenerator.generate_emoji_chart(self.emoji_label, result.get('emojis', []))
         
+        # 5. Related Videos
+        related = result.get('related', [])
+        self.display_related_videos(related)
+        
         self.charts_card.show()
         
         # 4. Keywords
@@ -352,6 +355,95 @@ class AnalysisTab(QWidget):
             self.keyword_layout.addWidget(label)
         
         self.keyword_layout.addStretch()
+
+    def display_related_videos(self, related_videos):
+        # Clear existing
+        while self.related_layout.count():
+            item = self.related_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        if not related_videos:
+            self.related_card.hide()
+            return
+
+        self.related_card.show()
+        
+        # Display up to 8 videos in a grid (4 columns x 2 rows)
+        # Using a safer limit to avoid UI clutter
+        limit = min(len(related_videos), 8)
+        
+        for i in range(limit):
+            video = related_videos[i]
+            row = i // 4
+            col = i % 4
+            
+            widget = self.create_related_video_widget(video)
+            self.related_layout.addWidget(widget, row, col)
+
+    def create_related_video_widget(self, video):
+        widget = QWidget()
+        # Fixed size for consistency
+        widget.setFixedSize(180, 120)
+        widget.setStyleSheet("""
+            QWidget {
+                background-color: #f9f9f9;
+                border: 1px solid #eee;
+                border-radius: 8px;
+            }
+            QWidget:hover {
+                border-color: #fb7299;
+                background-color: #fff0f5;
+            }
+        """)
+        
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setSpacing(5)
+        
+        # Title
+        title_text = video.get('title', '未知标题')
+        title = QLabel(title_text)
+        title.setWordWrap(True)
+        # Limit title lines by height/elide if possible, but simpler to just truncate text
+        if len(title_text) > 20:
+            title.setText(title_text[:18] + "...")
+            
+        title.setStyleSheet("font-size: 13px; font-weight: bold; color: #333; border: none; background: transparent;")
+        title.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        layout.addWidget(title)
+        
+        # Owner
+        owner_name = video.get('owner', {}).get('name', '未知UP')
+        owner = QLabel(f"UP: {owner_name}")
+        owner.setStyleSheet("font-size: 12px; color: #666; border: none; background: transparent;")
+        layout.addWidget(owner)
+        
+        # Stats
+        stat = video.get('stat', {})
+        view = stat.get('view', 0)
+        view_str = f"{view/10000:.1f}万" if view > 10000 else str(view)
+        
+        info = QLabel(f"播放: {view_str}")
+        info.setStyleSheet("font-size: 12px; color: #999; border: none; background: transparent;")
+        layout.addWidget(info)
+        
+        layout.addStretch()
+        
+        # Make clickable
+        widget.setCursor(Qt.PointingHandCursor)
+        
+        # Use closure to capture bvid
+        bvid = video.get('bvid')
+        
+        def on_click(event):
+            if bvid:
+                self.bvid_input.setText(bvid)
+                self.start_analysis()
+                
+        widget.mouseReleaseEvent = on_click
+        
+        return widget
 
     def export_analysis(self):
         if not hasattr(self, 'last_result'):

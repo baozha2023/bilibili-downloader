@@ -79,6 +79,18 @@ def build_executable():
         '--hidden-import=ui.tabs.analysis.analysis_tab',
         '--hidden-import=ui.tabs.analysis.worker',
         '--hidden-import=ui.tabs.analysis.charts',
+        # Exclude unnecessary modules to prevent build hanging and reduce size
+        '--exclude-module=paddle',
+        '--exclude-module=paddlepaddle',
+        '--exclude-module=torch',
+        '--exclude-module=torchvision',
+        '--exclude-module=torchaudio',
+        '--exclude-module=tensorboard',
+        '--exclude-module=caffe2',
+        '--exclude-module=triton',
+        '--exclude-module=scipy',
+        '--exclude-module=matplotlib.tests',
+        '--exclude-module=numpy.tests',
         'main.py'
     ]
     
@@ -284,11 +296,10 @@ def main():
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
     print(f"\n新版本 {APP_VERSION} 更新内容:")
-    print("- 修复：用户查询CRC32反查后未使用UID查询的Bug")
-    print("- 修复：视频下载历史记录存储BV号而不是网址")
-    print("- 优化：用户查询列表签名仅展示首行，头像加载优化")
-    print("- 优化：用户查询重试机制，支持从设置获取配置")
-    print("- 更新：版本号更新至 v5.7")
+    print("- 修复：视频分析中相关视频推荐未显示的问题")
+    print("- 优化：视频编辑各功能页面样式统一")
+    print("- 优化：代码结构清理和优化")
+    print("- 更新：版本号更新至 v5.7.1")
 
 if __name__ == "__main__":
     main() 

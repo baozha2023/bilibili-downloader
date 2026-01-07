@@ -19,8 +19,8 @@ class FramePage(BaseEditPage):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(10)
+        layout.setContentsMargins(40, 30, 40, 30)
+        layout.setSpacing(20)
         
         # Header
         self.setup_header(layout, "逐帧获取", "精确查看视频每一帧并保存高清截图")

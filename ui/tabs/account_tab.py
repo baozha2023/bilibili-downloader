@@ -2,6 +2,7 @@ import os
 import json
 import time
 import logging
+import base64
 
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QStackedWidget, QGroupBox, QTableWidget, QTableWidgetItem, 
@@ -200,7 +201,7 @@ class AccountTab(QWidget):
         """)
         self.content_tabs.addTab(self.history_list, "历史记录")
         
-        # 封面预览Label (悬浮显示)
+        # 封面预览Label
         self.cover_label = QLabel(self)
         self.cover_label.setWindowFlags(Qt.ToolTip)
         self.cover_label.setStyleSheet("border: 2px solid white; border-radius: 4px;")
@@ -208,7 +209,6 @@ class AccountTab(QWidget):
         self.cover_label.resize(320, 200)
         self.cover_label.hide()
         
-        # --- Privacy Lock Implementation ---
         self.privacy_stack = QStackedWidget()
         
         # 1. Lock Screen
@@ -262,7 +262,7 @@ class AccountTab(QWidget):
             QDesktopServices.openUrl(QUrl(url))
             
     def switch_to_logged_view(self):
-        """切换到已登录视图（带动画）"""
+        """切换到已登录视图"""
         if self.account_stack.currentIndex() == 1:
             return
             
@@ -286,7 +286,6 @@ class AccountTab(QWidget):
     def _decrypt_data(self, encrypted_str):
         """解密数据"""
         try:
-            import base64
             key = b"bilibili_downloader_v5_secret_key"
             # 1. To bytes
             b64_bytes = encrypted_str.encode('utf-8')

@@ -1,6 +1,7 @@
 import os
 import logging
 import json
+import re
 import subprocess
 from core.config import ConfigManager
 
@@ -137,7 +138,6 @@ class WatermarkRemover:
         # Helper to get resolution using ffprobe/ffmpeg
         # Re-implement simple version or rely on caller to pass it?
         # For independence, let's implement a simple probe using ffmpeg
-        import re
         try:
             cmd = [self.ffmpeg_path, '-i', video_path]
             p = subprocess.Popen(cmd, stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True, encoding='utf-8', errors='replace')

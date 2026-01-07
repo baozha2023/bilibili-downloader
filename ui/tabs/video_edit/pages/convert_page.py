@@ -13,8 +13,8 @@ class ConvertPage(BaseEditPage):
 
     def init_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(40, 20, 40, 20)
-        layout.setSpacing(15)
+        layout.setContentsMargins(40, 30, 40, 30)
+        layout.setSpacing(20)
         
         self.setup_header(layout, "格式转换", "支持视频格式互转及音频提取")
 
