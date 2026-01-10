@@ -14,6 +14,53 @@ import zipfile
 import datetime
 from core.config import APP_VERSION
 
+# Configuration
+HIDDEN_IMPORTS = [
+    'cv2',
+    'fake_useragent',
+    'openpyxl',
+    'core.crawler',
+    'core.network',
+    'core.api',
+    'core.downloader',
+    'core.processor',
+    'core.version_manager',
+    'ui.main_window',
+    'ui.workers',
+    'ui.login_dialog',
+    'ui.message_box',
+    'ui.widgets.custom_combobox',
+    'ui.widgets.floating_window',
+    'core.watermark',
+    'ui.update_dialog',
+    'ui.tabs.download_tab',
+    'ui.tabs.popular_tab',
+    'ui.tabs.account_tab',
+    'ui.tabs.video_edit',
+    'ui.tabs.video_edit.pages.remove_watermark_page',
+    'ui.tabs.settings_tab',
+    'ui.tabs.bangumi_tab',
+    'ui.tabs.user_search_tab',
+    'ui.tabs.analysis',
+    'ui.tabs.analysis.analysis_tab',
+    'ui.tabs.analysis.worker',
+    'ui.tabs.analysis.charts'
+]
+
+EXCLUDED_MODULES = [
+    'paddle',
+    'paddlepaddle',
+    'torch',
+    'torchvision',
+    'torchaudio',
+    'tensorboard',
+    'caffe2',
+    'triton',
+    'scipy',
+    'matplotlib.tests',
+    'numpy.tests'
+]
+
 def print_step(message):
     """打印带有格式的步骤信息 / Print formatted step info"""
     print("\n" + "=" * 60)
@@ -50,49 +97,17 @@ def build_executable():
         '--collect-data=fake_useragent', # 收集fake_useragent数据 / Collect fake_useragent data
         '--collect-all=jieba',     # 收集jieba数据 / Collect jieba data
         '--collect-all=wordcloud', # 收集wordcloud数据 / Collect wordcloud data
-        '--hidden-import=cv2',     # OpenCV
-        '--hidden-import=fake_useragent', # fake_useragent
-        '--hidden-import=openpyxl', # Excel Export
-        '--hidden-import=core.crawler',
-        '--hidden-import=core.network',
-        '--hidden-import=core.api',
-        '--hidden-import=core.downloader',
-        '--hidden-import=core.processor',
-        '--hidden-import=core.version_manager', # 新增版本管理模块 / Version manager
-        '--hidden-import=ui.main_window',
-        '--hidden-import=ui.workers',
-        '--hidden-import=ui.login_dialog',
-        '--hidden-import=ui.message_box',
-        '--hidden-import=ui.widgets.custom_combobox',
-        '--hidden-import=ui.widgets.floating_window',
-        '--hidden-import=core.watermark',
-        '--hidden-import=ui.update_dialog',
-        '--hidden-import=ui.tabs.download_tab',
-        '--hidden-import=ui.tabs.popular_tab',
-        '--hidden-import=ui.tabs.account_tab',
-        '--hidden-import=ui.tabs.video_edit',
-        '--hidden-import=ui.tabs.video_edit.pages.remove_watermark_page',
-        '--hidden-import=ui.tabs.settings_tab',
-        '--hidden-import=ui.tabs.bangumi_tab',
-        '--hidden-import=ui.tabs.user_search_tab',
-        '--hidden-import=ui.tabs.analysis',
-        '--hidden-import=ui.tabs.analysis.analysis_tab',
-        '--hidden-import=ui.tabs.analysis.worker',
-        '--hidden-import=ui.tabs.analysis.charts',
-        # Exclude unnecessary modules to prevent build hanging and reduce size
-        '--exclude-module=paddle',
-        '--exclude-module=paddlepaddle',
-        '--exclude-module=torch',
-        '--exclude-module=torchvision',
-        '--exclude-module=torchaudio',
-        '--exclude-module=tensorboard',
-        '--exclude-module=caffe2',
-        '--exclude-module=triton',
-        '--exclude-module=scipy',
-        '--exclude-module=matplotlib.tests',
-        '--exclude-module=numpy.tests',
-        'main.py'
     ]
+    
+    # Add hidden imports
+    for imp in HIDDEN_IMPORTS:
+        cmd.append(f'--hidden-import={imp}')
+        
+    # Add excluded modules
+    for exc in EXCLUDED_MODULES:
+        cmd.append(f'--exclude-module={exc}')
+        
+    cmd.append('main.py')
     
     # 如果存在图标，添加图标参数 / Add icon if exists
     if os.path.exists('resource/icon.ico'):
@@ -140,11 +155,8 @@ def copy_resources():
             src_file = os.path.join('ffmpeg', file)
             if os.path.exists(src_file):
                 shutil.copy2(src_file, ffmpeg_dest)
-                print(f"已复制 {src_file} 到 {ffmpeg_dest}")
-    
-    # 复制 .git 文件夹 (已禁用：不再依赖本地 .git 文件夹)
-    # Copy .git folder (Disabled: No longer rely on local .git folder)
-    
+                print(f"已复制 {src_file} 到 {ffmpeg_dest}")  
+
     # 复制集成式 Git (MinGit)
     # Copy bundled Git (MinGit)
     local_git_dir = 'git'
@@ -280,9 +292,9 @@ def main():
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
     print(f"\n新版本 {APP_VERSION} 更新内容:")
-    print("- 新增：用户查询CRC32反推本地缓存")
-    print("- 新增：番剧下载支持BV号输入及合集检测")
-    print("- 新增：视频下载支持合集检测跳转")
+    print("- 新增：收藏夹批量下载功能")
+    print("- 新增：合集下载支持批量BV号输入")
+    print("- 优化：番剧下载更名为合集下载")
     print("- 优化：代码结构清理和优化")
     print(f"- 更新：版本号更新至 {APP_VERSION}")
 

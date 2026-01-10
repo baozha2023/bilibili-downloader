@@ -125,16 +125,49 @@ class BangumiInfoThread(QThread):
     finished_signal = pyqtSignal(dict)
     error_signal = pyqtSignal(str)
     
-    def __init__(self, crawler, ep_id=None, season_id=None, bvid=None):
+    def __init__(self, crawler, ep_id=None, season_id=None, bvid=None, bvid_list=None):
         super().__init__()
         self.crawler = crawler
         self.ep_id = ep_id
         self.season_id = season_id
         self.bvid = bvid
+        self.bvid_list = bvid_list
         
     def run(self):
         try:
-            if self.bvid:
+            if self.bvid_list:
+                # Handle Multi-BV List (Virtual Collection)
+                result = {
+                    'title': '批量视频列表',
+                    'season_title': f'(共{len(self.bvid_list)}个视频)',
+                    'episodes': []
+                }
+                
+                for index, bvid in enumerate(self.bvid_list):
+                    resp = self.crawler.api.get_video_info(bvid)
+                    if resp and resp.get('code') == 0:
+                        data = resp.get('data', {})
+                        episode = {
+                            'title': data.get('title', ''),
+                            'long_title': '',
+                            'bvid': data.get('bvid'),
+                            'cid': data.get('cid'),
+                            'aid': data.get('aid')
+                        }
+                        result['episodes'].append(episode)
+                    else:
+                        # Add a placeholder for failed video
+                        result['episodes'].append({
+                            'title': f'获取失败 ({bvid})',
+                            'long_title': '',
+                            'bvid': bvid,
+                            'cid': 0,
+                            'aid': 0
+                        })
+                    
+                self.finished_signal.emit(result)
+
+            elif self.bvid:
                 # Handle BV input (Check for Collection/Season)
                 resp = self.crawler.api.get_video_info(self.bvid)
                 if resp and resp.get('code') == 0:
@@ -197,17 +230,17 @@ class BangumiTab(QWidget):
         layout = QVBoxLayout(self)
         
         # 1. Input Area
-        input_group = QGroupBox("番剧/影视链接")
+        input_group = QGroupBox("合集/视频列表链接")
         input_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 18px; padding-top: 5px; margin-top: 5px; }")
         input_layout = QHBoxLayout(input_group)
         input_layout.setContentsMargins(10, 20, 10, 10)
         
         self.url_input = QLineEdit()
-        self.url_input.setPlaceholderText("请输入番剧播放页地址，例如: https://www.bilibili.com/bangumi/play/ep2474435/")
+        self.url_input.setPlaceholderText("请输入合集链接、BV号，或多个BV号(用逗号分隔)")
         self.url_input.setStyleSheet("font-size: 16px; padding: 8px;")
         input_layout.addWidget(self.url_input)
         
-        self.parse_btn = QPushButton("获取剧集")
+        self.parse_btn = QPushButton("获取合集")
         self.parse_btn.setStyleSheet("background-color: #fb7299; color: white; font-weight: bold; padding: 8px 15px; font-size: 16px; border-radius: 4px;")
         self.parse_btn.setCursor(Qt.PointingHandCursor)
         self.parse_btn.clicked.connect(self.parse_bangumi)
@@ -237,7 +270,7 @@ class BangumiTab(QWidget):
         layout.addLayout(extra_layout)
         
         # 2. Episode List Area
-        self.list_group = QGroupBox("剧集列表")
+        self.list_group = QGroupBox("合集列表")
         self.list_group.setStyleSheet("""
             QGroupBox { 
                 font-weight: bold; 
@@ -300,7 +333,7 @@ class BangumiTab(QWidget):
         # 3. Download Controls
         action_layout = QHBoxLayout()
         
-        self.download_btn = QPushButton("下载选中剧集")
+        self.download_btn = QPushButton("下载选中视频")
         self.download_btn.setStyleSheet("background-color: #fb7299; color: white; font-weight: bold; padding: 10px 30px; font-size: 18px;")
         self.download_btn.setCursor(Qt.PointingHandCursor)
         self.download_btn.clicked.connect(self.start_batch_download)
@@ -336,11 +369,49 @@ class BangumiTab(QWidget):
         self.is_downloading = False
 
     def parse_bangumi(self):
-        url = self.url_input.text().strip()
-        if not url:
-            BilibiliMessageBox.warning(self, "提示", "请输入番剧地址")
+        text = self.url_input.text().strip()
+        if not text:
+            BilibiliMessageBox.warning(self, "提示", "请输入链接或BV号")
             return
             
+        # Check for multiple BVs
+        separators = [',', '，', ';', '；']
+        is_multi = False
+        for sep in separators:
+            if sep in text:
+                is_multi = True
+                break
+        
+        bvid_list = []
+        if is_multi:
+            # Split and clean
+            parts = re.split(r'[,，;；]', text)
+            for part in parts:
+                part = part.strip()
+                if not part:
+                    continue
+                # Extract BV from part (it might be a URL)
+                bvid_match = re.search(r'(BV\w+)', part, re.IGNORECASE)
+                if bvid_match:
+                    bvid_list.append(bvid_match.group(1))
+                elif part.startswith('BV') or part.startswith('bv'):
+                     bvid_list.append(part)
+            
+            if not bvid_list:
+                BilibiliMessageBox.warning(self, "提示", "未从输入中提取到有效的BV号")
+                return
+                
+            self.info_label.setText(f"正在获取 {len(bvid_list)} 个视频的信息...")
+            self.parse_btn.setEnabled(False)
+            
+            self.info_thread = BangumiInfoThread(self.crawler, bvid_list=bvid_list)
+            self.info_thread.finished_signal.connect(self.on_info_fetched)
+            self.info_thread.error_signal.connect(self.on_info_error)
+            self.info_thread.start()
+            return
+
+        # Single Item Logic
+        url = text
         # Extract ep_id, season_id or bvid
         ep_id = None
         season_id = None
@@ -364,7 +435,7 @@ class BangumiTab(QWidget):
             BilibiliMessageBox.warning(self, "提示", "无法从输入中提取ep_id, season_id 或 BV号")
             return
             
-        self.info_label.setText("正在获取剧集信息...")
+        self.info_label.setText("正在获取合集信息...")
         self.parse_btn.setEnabled(False)
         
         self.info_thread = BangumiInfoThread(self.crawler, ep_id, season_id, bvid)
@@ -428,7 +499,7 @@ class BangumiTab(QWidget):
     def on_info_error(self, msg):
         self.parse_btn.setEnabled(True)
         self.info_label.setText("获取失败")
-        BilibiliMessageBox.error(self, "错误", f"获取剧集信息失败: {msg}")
+        BilibiliMessageBox.error(self, "错误", f"获取视频信息失败: {msg}")
 
     def select_all(self):
         for i in range(self.episode_list.count()):
@@ -446,7 +517,7 @@ class BangumiTab(QWidget):
                 self.download_queue.append(item.data(Qt.UserRole))
                 
         if not self.download_queue:
-            BilibiliMessageBox.warning(self, "提示", "请选择要下载的剧集")
+            BilibiliMessageBox.warning(self, "提示", "请选择要下载的视频")
             return
             
         self.total_batch_count = len(self.download_queue)
@@ -500,7 +571,7 @@ class BangumiTab(QWidget):
             return
             
         ep_data = self.download_queue.pop(0)
-        self.current_ep_data = ep_data  # 保存当前剧集数据，用于错误处理
+        self.current_ep_data = ep_data  # 保存当前视频数据，用于错误处理
         self.current_batch_index += 1
         bvid = ep_data.get('bvid')
         title = f"{ep_data.get('title')} {ep_data.get('long_title')}"

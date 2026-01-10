@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger('bilibili_core')
 
-APP_VERSION = 'v5.7.2'
+APP_VERSION = 'v5.7.3'
 
 class ConfigManager:
     _instance = None
@@ -23,7 +23,7 @@ class ConfigManager:
        "hardware_acceleration": True,
        "tab_order": [
          "视频下载",
-         "番剧下载",
+         "合集下载",
          "热门视频",
          "视频分析",
          "我的账号",
@@ -36,7 +36,7 @@ class ConfigManager:
          "视频编辑": True,
          "我的账号": True,
          "热门视频": True,
-         "番剧下载": True,
+         "合集下载": True,
          "视频分析": True,
          "视频下载": True,
          "用户查询": True

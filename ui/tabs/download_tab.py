@@ -229,7 +229,7 @@ class DownloadTab(QWidget):
         
         if result.get('is_collection'):
             reply = QMessageBox.question(self, '提示', 
-                                       '该BV号属于一个合集，是否前往番剧下载以获取完整列表？',
+                                       '该BV号属于一个合集，是否前往合集下载以获取完整列表？',
                                        QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
             if reply == QMessageBox.Yes:
                 # Switch to Bangumi Tab

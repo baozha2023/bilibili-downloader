@@ -102,60 +102,12 @@ class BilibiliDesktop(QMainWindow):
         # ---------------------------------------------------------------
         # 1. 初始化控制台日志 / Initialize console log
         # ---------------------------------------------------------------
-        log_group = QGroupBox("系统日志")
-        log_layout = QVBoxLayout(log_group)
-        self.console_log = QTextEdit()
-        self.console_log.setReadOnly(True)
-        self.console_log.setMaximumHeight(150)
-        self.console_log.setStyleSheet("background-color: #1e1e1e; color: #f0f0f0; font-family: Consolas, Monospace; font-size: 20px;")
-        log_layout.addWidget(self.console_log)
-        
-        # 日志控制按钮 / Log control buttons
-        log_ctrl_layout = QHBoxLayout()
-        
-        self.auto_scroll_check = QCheckBox("自动滚动")
-        self.auto_scroll_check.setChecked(True)
-        log_ctrl_layout.addWidget(self.auto_scroll_check)
-        
-        log_ctrl_layout.addStretch()
-        
-        clear_log_btn = QPushButton("清除日志")
-        clear_log_btn.setCursor(Qt.PointingHandCursor)
-        clear_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
-        clear_log_btn.clicked.connect(self.clear_console_log)
-        log_ctrl_layout.addWidget(clear_log_btn)
-        
-        save_log_btn = QPushButton("保存日志")
-        save_log_btn.setCursor(Qt.PointingHandCursor)
-        save_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
-        save_log_btn.clicked.connect(self.save_console_log)
-        log_ctrl_layout.addWidget(save_log_btn)
-        
-        log_layout.addLayout(log_ctrl_layout)
+        log_group = self._setup_logging_ui()
         
         # ---------------------------------------------------------------
         # 1.1 初始化日志系统 / Initialize logging system
         # ---------------------------------------------------------------
-        # 配置根日志，使其包含控制台输出和UI输出
-        root_logger = logging.getLogger()
-        root_logger.setLevel(logging.INFO)
-        
-        # 清除现有的处理器
-        root_logger.handlers = []
-        
-        # 控制台处理器
-        console_handler = logging.StreamHandler()
-        console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        console_handler.setFormatter(console_formatter)
-        root_logger.addHandler(console_handler)
-        
-        # Qt UI 处理器
-        self.qt_log_handler = QtLogHandler()
-        # 这里只保留消息内容，因为颜色和图标会在 log_to_console 中添加
-        qt_formatter = logging.Formatter('%(message)s') 
-        self.qt_log_handler.setFormatter(qt_formatter)
-        self.qt_log_handler.log_signal.connect(self.log_to_console)
-        root_logger.addHandler(self.qt_log_handler)
+        self._init_logger()
         
         # ---------------------------------------------------------------
         # 2. 标签页 / Tabs
@@ -187,7 +139,7 @@ class BilibiliDesktop(QMainWindow):
         # 定义所有可用标签页
         self.all_tabs = {
             "视频下载": self.download_tab,
-            "番剧下载": self.bangumi_tab,
+            "合集下载": self.bangumi_tab,
             "热门视频": self.popular_tab,
             "用户查询": self.user_search_tab,
             "视频分析": self.analysis_tab,
@@ -219,6 +171,62 @@ class BilibiliDesktop(QMainWindow):
             logger.info(f"ffmpeg检测成功: {self.crawler.ffmpeg_path}")
         else:
             logger.warning("未检测到ffmpeg，视频合并功能将不可用")
+
+    def _setup_logging_ui(self):
+        """初始化控制台日志UI"""
+        log_group = QGroupBox("系统日志")
+        log_layout = QVBoxLayout(log_group)
+        self.console_log = QTextEdit()
+        self.console_log.setReadOnly(True)
+        self.console_log.setMaximumHeight(150)
+        self.console_log.setStyleSheet("background-color: #1e1e1e; color: #f0f0f0; font-family: Consolas, Monospace; font-size: 20px;")
+        log_layout.addWidget(self.console_log)
+        
+        # 日志控制按钮
+        log_ctrl_layout = QHBoxLayout()
+        
+        self.auto_scroll_check = QCheckBox("自动滚动")
+        self.auto_scroll_check.setChecked(True)
+        log_ctrl_layout.addWidget(self.auto_scroll_check)
+        
+        log_ctrl_layout.addStretch()
+        
+        clear_log_btn = QPushButton("清除日志")
+        clear_log_btn.setCursor(Qt.PointingHandCursor)
+        clear_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
+        clear_log_btn.clicked.connect(self.clear_console_log)
+        log_ctrl_layout.addWidget(clear_log_btn)
+        
+        save_log_btn = QPushButton("保存日志")
+        save_log_btn.setCursor(Qt.PointingHandCursor)
+        save_log_btn.setStyleSheet("background-color: #666; padding: 3px 8px;")
+        save_log_btn.clicked.connect(self.save_console_log)
+        log_ctrl_layout.addWidget(save_log_btn)
+        
+        log_layout.addLayout(log_ctrl_layout)
+        return log_group
+
+    def _init_logger(self):
+        """初始化日志系统"""
+        # 配置根日志
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.INFO)
+        
+        # 清除现有的处理器
+        root_logger.handlers = []
+        
+        # 控制台处理器
+        console_handler = logging.StreamHandler()
+        console_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(console_formatter)
+        root_logger.addHandler(console_handler)
+        
+        # Qt UI 处理器
+        self.qt_log_handler = QtLogHandler()
+        qt_formatter = logging.Formatter('%(message)s') 
+        self.qt_log_handler.setFormatter(qt_formatter)
+        self.qt_log_handler.log_signal.connect(self.log_to_console)
+        root_logger.addHandler(self.qt_log_handler)
 
     def show_update_dialog(self):
         """显示更新公告 / Show update announcement"""
@@ -442,7 +450,7 @@ class BilibiliDesktop(QMainWindow):
         tab_visibility = self.config_manager.get('tab_visibility', {})
         
         # 默认顺序
-        default_order = ["视频下载", "番剧下载", "热门视频", "视频分析", "我的账号", "视频编辑", "设置"]
+        default_order = ["视频下载", "合集下载", "热门视频", "视频分析", "我的账号", "视频编辑", "设置"]
         
         # 如果没有保存的顺序，使用默认顺序
         if not tab_order:

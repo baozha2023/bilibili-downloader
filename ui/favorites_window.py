@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, 
                              QLabel, QTableWidget, QTableWidgetItem, QHeaderView, 
-                             QSpinBox, QMenu, QAction, QComboBox, QFileDialog, QApplication)
+                             QSpinBox, QMenu, QAction, QComboBox, QFileDialog, QApplication,QMessageBox)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QUrl, QEvent
 from PyQt5.QtGui import QCursor, QPixmap
 from ui.message_box import BilibiliMessageBox
@@ -24,6 +24,45 @@ class FavoriteWorker(QThread):
         try:
             videos = self.crawler.api.get_favorite_resources(self.media_id, self.page)
             self.finished_signal.emit(videos, "")
+        except Exception as e:
+            self.finished_signal.emit([], str(e))
+
+class FavoriteAllWorker(QThread):
+    finished_signal = pyqtSignal(list, str) # bvid_list, error_message
+    progress_signal = pyqtSignal(str)
+
+    def __init__(self, crawler, media_id):
+        super().__init__()
+        self.crawler = crawler
+        self.media_id = media_id
+
+    def run(self):
+        try:
+            all_bvids = []
+            page = 1
+            max_pages = 100 # Safety limit (2000 videos)
+            
+            while page <= max_pages:
+                if self.isInterruptionRequested():
+                    break
+                    
+                self.progress_signal.emit(f"正在获取第 {page} 页...")
+                videos = self.crawler.api.get_favorite_resources(self.media_id, page)
+                
+                if not videos:
+                    break
+                    
+                for v in videos:
+                    if 'bvid' in v:
+                        all_bvids.append(v['bvid'])
+                
+                if len(videos) < 20: # Last page
+                    break
+                    
+                page += 1
+                QThread.msleep(200) # Nice to API
+            
+            self.finished_signal.emit(all_bvids, "")
         except Exception as e:
             self.finished_signal.emit([], str(e))
 
@@ -99,6 +138,25 @@ class FavoritesWindow(QDialog):
             }
         """)
         control_layout.addWidget(self.export_btn)
+        
+        self.batch_btn = QPushButton("批量下载")
+        self.batch_btn.clicked.connect(self.on_batch_download_clicked)
+        self.batch_btn.setCursor(Qt.PointingHandCursor)
+        self.batch_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #67c23a;
+                color: white;
+                border-radius: 5px;
+                padding: 8px 20px;
+                font-weight: bold;
+                font-size: 16px;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: #85ce61;
+            }
+        """)
+        control_layout.addWidget(self.batch_btn)
         
         control_layout.addStretch()
         layout.addLayout(control_layout)
@@ -289,6 +347,51 @@ class FavoritesWindow(QDialog):
         except Exception as e:
             logger.error(f"导出失败: {e}")
             BilibiliMessageBox.error(self, "错误", f"导出失败: {str(e)}")
+
+    def on_batch_download_clicked(self):
+        """批量下载处理"""
+        reply = QMessageBox.question(self, "批量下载", 
+                                   "是否获取该收藏夹的【所有视频】并前往下载？\n(如果视频较多可能需要一些时间)",
+                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.Yes)
+        
+        if reply == QMessageBox.Yes:
+            self.batch_btn.setEnabled(False)
+            self.refresh_btn.setEnabled(False)
+            self.status_label.setText("正在获取所有视频列表...")
+            
+            self.batch_worker = FavoriteAllWorker(self.crawler, self.media_id)
+            self.batch_worker.progress_signal.connect(lambda msg: self.status_label.setText(msg))
+            self.batch_worker.finished_signal.connect(self.on_batch_fetched)
+            self.batch_worker.start()
+
+    def on_batch_fetched(self, bvids, error):
+        self.batch_btn.setEnabled(True)
+        self.refresh_btn.setEnabled(True)
+        
+        if error:
+            BilibiliMessageBox.error(self, "错误", f"获取失败: {error}")
+            self.status_label.setText("获取失败")
+            return
+            
+        if not bvids:
+            BilibiliMessageBox.warning(self, "提示", "未找到视频")
+            self.status_label.setText("未找到视频")
+            return
+            
+        self.status_label.setText(f"成功获取 {len(bvids)} 个视频")
+        
+        # Jump to Collection Download Tab
+        bangumi_tab = self.main_window.bangumi_tab
+        self.main_window.tabs.setCurrentWidget(bangumi_tab)
+        
+        # Set input
+        bangumi_tab.url_input.setText(','.join(bvids))
+        
+        # Trigger parse
+        bangumi_tab.parse_bangumi()
+        
+        # Close this window? No, user might want to keep it open.
+        # But maybe minimize? No.
 
     def on_refresh_clicked(self):
         self.page = self.page_spin.value()
