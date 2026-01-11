@@ -292,9 +292,10 @@ def main():
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"压缩包位于: {os.path.abspath(zip_file)}")
     print(f"\n新版本 {APP_VERSION} 更新内容:")
-    print("- 新增：收藏夹批量下载功能")
-    print("- 新增：合集下载支持批量BV号输入")
-    print("- 优化：番剧下载更名为合集下载")
+    print("- 新增：下载完成后“关闭电脑”选项")
+    print("- 新增：版本切换进度条显示")
+    print("- 优化：视频合并后自动选中目标文件")
+    print("- 修复：版本切换失败及显示不存在版本的Bug")
     print("- 优化：代码结构清理和优化")
     print(f"- 更新：版本号更新至 {APP_VERSION}")
 

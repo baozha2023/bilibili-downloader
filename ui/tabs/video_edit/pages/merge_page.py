@@ -1,4 +1,5 @@
 import os
+import subprocess
 from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QListWidget, 
                              QAbstractItemView, QListWidgetItem, QMessageBox, QGraphicsOpacityEffect, QFileDialog, QDialog)
 from PyQt5.QtCore import Qt, QSize, QPropertyAnimation, QEasingCurve, pyqtSignal
@@ -260,11 +261,16 @@ class MergePage(BaseEditPage):
             self.merge_status.setText(f"✅ 合并成功: {os.path.basename(msg)}")
             self.merge_progress.setValue(100)
             self.main_window.log_to_console(f"合并成功: {msg}", "success")
-            # Open merge folder
+            # Open merge folder and select file
             try:
-                os.startfile(merge_dir)
+                # os.startfile(merge_dir)
+                subprocess.run(['explorer', '/select,', os.path.normpath(msg)])
             except Exception as e:
                 self.main_window.log_to_console(f"打开文件夹失败: {e}", "error")
+                try:
+                    os.startfile(merge_dir)
+                except:
+                    pass
         else:
             self.merge_status.setText(f"❌ 失败: {msg}")
             self.main_window.log_to_console(f"合并失败: {msg}", "error")

@@ -443,6 +443,13 @@ class DownloadTab(QWidget):
                         os.startfile(merged_file)
                 elif complete_action == 3:  # 关闭程序
                     self.main_window.close()
+                elif complete_action == 4:  # 关闭电脑
+                    import platform
+                    if platform.system() == "Windows":
+                        os.system("shutdown -s -t 60")
+                        self.main_window.log_to_console("系统将在60秒后关闭，请保存工作！", "warning")
+                    else:
+                        self.main_window.log_to_console("自动关机仅支持Windows系统", "warning")
             except Exception as e:
                 self.main_window.log_to_console(f"执行完成后操作出错: {str(e)}", "error")
                 

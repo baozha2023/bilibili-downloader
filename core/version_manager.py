@@ -176,8 +176,20 @@ class VersionManager:
 
     def _sort_versions(self, versions):
         """版本号排序"""
+        # Filter valid versions (start with v or digit)
+        valid_versions = []
+        for v in versions:
+            tag = v['tag']
+            # Allow v1.2.3 or 1.2.3 or v1.2.3-beta
+            if re.match(r'^v?\d+(\.\d+)*', tag, re.IGNORECASE):
+                valid_versions.append(v)
+            else:
+                logger.warning(f"Ignored invalid version tag: {tag}")
+        
+        versions = valid_versions
+
         try:
-            versions.sort(key=lambda x: [int(u) for u in x['tag'].lower().replace('v', '').split('.')], reverse=True)
+            versions.sort(key=lambda x: [int(u) for u in re.sub(r'[^0-9.]', '', x['tag']).split('.') if u], reverse=True)
         except Exception:
             versions.sort(key=lambda x: x['tag'], reverse=True)
         return versions
@@ -207,13 +219,13 @@ class VersionManager:
                 pass
         return None
 
-    def switch_version(self, tag, source=SOURCE_GITEE, release_assets=None):
+    def switch_version(self, tag, source=SOURCE_GITEE, release_assets=None, progress_callback=None):
         """切换版本"""
         if source == self.SOURCE_GITEE:
-            return self._update_from_source_code(tag)
-        return self._update_from_github_release(tag, release_assets)
+            return self._update_from_source_code(tag, progress_callback)
+        return self._update_from_github_release(tag, release_assets, progress_callback)
 
-    def _update_from_source_code(self, tag):
+    def _update_from_source_code(self, tag, progress_callback=None):
         """从源码编译更新 (Gitee)"""
         if not self.check_git_available():
             return False, "Git环境不可用"
@@ -224,23 +236,25 @@ class VersionManager:
 
         temp_dir = tempfile.mkdtemp(prefix="bilibili_update_src_")
         try:
+            if progress_callback: progress_callback("正在下载源码...", 10)
             logger.info(f"正在下载源码: {tag}")
             repo_url = self.exapi.get_gitee_repo_url(self.GITEE_REPO)
             subprocess.run([self.git_exe, 'clone', '--depth', '1', '--branch', tag, repo_url, temp_dir], 
                          check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
             
-            return self._build_and_update(temp_dir, python_exe)
+            return self._build_and_update(temp_dir, python_exe, progress_callback)
             
         except Exception as e:
             logger.error(f"源码更新失败: {e}")
             return False, f"更新失败: {e}"
 
-    def _build_and_update(self, source_dir, python_exe):
+    def _build_and_update(self, source_dir, python_exe, progress_callback=None):
         """执行编译和更新流程"""
         try:
             # 安装依赖
             req_file = os.path.join(source_dir, 'requirements.txt')
             if os.path.exists(req_file):
+                if progress_callback: progress_callback("正在安装依赖...", 30)
                 logger.info("安装依赖...")
                 subprocess.run([python_exe, '-m', 'pip', 'install', '-r', req_file, 
                               '-i', self.exapi.ALIYUN_PYPI_MIRROR], 
@@ -251,18 +265,22 @@ class VersionManager:
             if not os.path.exists(build_script):
                 return False, "源码中缺少build.py"
                 
+            if progress_callback: progress_callback("正在编译 (这可能需要几分钟)...", 50)
             logger.info("开始编译...")
             subprocess.run([python_exe, build_script], cwd=source_dir, check=True)
             
             new_build_dir = os.path.join(source_dir, 'dist', 'bilibili_downloader')
+            
+            if progress_callback: progress_callback("正在应用更新...", 90)
             return self._apply_update(new_build_dir, source_dir)
         except Exception as e:
              return False, f"编译失败: {e}"
 
-    def _update_from_github_release(self, tag, assets):
+    def _update_from_github_release(self, tag, assets, progress_callback=None):
         """从GitHub Release下载更新 (支持 fallback 到源码下载)"""
         # 1. 获取Assets
         if assets is None:
+             if progress_callback: progress_callback("正在获取版本信息...", 5)
              logger.info(f"正在检查版本 {tag} 的 Assets...")
              assets = self._fetch_github_assets_html(tag)
         
@@ -271,14 +289,14 @@ class VersionManager:
         
         # 3. 下载或Fallback
         if target_asset:
-            return self._download_and_extract_zip(target_asset['browser_download_url'])
+            return self._download_and_extract_zip(target_asset['browser_download_url'], progress_callback)
             
         logger.warning(f"版本 {tag} 未找到预编译包，尝试源码编译...")
         python_exe = self._get_system_python()
         if not python_exe:
             return False, f"版本 {tag} 未提供预编译包(exe)，且检测到您的电脑未安装Python，无法进行源码编译。"
             
-        return self._update_from_github_source_zip(tag, python_exe)
+        return self._update_from_github_source_zip(tag, python_exe, progress_callback)
 
     def _find_best_asset(self, assets):
         """寻找最佳的zip资源"""
@@ -315,15 +333,17 @@ class VersionManager:
             logger.error(f"解析Assets失败: {e}")
         return assets
 
-    def _update_from_github_source_zip(self, tag, python_exe):
+    def _update_from_github_source_zip(self, tag, python_exe, progress_callback=None):
         """下载GitHub源码Zip并编译"""
         download_url = self.exapi.get_github_source_zip_url(self.GITHUB_REPO, tag)
         temp_dir = tempfile.mkdtemp(prefix="bilibili_gh_src_")
         zip_path = os.path.join(temp_dir, "source.zip")
         
         try:
-            self._download_file(download_url, zip_path)
+            if progress_callback: progress_callback("正在下载源码...", 10)
+            self._download_file(download_url, zip_path, progress_callback)
             
+            if progress_callback: progress_callback("正在解压源码...", 20)
             logger.info("解压源码...")
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(temp_dir)
@@ -338,20 +358,22 @@ class VersionManager:
             if not extracted_root:
                 return False, "源码解压结构异常"
                 
-            return self._build_and_update(extracted_root, python_exe)
+            return self._build_and_update(extracted_root, python_exe, progress_callback)
             
         except Exception as e:
             logger.error(f"GitHub源码更新失败: {e}")
             return False, f"下载源码失败: {e}"
 
-    def _download_and_extract_zip(self, download_url):
+    def _download_and_extract_zip(self, download_url, progress_callback=None):
         """下载并解压预编译包"""
         temp_dir = tempfile.mkdtemp(prefix="bilibili_update_pkg_")
         zip_path = os.path.join(temp_dir, "update.zip")
         
         try:
-            self._download_file(download_url, zip_path)
+            if progress_callback: progress_callback("正在下载更新包...", 10)
+            self._download_file(download_url, zip_path, progress_callback)
             
+            if progress_callback: progress_callback("正在解压...", 80)
             logger.info("正在解压...")
             extract_dir = os.path.join(temp_dir, "extracted")
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
@@ -362,13 +384,14 @@ class VersionManager:
             if not new_build_dir:
                 return False, "解压后的文件结构不正确"
             
+            if progress_callback: progress_callback("正在应用更新...", 90)
             return self._apply_update(new_build_dir, temp_dir)
 
         except Exception as e:
             logger.error(f"下载更新包失败: {e}")
             return False, f"下载或解压失败: {e}"
 
-    def _download_file(self, url, save_path):
+    def _download_file(self, url, save_path, progress_callback=None):
         """通用文件下载方法"""
         logger.info(f"正在下载: {url}")
         headers = {
@@ -376,9 +399,17 @@ class VersionManager:
         }
         with requests.get(url, headers=headers, stream=True) as r:
             r.raise_for_status()
+            total_size = int(r.headers.get('content-length', 0))
+            downloaded = 0
+            
             with open(save_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
+                    downloaded += len(chunk)
+                    if total_size > 0 and progress_callback:
+                        # Map 10-80% for download
+                        percent = 10 + int((downloaded / total_size) * 70)
+                        progress_callback(f"正在下载... ({int(downloaded/1024/1024)}MB / {int(total_size/1024/1024)}MB)", percent)
 
     def _find_build_dir_in_extracted(self, extract_dir):
         """在解压目录中查找构建目录"""

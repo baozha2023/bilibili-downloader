@@ -1,10 +1,49 @@
 import sys
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QTableWidget, QTableWidgetItem, QHeaderView, QGroupBox, 
-                             QAbstractItemView, QComboBox)
-from PyQt5.QtCore import Qt, QTimer
+                             QAbstractItemView, QComboBox, QProgressBar)
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from ui.message_box import BilibiliMessageBox
 from core.version_manager import VersionManager
+
+class VersionFetchWorker(QThread):
+    """Worker thread for fetching version list"""
+    finished_signal = pyqtSignal(list)
+    error_signal = pyqtSignal(str)
+
+    def __init__(self, manager, source):
+        super().__init__()
+        self.manager = manager
+        self.source = source
+
+    def run(self):
+        try:
+            versions = self.manager.get_versions(self.source)
+            self.finished_signal.emit(versions)
+        except Exception as e:
+            self.error_signal.emit(str(e))
+
+class VersionUpdateWorker(QThread):
+    """Worker thread for switching version"""
+    progress_signal = pyqtSignal(str, int)
+    finished_signal = pyqtSignal(bool, str)
+
+    def __init__(self, manager, tag, source, assets):
+        super().__init__()
+        self.manager = manager
+        self.tag = tag
+        self.source = source
+        self.assets = assets
+
+    def run(self):
+        try:
+            def callback(msg, percent):
+                self.progress_signal.emit(msg, percent)
+                
+            success, msg = self.manager.switch_version(self.tag, self.source, self.assets, progress_callback=callback)
+            self.finished_signal.emit(success, msg)
+        except Exception as e:
+            self.finished_signal.emit(False, str(e))
 
 class VersionDialog(QDialog):
     """
@@ -122,6 +161,7 @@ class VersionDialog(QDialog):
         
         layout.addLayout(self._create_top_bar())
         layout.addWidget(self._create_table())
+        layout.addLayout(self._create_progress_area())
         layout.addLayout(self._create_action_buttons())
         
         return group
@@ -164,6 +204,33 @@ class VersionDialog(QDialog):
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
         return self.table
 
+    def _create_progress_area(self):
+        layout = QVBoxLayout()
+        
+        self.status_label = QLabel("")
+        self.status_label.setStyleSheet("color: #666; font-size: 14px;")
+        self.status_label.setVisible(False)
+        layout.addWidget(self.status_label)
+        
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                text-align: center;
+                background-color: #f0f0f0;
+                height: 20px;
+            }
+            QProgressBar::chunk {
+                background-color: #fb7299;
+                border-radius: 4px;
+            }
+        """)
+        layout.addWidget(self.progress_bar)
+        
+        return layout
+
     def _create_action_buttons(self):
         layout = QHBoxLayout()
         
@@ -194,22 +261,41 @@ class VersionDialog(QDialog):
         self.table.setRowCount(0)
         self.switch_btn.setEnabled(False)
         self.switch_btn.setText("正在获取版本列表...")
+        self.source_combo.setEnabled(False)
         
         source = self._get_current_source()
-        QTimer.singleShot(100, lambda: self._do_fetch(source))
         
-    def _get_current_source(self):
-        return VersionManager.SOURCE_GITEE if self.source_combo.currentIndex() == 0 else VersionManager.SOURCE_GITHUB
-
-    def _do_fetch(self, source):
-        self.current_versions = self.version_manager.get_versions(source)
+        # Start fetch worker
+        self.fetch_worker = VersionFetchWorker(self.version_manager, source)
+        self.fetch_worker.finished_signal.connect(self.on_fetch_finished)
+        self.fetch_worker.error_signal.connect(self.on_fetch_error)
+        self.fetch_worker.start()
+        
+    def on_fetch_finished(self, versions):
+        self.current_versions = versions
         self.table.setRowCount(len(self.current_versions))
         
         for i, ver in enumerate(self.current_versions):
             self._add_table_row(i, ver)
             
         self.switch_btn.setText("切换至选中版本")
+        self.source_combo.setEnabled(True)
         self.on_selection_changed()
+        
+        if not versions:
+            self.status_label.setText("未找到版本信息，请尝试切换代码源")
+            self.status_label.setVisible(True)
+        else:
+            self.status_label.setVisible(False)
+
+    def on_fetch_error(self, error):
+        self.switch_btn.setText("获取失败")
+        self.source_combo.setEnabled(True)
+        self.status_label.setText(f"获取版本列表失败: {error}")
+        self.status_label.setVisible(True)
+
+    def _get_current_source(self):
+        return VersionManager.SOURCE_GITEE if self.source_combo.currentIndex() == 0 else VersionManager.SOURCE_GITHUB
 
     def _add_table_row(self, row, ver):
         tag = ver.get('tag', '')
@@ -258,7 +344,15 @@ class VersionDialog(QDialog):
         
         if reply == QDialog.Accepted:
             self.switch_btn.setEnabled(False)
-            self.switch_btn.setText("正在准备更新...")
+            self.switch_btn.setText("正在更新...")
+            self.table.setEnabled(False)
+            self.source_combo.setEnabled(False)
+            
+            # Show progress
+            self.status_label.setVisible(True)
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+            self.status_label.setText("准备开始...")
             
             assets = None
             if source == VersionManager.SOURCE_GITHUB:
@@ -267,14 +361,24 @@ class VersionDialog(QDialog):
                          assets = v.get('assets')
                          break
             
-            QTimer.singleShot(100, lambda: self._do_switch(tag, source, assets))
+            # Start update worker
+            self.update_worker = VersionUpdateWorker(self.version_manager, tag, source, assets)
+            self.update_worker.progress_signal.connect(self.on_update_progress)
+            self.update_worker.finished_signal.connect(self.on_update_finished)
+            self.update_worker.start()
             
-    def _do_switch(self, tag, source, assets):
-        success, msg = self.version_manager.switch_version(tag, source, assets)
+    def on_update_progress(self, msg, percent):
+        self.status_label.setText(msg)
+        self.progress_bar.setValue(percent)
         
+    def on_update_finished(self, success, msg):
         if success:
             sys.exit(0)
         else:
             self.switch_btn.setEnabled(True)
             self.switch_btn.setText("切换至选中版本")
+            self.table.setEnabled(True)
+            self.source_combo.setEnabled(True)
+            self.progress_bar.setVisible(False)
+            self.status_label.setText(f"更新失败: {msg}")
             BilibiliMessageBox.error(self, "更新失败", msg)

@@ -318,7 +318,7 @@ class SettingsTab(QWidget):
         action_layout.addWidget(action_label)
         
         self.complete_action = NoScrollComboBox()
-        self.complete_action.addItems(["无操作", "打开文件夹", "播放视频", "关闭程序"])
+        self.complete_action.addItems(["无操作", "打开文件夹", "播放视频", "关闭程序", "关闭电脑"])
         self.complete_action.setCurrentIndex(1)
         self.complete_action.setStyleSheet(combo_style)
         self.complete_action.setFixedWidth(200)
