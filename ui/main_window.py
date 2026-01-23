@@ -23,9 +23,12 @@ from ui.tabs.analysis import AnalysisTab
 from ui.tabs.user_search_tab import UserSearchTab
 from ui.widgets.floating_window import FloatingWindow
 from ui.qt_logger import QtLogHandler
+from ui.workers import GenericWorker
 
 from ui.styles import UIStyles
 from core.history_manager import HistoryManager
+
+from core.version_manager import VersionManager
 
 # 配置日志 / Configure logging
 logger = logging.getLogger('bilibili_desktop')
@@ -36,10 +39,14 @@ class BilibiliDesktop(QMainWindow):
     Bilibili Desktop Main Window
     """
     
-    def __init__(self):
+    def __init__(self, context=None):
         super().__init__()
-        self.crawler = BilibiliCrawler()
-        self.config_manager = ConfigManager()
+        self.context = context or {}
+        
+        # 使用预加载的对象或新建
+        self.crawler = self.context.get('crawler') or BilibiliCrawler()
+        self.config_manager = self.context.get('config_manager') or ConfigManager()
+        
         self.history_manager = HistoryManager(self.crawler.data_dir)
         self.download_history = self.history_manager.get_history()
         
@@ -49,7 +56,17 @@ class BilibiliDesktop(QMainWindow):
         self.set_style()
         
         # 显示更新公告 / Show update dialog
-        QTimer.singleShot(500, self.show_update_dialog)
+        # 如果有更新，可以在这里处理
+        QTimer.singleShot(500, self.show_version_announcement)
+        
+        # 处理预加载的登录信息
+        if self.context.get('login_info'):
+            # 这里可以根据 login_info 更新 AccountTab
+            # 由于 AccountTab 目前是 self.account_tab，我们需要确保它已经初始化
+            self.account_tab.check_login_status()
+        else:
+            # 如果没有预加载信息，也调用一次检查（可能会触发文件读取）
+            self.account_tab.check_login_status()
 
     def closeEvent(self, event):
         """
@@ -228,18 +245,78 @@ class BilibiliDesktop(QMainWindow):
         self.qt_log_handler.log_signal.connect(self.log_to_console)
         root_logger.addHandler(self.qt_log_handler)
 
-    def show_update_dialog(self):
+    def show_version_announcement(self):
         """显示更新公告 / Show update announcement"""
-        version = APP_VERSION
-        updates = (
-            "1. 重构：重写版本管理逻辑，自动检测本地Python环境。\n"
-            "2. 优化：无本地Python环境时不显示版本管理按钮，避免误操作。\n"
-            "3. 优化：版本切换优先使用用户本地Python环境进行编译。\n"
-            "4. 优化：自动检测并安装缺失的依赖库，确保编译成功率。\n"
-            "5. 优化：代码结构优化，提升稳定性。\n"
-        )
-        dialog = UpdateDialog(version, updates, self)
-        dialog.exec_()
+        try:
+            version = APP_VERSION
+            updates = (
+                "1. 新增：启动时自动检测Gitee新版本提醒\n"
+                "2. 新增：启动画面及进度条显示\n"
+                "3. 新增：视频编辑Tab增加音视频合并(AV Merge)功能\n"
+                "4. 优化：全屏化布局适配\n"
+                "5. 优化：代码结构清理和优化\n"
+            )
+            dialog = UpdateDialog(version, updates, self)
+            dialog.exec_()
+            
+            # Check for new version after announcement
+            # 如果预加载了更新信息，直接使用
+            update_info = self.context.get('update_info')
+            
+            if update_info and isinstance(update_info, dict):
+                # 检查是否有错误
+                if update_info.get('error'):
+                    logger.warning(f"启动时版本检测报错: {update_info.get('error')}")
+                    # 出错时是否重试？可以静默，或者根据策略。这里选择不重试，避免重复报错。
+                elif update_info.get('has_update') and update_info.get('version'):
+                    self.on_check_update_finished(True, [update_info['version']])
+                elif not update_info.get('checked'):
+                     # 如果没检查过（比如startup_worker里跳过了），则现在检查
+                     self.check_for_updates()
+            else:
+                self.check_for_updates()
+                
+        except Exception as e:
+            logger.error(f"Error in show_version_announcement: {e}")
+            # 确保即使出错也不崩溃
+
+    def check_for_updates(self):
+        """检查新版本"""
+        def check_task(progress_callback=None):
+            try:
+                vm = VersionManager()
+                versions = vm.get_versions(source="gitee")
+                return True, versions
+            except Exception as e:
+                return False, str(e)
+                
+        self.update_worker = GenericWorker(check_task)
+        self.update_worker.finished_signal.connect(self.on_check_update_finished)
+        self.update_worker.start()
+
+    def on_check_update_finished(self, success, result):
+        try:
+            if success and isinstance(result, list) and result:
+                latest_version = result[0]
+                current_version = APP_VERSION
+                
+                # Check if new version is newer
+                if VersionManager.compare_versions(latest_version['tag'], current_version) > 0:
+                    # Show update prompt
+                    reply = QMessageBox.question(self, "发现新版本", 
+                                               f"发现新版本 {latest_version['tag']}，是否前往查看？",
+                                               QMessageBox.Yes | QMessageBox.No)
+                    if reply == QMessageBox.Yes:
+                        try:
+                            from ui.version_dialog import VersionDialog
+                            dialog = VersionDialog(self)
+                            dialog.exec_()
+                        except Exception as e:
+                            logger.error(f"Failed to open VersionDialog: {e}")
+                            QMessageBox.warning(self, "错误", f"打开版本管理界面失败: {e}")
+        except Exception as e:
+             logger.error(f"Error in on_check_update_finished: {e}")
+
 
     def set_style(self):
         """设置应用样式 / Set application style"""

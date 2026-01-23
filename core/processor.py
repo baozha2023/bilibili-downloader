@@ -282,6 +282,48 @@ class MediaProcessor:
             logger.error(f"Failed to check audio stream: {e}")
             return False
 
+    def av_merge(self, video_path, audio_path, output_path=None, progress_callback=None):
+        """
+        音视频合并 (AV Merge)
+        :param video_path: 视频文件路径
+        :param audio_path: 音频文件路径
+        :param output_path: 输出文件路径
+        :param progress_callback: 进度回调
+        """
+        if not self.ffmpeg_available:
+            return False, "ffmpeg未安装"
+
+        if not os.path.exists(video_path):
+            return False, "视频文件不存在"
+        if not os.path.exists(audio_path):
+            return False, "音频文件不存在"
+
+        if not output_path:
+            input_dir = os.path.dirname(video_path)
+            input_name = os.path.splitext(os.path.basename(video_path))[0]
+            output_path = os.path.join(input_dir, f"{input_name}_av_merge.mp4")
+            
+            # Avoid overwrite
+            counter = 1
+            while os.path.exists(output_path):
+                output_path = os.path.join(input_dir, f"{input_name}_av_merge_{counter}.mp4")
+                counter += 1
+
+        # ffmpeg -i video -i audio -c:v copy -c:a aac -strict experimental -map 0:v:0 -map 1:a:0 output
+        # Map explicit streams to avoid confusion
+        cmd = [
+            self.ffmpeg_path, '-i', video_path, '-i', audio_path,
+            '-c:v', 'copy', '-c:a', 'aac', 
+            '-map', '0:v:0', '-map', '1:a:0',
+            '-y', output_path
+        ]
+        
+        logger.info(f"AV合并: {cmd}")
+        if self._run_ffmpeg_with_progress(cmd, progress_callback):
+            return True, output_path
+        else:
+            return False, "合并失败"
+
     def cut_video(self, input_path, start, end, unit='time', output_path=None, progress_callback=None):
         """
         剪辑视频

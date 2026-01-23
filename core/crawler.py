@@ -128,7 +128,9 @@ class BilibiliCrawler:
             return {
                 "download_success": True, "merge_success": True,
                 "output_path": output_path, "download_dir": video_dir,
-                "message": "视频已存在，跳过下载"
+                "message": "视频已存在，跳过下载",
+                "title": title,
+                "bvid": bvid
             }
         
         # 4. 下载流媒体 (视频和音频)
@@ -171,7 +173,9 @@ class BilibiliCrawler:
             "audio_path": audio_path,
             "output_path": output_path,
             "download_dir": video_dir,
-            "ffmpeg_available": self.processor.ffmpeg_available
+            "ffmpeg_available": self.processor.ffmpeg_available,
+            "title": title,
+            "bvid": bvid
         }
 
     def _cleanup_dir(self, dir_path):

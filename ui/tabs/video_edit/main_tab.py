@@ -5,6 +5,7 @@ from PyQt5.QtCore import QEasingCurve, QPropertyAnimation
 from .pages.convert_page import ConvertPage
 from .pages.cut_page import CutPage
 from .pages.merge_page import MergePage
+from .pages.av_merge_page import AVMergePage
 from .pages.compress_page import CompressPage
 from .pages.frame_page import FramePage
 from .pages.reverse_page import ReversePage
@@ -59,6 +60,7 @@ class VideoEditTab(QWidget):
             ("格式转换", "convert"), 
             ("视频剪辑", "cut"), 
             ("视频合并", "merge"), 
+            ("音视频合并", "av_merge"),
             ("视频压缩", "compress"), 
             ("视频去水印", "watermark"),
             ("视频反转", "reverse"),
@@ -85,6 +87,7 @@ class VideoEditTab(QWidget):
         self.pages['convert'] = ConvertPage(self.main_window, self.processor)
         self.pages['cut'] = CutPage(self.main_window, self.processor)
         self.pages['merge'] = MergePage(self.main_window, self.processor)
+        self.pages['av_merge'] = AVMergePage(self.main_window, self.processor)
         self.pages['compress'] = CompressPage(self.main_window, self.processor)
         self.pages['watermark'] = RemoveWatermarkPage(self.main_window, self.processor)
         self.pages['reverse'] = ReversePage(self.main_window, self.processor)
@@ -92,6 +95,7 @@ class VideoEditTab(QWidget):
         
         for tag, page in self.pages.items():
             self.content_stack.addWidget(page)
+
             
         # Select first page
         self.nav_btns[0][1].click()

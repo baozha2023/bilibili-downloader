@@ -1,7 +1,28 @@
 import xml.etree.ElementTree as ET
 import logging
+import base64
 
 logger = logging.getLogger('bilibili_core.utils')
+
+def xor_cipher(data: bytes, key: bytes) -> bytes:
+    """简单的XOR加密"""
+    return bytes([b ^ key[i % len(key)] for i, b in enumerate(data)])
+
+def decrypt_data(encrypted_str):
+    """解密数据"""
+    try:
+        key = b"bilibili_downloader_v5_secret_key"
+        # 1. To bytes
+        b64_bytes = encrypted_str.encode('utf-8')
+        # 2. Base64 decode
+        xor_bytes = base64.b64decode(b64_bytes)
+        # 3. XOR
+        data_bytes = xor_cipher(xor_bytes, key)
+        # 4. To string
+        return data_bytes.decode('utf-8')
+    except Exception as e:
+        logger.error(f"解密失败: {e}")
+        return None
 
 def parse_danmaku_xml(xml_bytes):
     """

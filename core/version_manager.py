@@ -197,6 +197,26 @@ class VersionManager:
     def get_current_version(self):
         return APP_VERSION
 
+    @staticmethod
+    def compare_versions(v1, v2):
+        """
+        Compare two version strings (e.g. 'v1.2.3' vs '1.2.4')
+        Returns:
+            1 if v1 > v2
+            -1 if v1 < v2
+            0 if v1 == v2
+        """
+        def normalize(v):
+            # Remove 'v' prefix and non-numeric/dot chars
+            return [int(u) for u in re.sub(r'[^0-9.]', '', v).split('.') if u]
+            
+        p1 = normalize(v1)
+        p2 = normalize(v2)
+        
+        if p1 > p2: return 1
+        if p1 < p2: return -1
+        return 0
+
     def check_python_available(self):
         """检查是否有可用的 Python 环境"""
         return self._get_system_python() is not None

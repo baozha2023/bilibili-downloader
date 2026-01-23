@@ -600,7 +600,9 @@ class BangumiTab(QWidget):
             'cookies': self.crawler.cookies,
             'data_dir': base_dir,
             'download_dir': bangumi_dir,
-            'max_retries': settings_tab.retry_count.value()
+            'max_retries': settings_tab.retry_count.value(),
+            'timeout': settings_tab.timeout_spin.value(),
+            'retry_interval': settings_tab.retry_interval_spin.value()
         }
         
         # 启动工作线程
@@ -655,7 +657,7 @@ class BangumiTab(QWidget):
             return
 
         if result['status'] == 'success':
-            title = result['data']['title']
+            title = result['data'].get('title', '未知视频')
             bvid = result['data'].get('bvid', '')
             self.main_window.log_to_console(f"下载完成: {title}", "success")
             

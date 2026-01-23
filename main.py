@@ -7,18 +7,28 @@ import ctypes
 import sys
 import argparse
 import logging
+import time
+import os
+import traceback
 from PyQt5.QtWidgets import QApplication
 # 导入项目模块
-from ui.main_window import BilibiliDesktop
 from core.cli import CliHandler
 from core.config import APP_VERSION
+from ui.splash_screen import SplashScreen
+from ui.startup_worker import StartupWorker
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, 
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('bilibili_downloader')
 
+# Global exception handler
+def global_exception_handler(exctype, value, tb):
+    logger.error("Uncaught exception", exc_info=(exctype, value, tb))
+    # 也可以弹窗显示错误，但如果在启动阶段可能无法显示
+    traceback.print_exception(exctype, value, tb)
 
+sys.excepthook = global_exception_handler
 
 def start_gui():
     """启动图形用户界面"""
@@ -31,8 +41,44 @@ def start_gui():
         
 
     app = QApplication(sys.argv)
-    window = BilibiliDesktop()
-    window.show()
+    
+    # 启动画面 / Splash Screen
+    splash_img_path = "resource/logo.jpg"
+    
+    # PyInstaller path handling
+    if hasattr(sys, '_MEIPASS'):
+        splash_img_path = os.path.join(sys._MEIPASS, "resource", "logo.jpg")
+    elif not os.path.exists(splash_img_path):
+        # 如果 logo.jpg 不存在，尝试 png
+         splash_img_path = "resource/logo.png"
+         if hasattr(sys, '_MEIPASS'):
+            splash_img_path = os.path.join(sys._MEIPASS, "resource", "logo.png")
+            
+    splash = SplashScreen(splash_img_path, APP_VERSION)
+    splash.show()
+    
+    # 启动后台任务
+    worker = StartupWorker()
+    
+    # 定义启动完成后的回调
+    def on_startup_finished(context):
+        try:
+            # 延迟导入 ui 模块
+            from ui.main_window import BilibiliDesktop
+            
+            # 传递预加载的 context
+            window = BilibiliDesktop(context=context)
+            window.show()
+            
+            splash.close()
+        except Exception as e:
+            logger.error(f"Failed to start main window: {e}")
+            sys.exit(1)
+
+    worker.progress_signal.connect(splash.set_progress)
+    worker.finished_signal.connect(on_startup_finished)
+    worker.start()
+    
     sys.exit(app.exec_())
 
 def start_cli(args):

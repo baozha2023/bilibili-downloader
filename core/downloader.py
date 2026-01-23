@@ -31,12 +31,13 @@ class Downloader:
         # 发起请求
         try:
             # 直接使用session发起流式请求，以便手动处理Header
+            timeout = self.network.config.get('timeout', 30)
             response = self.network.session.get(
                 url, 
                 headers=headers, 
                 cookies=self.network.cookies,
                 stream=True, 
-                timeout=30
+                timeout=(5, timeout)
             )
             response.raise_for_status()
 

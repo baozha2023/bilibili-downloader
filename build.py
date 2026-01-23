@@ -281,21 +281,17 @@ def main():
     # 4. 验证构建结果
     if not verify_build():
         print("构建验证失败，请检查错误并修复。")
-        sys.exit(1)
-    
-    # 5. 创建压缩包
-    zip_file = create_zip_archive()
+        sys.exit(1)   
     
     print("\n" + "=" * 60)
     print("  打包过程完成！")
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
-    print(f"压缩包位于: {os.path.abspath(zip_file)}")
-    print(f"\n新版本 {APP_VERSION} 更新内容:")
-    print("- 新增：下载完成后“关闭电脑”选项")
-    print("- 新增：版本切换进度条显示")
-    print("- 优化：视频合并后自动选中目标文件")
-    print("- 修复：版本切换失败及显示不存在版本的Bug")
+    print(f"\n新版本 {APP_VERSION}. 更新内容:")
+    print("- 新增：启动时自动检测Gitee新版本提醒")
+    print("- 新增：启动画面及进度条显示")
+    print("- 新增：视频编辑Tab增加音视频合并(AV Merge)功能")
+    print("- 优化：全屏化布局适配")
     print("- 优化：代码结构清理和优化")
     print(f"- 更新：版本号更新至 {APP_VERSION}")
 

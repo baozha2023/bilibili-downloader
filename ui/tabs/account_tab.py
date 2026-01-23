@@ -8,14 +8,15 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
                              QStackedWidget, QGroupBox, QTableWidget, QTableWidgetItem, 
                              QHeaderView, QTabWidget, QMessageBox, QGraphicsOpacityEffect,
                              QMenu, QAction, QApplication)
-from PyQt5.QtGui import QPixmap, QPainter, QBrush, QDesktopServices, QCursor
-from PyQt5.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve, QEvent
+from PyQt5.QtGui import QPixmap, QPainter, QBrush, QDesktopServices, QCursor, QColor
+from PyQt5.QtCore import Qt, QUrl, QPropertyAnimation, QEasingCurve, QEvent, QTimer
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from ui.workers import AccountInfoThread
 from ui.login_dialog import BilibiliLoginWindow
 from ui.favorites_window import FavoritesWindow
 from ui.styles import UIStyles
 from ui.utils.image_loader import ImageLoader
+from core.utils import decrypt_data
 
 logger = logging.getLogger('bilibili_desktop')
 
@@ -29,7 +30,8 @@ class AccountTab(QWidget):
         self.image_loader = ImageLoader(self)
         
         self.init_ui()
-        self.check_login_status()
+        # 移除自动调用，由 MainWindow 控制调用时机
+        # self.check_login_status()
         
     def init_ui(self):
         layout = QVBoxLayout(self)
@@ -279,28 +281,24 @@ class AccountTab(QWidget):
         self.account_stack.setCurrentIndex(1)
         self.anim.start()
 
-    def _xor_cipher(self, data: bytes, key: bytes) -> bytes:
-        """简单的XOR加密"""
-        return bytes([b ^ key[i % len(key)] for i, b in enumerate(data)])
-
-    def _decrypt_data(self, encrypted_str):
-        """解密数据"""
-        try:
-            key = b"bilibili_downloader_v5_secret_key"
-            # 1. To bytes
-            b64_bytes = encrypted_str.encode('utf-8')
-            # 2. Base64 decode
-            xor_bytes = base64.b64decode(b64_bytes)
-            # 3. XOR
-            data_bytes = self._xor_cipher(xor_bytes, key)
-            # 4. To string
-            return data_bytes.decode('utf-8')
-        except Exception as e:
-            logger.error(f"解密失败: {e}")
-            return None
-
     def check_login_status(self):
         """检查登录状态"""
+        # 如果已经通过 StartupWorker 检查了，直接使用
+        if hasattr(self.main_window, 'context') and self.main_window.context.get('login_info'):
+            login_info = self.main_window.context.get('login_info')
+            if login_info.get('is_login') and login_info.get('data'):
+                # 清除 context 以免重复使用
+                self.main_window.context['login_info'] = None
+                
+                # 直接处理数据
+                cookies = login_info.get('cookies')
+                if cookies:
+                    self.crawler.cookies = cookies
+                    
+                self.on_account_info_finished({"status": "success", "data": login_info.get('data')})
+                self.switch_to_logged_view()
+                return
+
         self.main_window.log_to_console("正在检查登录状态...", "info")
         config_file = os.path.join(self.crawler.data_dir, "config", "login_config.json")
         if os.path.exists(config_file):
@@ -312,7 +310,7 @@ class AccountTab(QWidget):
                 # Check if encrypted
                 if isinstance(saved_data, dict) and "data" in saved_data and "version" in saved_data:
                     # Decrypt
-                    decrypted_str = self._decrypt_data(saved_data["data"])
+                    decrypted_str = decrypt_data(saved_data["data"])
                     if decrypted_str:
                         config = json.loads(decrypted_str)
 
@@ -577,9 +575,43 @@ class AccountTab(QWidget):
             self.history_list.setItem(i, 3, bvid_item)
 
     def load_account_avatar(self, url):
-        self.account_avatar.setText("加载中...")
+        # 先设置默认头像
+        self.set_default_avatar()
+        
+        # 延迟1秒加载，避免初始化时的资源竞争
+        QTimer.singleShot(1000, lambda: self._start_load_avatar(url))
+        
+    def _start_load_avatar(self, url):
         self.image_loader.load_image(url, self.on_avatar_loaded)
-    
+        
+    def set_default_avatar(self):
+        """设置默认头像"""
+        try:
+            default_pixmap = QPixmap(80, 80)
+            default_pixmap.fill(Qt.transparent)
+            
+            painter = QPainter(default_pixmap)
+            painter.setRenderHint(QPainter.Antialiasing)
+            
+            # 绘制背景
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QBrush(QColor("#E0E0E0"))) # 浅灰色
+            painter.drawEllipse(0, 0, 80, 80)
+            
+            # 绘制文字
+            painter.setPen(QColor("#FFFFFF"))
+            font = painter.font()
+            font.setPixelSize(40)
+            font.setBold(True)
+            painter.setFont(font)
+            painter.drawText(0, 0, 80, 80, Qt.AlignCenter, "B")
+            
+            painter.end()
+            self.account_avatar.setPixmap(default_pixmap)
+        except Exception as e:
+            logger.error(f"设置默认头像失败: {e}")
+            self.account_avatar.setText("头像")
+
     def on_avatar_loaded(self, pixmap):
         try:
             if not pixmap.isNull():
@@ -594,9 +626,11 @@ class AccountTab(QWidget):
                 painter.end()
                 self.account_avatar.setPixmap(rounded_pixmap)
             else:
-                self.account_avatar.setText("加载失败")
+                logger.warning("头像加载失败: pixmap为空")
+                # 保持默认头像
         except Exception as e:
-            self.account_avatar.setText("加载错误")
+            logger.error(f"处理头像图片失败: {e}")
+            # 保持默认头像
 
     # def on_account_avatar_downloaded(self, reply): ... (Removed)
 

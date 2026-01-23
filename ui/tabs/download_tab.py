@@ -294,7 +294,9 @@ class DownloadTab(QWidget):
             'use_proxy': False,
             'proxies': {},
             'data_dir': settings_tab.data_dir_input.text().strip(),
-            'max_retries': settings_tab.retry_count.value()
+            'max_retries': settings_tab.retry_count.value(),
+            'timeout': settings_tab.timeout_spin.value(),
+            'retry_interval': settings_tab.retry_interval_spin.value()
         }
         
         self.current_thread = WorkerThread("download_video", params, config=config)
