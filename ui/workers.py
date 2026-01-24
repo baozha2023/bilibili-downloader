@@ -144,9 +144,23 @@ class WorkerThread(QThread):
             self.stop_event.set()
             
     def _get_popular_videos(self):
-        page = self.params.get('page', 1)
-        data = self.crawler.get_popular_videos(page)
-        return {"status": "success", "data": data}
+        pages = self.params.get('pages', 1)
+        all_data = []
+        
+        # 循环获取每一页的数据
+        for i in range(1, pages + 1):
+            try:
+                data = self.crawler.get_popular_videos(i)
+                if data:
+                    all_data.extend(data)
+                # 避免请求过快
+                if i < pages:
+                    time.sleep(0.5)
+            except Exception as e:
+                # 记录错误但继续尝试下一页
+                print(f"Error fetching popular videos page {i}: {e}")
+                
+        return {"status": "success", "data": all_data}
 
     def _get_video_info(self):
         bvid = self.params.get('bvid')

@@ -288,11 +288,8 @@ def main():
     print("=" * 60)
     print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
     print(f"\n新版本 {APP_VERSION}. 更新内容:")
-    print("- 新增：启动时自动检测Gitee新版本提醒")
-    print("- 新增：启动画面及进度条显示")
-    print("- 新增：视频编辑Tab增加音视频合并(AV Merge)功能")
-    print("- 优化：全屏化布局适配")
-    print("- 优化：代码结构清理和优化")
+    print("- 修复：设置中重试次数和重试间隔不生效的bug")
+    print("- 修复：热门视频中选择不同数量的页数，实际查询只查询20条的bug")
     print(f"- 更新：版本号更新至 {APP_VERSION}")
 
 if __name__ == "__main__":
