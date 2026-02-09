@@ -15,7 +15,7 @@ logger.addHandler(handler)
 logger.setLevel(logging.INFO)
 
 class GenericWorker(QThread):
-    progress_signal = pyqtSignal(int, int)
+    progress_signal = pyqtSignal(object, object)
     finished_signal = pyqtSignal(bool, object)
     
     def __init__(self, func, *args, **kwargs):
@@ -40,7 +40,7 @@ class WorkerThread(QThread):
     """通用工作线程"""
     update_signal = pyqtSignal(dict)
     finished_signal = pyqtSignal(dict)
-    progress_signal = pyqtSignal(str, int, int)  # 进度类型(video/audio/merge)，当前进度，总进度
+    progress_signal = pyqtSignal(str, object, object)  # 进度类型(video/audio/merge)，当前进度，总进度
     error_signal = pyqtSignal(str, str)  # 错误消息，错误类型
     
     def __init__(self, task_type, params=None, config=None):

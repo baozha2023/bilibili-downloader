@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QThread, pyqtSignal
 
 class GenericWorker(QThread):
-    progress_signal = pyqtSignal(int, int)
+    progress_signal = pyqtSignal(object, object)
     finished_signal = pyqtSignal(bool, str)
     
     def __init__(self, func, *args, **kwargs):
