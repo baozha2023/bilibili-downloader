@@ -40,6 +40,16 @@ def start_gui():
 
     # 启动画面 / Splash Screen
     splash_img_path = "resource/logo.jpg"
+
+    # PyInstaller path handling
+    if hasattr(sys, '_MEIPASS'):
+        splash_img_path = os.path.join(sys._MEIPASS, "resource", "logo.jpg")
+    elif not os.path.exists(splash_img_path):
+        # 如果 logo.jpg 不存在，尝试 png
+        splash_img_path = "resource/logo.png"
+        if hasattr(sys, '_MEIPASS'):
+            splash_img_path = os.path.join(sys._MEIPASS, "resource", "logo.png")
+
     splash = SplashScreen(splash_img_path, APP_VERSION)
     splash.show()
 
