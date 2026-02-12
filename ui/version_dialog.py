@@ -1,7 +1,8 @@
 import sys
+import os
 from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, 
                              QTableWidget, QTableWidgetItem, QHeaderView, QGroupBox, 
-                             QAbstractItemView, QComboBox, QProgressBar)
+                             QAbstractItemView, QComboBox, QProgressBar, QApplication)
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal
 from ui.message_box import BilibiliMessageBox
 from core.version_manager import VersionManager
@@ -373,7 +374,10 @@ class VersionDialog(QDialog):
         
     def on_update_finished(self, success, msg):
         if success:
-            sys.exit(0)
+            # 强制退出程序，确保不被任何线程或事件循环阻塞
+            # Force kill process to ensure batch script can proceed
+            QApplication.quit()
+            os._exit(0)
         else:
             self.switch_btn.setEnabled(True)
             self.switch_btn.setText("切换至选中版本")

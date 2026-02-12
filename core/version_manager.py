@@ -12,15 +12,16 @@ from core.exapi import ExAPI
 
 logger = logging.getLogger('bilibili_desktop')
 
+
 class VersionManager:
     """
     版本管理核心类
     负责与Gitee/GitHub交互，获取版本列表，切换版本等操作
     """
-    
+
     SOURCE_GITEE = "gitee"
     SOURCE_GITHUB = "github"
-    
+
     GITEE_REPO = "bzJAVA/bilibili-downloader"
     GITHUB_REPO = "baozha2023/bilibili-downloader"
 
@@ -54,7 +55,7 @@ class VersionManager:
             os.path.join(self.cwd, 'git', 'bin', 'git.exe'),
             os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'git', 'cmd', 'git.exe'),
         ]
-        
+
         for path in paths_to_check:
             if os.path.exists(path):
                 return path
@@ -66,8 +67,8 @@ class VersionManager:
     def check_git_available(self):
         """检查git是否可用"""
         try:
-            subprocess.run([self.git_exe, '--version'], check=True, capture_output=True, 
-                         creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+            subprocess.run([self.git_exe, '--version'], check=True, capture_output=True,
+                           creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
             return True
         except Exception:
             return False
@@ -82,7 +83,7 @@ class VersionManager:
         """从Gitee获取版本列表"""
         try:
             tags_data = self.exapi.get_gitee_tags(self.GITEE_REPO)
-            
+
             if tags_data:
                 versions = []
                 for tag_info in tags_data:
@@ -101,36 +102,36 @@ class VersionManager:
     def _get_github_versions(self):
         """从GitHub获取版本列表 (直接使用HTML解析)"""
         versions = []
-        
+
         try:
             html_content = self.exapi.get_github_releases_page(self.GITHUB_REPO)
-            
+
             if html_content:
                 return self._parse_github_releases_html(html_content)
-                
+
         except Exception as e:
             logger.error(f"HTML解析失败: {e}")
-            
+
         return []
 
     def _parse_github_releases_html(self, html_content):
         """解析GitHub Releases HTML"""
         versions = []
         matches = list(re.finditer(self.TAG_PATTERN, html_content))
-        
+
         seen_tags = set()
         for i, match in enumerate(matches):
             tag_name = match.group(2)
-            
+
             if tag_name in seen_tags:
                 continue
             seen_tags.add(tag_name)
-            
+
             # 确定搜索范围
             start_pos = match.end()
-            end_pos = matches[i+1].start() if i+1 < len(matches) else len(html_content)
+            end_pos = matches[i + 1].start() if i + 1 < len(matches) else len(html_content)
             snippet = html_content[start_pos:end_pos]
-            
+
             message = self._extract_release_message(snippet)
 
             versions.append({
@@ -139,13 +140,13 @@ class VersionManager:
                 'message': message,
                 'assets': None
             })
-                
+
         return self._sort_versions(versions)
 
     def _extract_release_message(self, snippet):
         """从HTML片段中提取版本描述"""
         message = "暂无详细描述"
-        
+
         # 1. Markdown Body
         md_match = re.search(self.MARKDOWN_BODY_PATTERN, snippet, re.DOTALL)
         if md_match:
@@ -157,7 +158,7 @@ class VersionManager:
             if pre_match:
                 raw_html = pre_match.group(1)
                 message = self._clean_html(raw_html)
-        
+
         return message
 
     def _clean_html(self, raw_html):
@@ -176,20 +177,19 @@ class VersionManager:
 
     def _sort_versions(self, versions):
         """版本号排序"""
-        # Filter valid versions (start with v or digit)
         valid_versions = []
         for v in versions:
             tag = v['tag']
-            # Allow v1.2.3 or 1.2.3 or v1.2.3-beta
             if re.match(r'^v?\d+(\.\d+)*', tag, re.IGNORECASE):
                 valid_versions.append(v)
             else:
                 logger.warning(f"Ignored invalid version tag: {tag}")
-        
+
         versions = valid_versions
 
         try:
-            versions.sort(key=lambda x: [int(u) for u in re.sub(r'[^0-9.]', '', x['tag']).split('.') if u], reverse=True)
+            versions.sort(key=lambda x: [int(u) for u in re.sub(r'[^0-9.]', '', x['tag']).split('.') if u],
+                          reverse=True)
         except Exception:
             versions.sort(key=lambda x: x['tag'], reverse=True)
         return versions
@@ -206,13 +206,14 @@ class VersionManager:
             -1 if v1 < v2
             0 if v1 == v2
         """
+
         def normalize(v):
             # Remove 'v' prefix and non-numeric/dot chars
             return [int(u) for u in re.sub(r'[^0-9.]', '', v).split('.') if u]
-            
+
         p1 = normalize(v1)
         p2 = normalize(v2)
-        
+
         if p1 > p2: return 1
         if p1 < p2: return -1
         return 0
@@ -227,13 +228,13 @@ class VersionManager:
         env_python = os.environ.get('PYTHON_EXECUTABLE')
         if env_python and os.path.exists(env_python):
             return env_python
-            
+
         # 2. 系统PATH
         system_python = shutil.which('python')
         if system_python:
             try:
-                subprocess.run([system_python, '--version'], check=True, capture_output=True, 
-                             creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+                subprocess.run([system_python, '--version'], check=True, capture_output=True,
+                               creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
                 return system_python
             except Exception:
                 pass
@@ -245,25 +246,38 @@ class VersionManager:
             return self._update_from_source_code(tag, progress_callback)
         return self._update_from_github_release(tag, release_assets, progress_callback)
 
+    def _get_temp_dir(self, sub_dir="update_pkg"):
+        """获取本地临时目录"""
+        target_dir = os.path.join(self.cwd, 'temp_update', sub_dir)
+        # 清理旧数据，确保干净
+        if os.path.exists(target_dir):
+            try:
+                shutil.rmtree(target_dir)
+            except Exception as e:
+                logger.warning(f"清理临时目录失败: {e}")
+
+        os.makedirs(target_dir, exist_ok=True)
+        return target_dir
+
     def _update_from_source_code(self, tag, progress_callback=None):
         """从源码编译更新 (Gitee)"""
         if not self.check_git_available():
             return False, "Git环境不可用"
-            
+
         python_exe = self._get_system_python()
         if not python_exe:
             return False, "未检测到本地Python环境，无法从Gitee编译更新。\n请安装Python或选择GitHub源下载编译好的版本。"
 
-        temp_dir = tempfile.mkdtemp(prefix="bilibili_update_src_")
         try:
+            temp_dir = self._get_temp_dir(sub_dir="source_code")
             if progress_callback: progress_callback("正在下载源码...", 10)
             logger.info(f"正在下载源码: {tag}")
             repo_url = self.exapi.get_gitee_repo_url(self.GITEE_REPO)
-            subprocess.run([self.git_exe, 'clone', '--depth', '1', '--branch', tag, repo_url, temp_dir], 
-                         check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
-            
+            subprocess.run([self.git_exe, 'clone', '--depth', '1', '--branch', tag, repo_url, temp_dir],
+                           check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+
             return self._build_and_update(temp_dir, python_exe, progress_callback)
-            
+
         except Exception as e:
             logger.error(f"源码更新失败: {e}")
             return False, f"更新失败: {e}"
@@ -276,64 +290,79 @@ class VersionManager:
             if os.path.exists(req_file):
                 if progress_callback: progress_callback("正在安装依赖...", 30)
                 logger.info("安装依赖...")
-                subprocess.run([python_exe, '-m', 'pip', 'install', '-r', req_file, 
-                              '-i', self.exapi.ALIYUN_PYPI_MIRROR], 
-                              check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+                subprocess.run([python_exe, '-m', 'pip', 'install', '-r', req_file,
+                                '-i', self.exapi.ALIYUN_PYPI_MIRROR],
+                               check=True, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
 
             # 编译
             build_script = os.path.join(source_dir, 'build.py')
             if not os.path.exists(build_script):
                 return False, "源码中缺少build.py"
-                
+
             if progress_callback: progress_callback("正在编译 (这可能需要几分钟)...", 50)
             logger.info("开始编译...")
             subprocess.run([python_exe, build_script], cwd=source_dir, check=True)
-            
-            new_build_dir = os.path.join(source_dir, 'dist', 'bilibili_downloader')
-            
+
+            # 动态查找构建产物目录 (因为build.py可能会重命名输出目录带上版本号)
+            new_build_dir = None
+            dist_dir = os.path.join(source_dir, 'dist')
+
+            if os.path.exists(dist_dir):
+                # 1. 优先查找带 bilibili_downloader 前缀的目录
+                for item in os.listdir(dist_dir):
+                    item_path = os.path.join(dist_dir, item)
+                    if os.path.isdir(item_path) and item.startswith('bilibili_downloader'):
+                        # 确保目录内有exe文件
+                        if os.path.exists(os.path.join(item_path, 'bilibili_downloader.exe')):
+                            new_build_dir = item_path
+                            break
+
+            if not new_build_dir:
+                return False, "编译成功但在dist中未找到有效的构建目录"
+
             if progress_callback: progress_callback("正在应用更新...", 90)
             return self._apply_update(new_build_dir, source_dir)
         except Exception as e:
-             return False, f"编译失败: {e}"
+            return False, f"编译失败: {e}"
 
     def _update_from_github_release(self, tag, assets, progress_callback=None):
         """从GitHub Release下载更新 (支持 fallback 到源码下载)"""
         # 1. 获取Assets
         if assets is None:
-             if progress_callback: progress_callback("正在获取版本信息...", 5)
-             logger.info(f"正在检查版本 {tag} 的 Assets...")
-             assets = self._fetch_github_assets_html(tag)
-        
+            if progress_callback: progress_callback("正在获取版本信息...", 5)
+            logger.info(f"正在检查版本 {tag} 的 Assets...")
+            assets = self._fetch_github_assets_html(tag)
+
         # 2. 寻找最佳下载目标
         target_asset = self._find_best_asset(assets)
-        
+
         # 3. 下载或Fallback
         if target_asset:
             return self._download_and_extract_zip(target_asset['browser_download_url'], progress_callback)
-            
+
         logger.warning(f"版本 {tag} 未找到预编译包，尝试源码编译...")
         python_exe = self._get_system_python()
         if not python_exe:
             return False, f"版本 {tag} 未提供预编译包(exe)，且检测到您的电脑未安装Python，无法进行源码编译。"
-            
+
         return self._update_from_github_source_zip(tag, python_exe, progress_callback)
 
     def _find_best_asset(self, assets):
         """寻找最佳的zip资源"""
         if not assets:
             return None
-            
+
         # Priority 1: 'bilibili_downloader' in name
         for asset in assets:
             name = asset.get('name', '')
             if name.endswith('.zip') and 'bilibili_downloader' in name:
                 return asset
-        
+
         # Priority 2: Any zip
         for asset in assets:
             if asset.get('name', '').endswith('.zip'):
                 return asset
-                
+
         return None
 
     def _fetch_github_assets_html(self, tag):
@@ -356,54 +385,55 @@ class VersionManager:
     def _update_from_github_source_zip(self, tag, python_exe, progress_callback=None):
         """下载GitHub源码Zip并编译"""
         download_url = self.exapi.get_github_source_zip_url(self.GITHUB_REPO, tag)
-        temp_dir = tempfile.mkdtemp(prefix="bilibili_gh_src_")
-        zip_path = os.path.join(temp_dir, "source.zip")
-        
+
         try:
+            temp_dir = self._get_temp_dir(sub_dir="github_source")
+            zip_path = os.path.join(temp_dir, "source.zip")
+
             if progress_callback: progress_callback("正在下载源码...", 10)
             self._download_file(download_url, zip_path, progress_callback)
-            
+
             if progress_callback: progress_callback("正在解压源码...", 20)
             logger.info("解压源码...")
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(temp_dir)
-                
+
             # GitHub zip 解压后通常是 repo-tag 文件夹
             extracted_root = None
             for item in os.listdir(temp_dir):
                 if os.path.isdir(os.path.join(temp_dir, item)) and item != "__MACOSX":
                     extracted_root = os.path.join(temp_dir, item)
                     break
-            
+
             if not extracted_root:
                 return False, "源码解压结构异常"
-                
+
             return self._build_and_update(extracted_root, python_exe, progress_callback)
-            
+
         except Exception as e:
             logger.error(f"GitHub源码更新失败: {e}")
             return False, f"下载源码失败: {e}"
 
     def _download_and_extract_zip(self, download_url, progress_callback=None):
         """下载并解压预编译包"""
-        temp_dir = tempfile.mkdtemp(prefix="bilibili_update_pkg_")
-        zip_path = os.path.join(temp_dir, "update.zip")
-        
         try:
+            temp_dir = self._get_temp_dir(sub_dir="pkg_extract")
+            zip_path = os.path.join(temp_dir, "update.zip")
+
             if progress_callback: progress_callback("正在下载更新包...", 10)
             self._download_file(download_url, zip_path, progress_callback)
-            
+
             if progress_callback: progress_callback("正在解压...", 80)
             logger.info("正在解压...")
             extract_dir = os.path.join(temp_dir, "extracted")
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 zip_ref.extractall(extract_dir)
-            
+
             # 寻找解压后的根目录
             new_build_dir = self._find_build_dir_in_extracted(extract_dir)
             if not new_build_dir:
                 return False, "解压后的文件结构不正确"
-            
+
             if progress_callback: progress_callback("正在应用更新...", 90)
             return self._apply_update(new_build_dir, temp_dir)
 
@@ -421,7 +451,7 @@ class VersionManager:
             r.raise_for_status()
             total_size = int(r.headers.get('content-length', 0))
             downloaded = 0
-            
+
             with open(save_path, 'wb') as f:
                 for chunk in r.iter_content(chunk_size=8192):
                     f.write(chunk)
@@ -429,17 +459,19 @@ class VersionManager:
                     if total_size > 0 and progress_callback:
                         # Map 10-80% for download
                         percent = 10 + int((downloaded / total_size) * 70)
-                        progress_callback(f"正在下载... ({int(downloaded/1024/1024)}MB / {int(total_size/1024/1024)}MB)", percent)
+                        progress_callback(
+                            f"正在下载... ({int(downloaded / 1024 / 1024)}MB / {int(total_size / 1024 / 1024)}MB)",
+                            percent)
 
     def _find_build_dir_in_extracted(self, extract_dir):
         """在解压目录中查找构建目录"""
         target_dir = os.path.join(extract_dir, 'bilibili_downloader')
         if os.path.exists(target_dir):
             return target_dir
-            
+
         if os.path.exists(os.path.join(extract_dir, 'bilibili_downloader.exe')):
             return extract_dir
-            
+
         for root, dirs, files in os.walk(extract_dir):
             if 'bilibili_downloader.exe' in files:
                 return root
@@ -447,56 +479,171 @@ class VersionManager:
 
     def _apply_update(self, new_dir, temp_root):
         """应用更新 (生成批处理脚本并重启)"""
+        # 验证新版本目录结构
+        # 用户提到的5个文件: _internal(或internal), bilibili_data, ffmpeg, git, bilibili_downloader.exe
+
         if not os.path.exists(os.path.join(new_dir, 'bilibili_downloader.exe')):
             return False, "新版本中未找到可执行文件"
 
         current_dir = self.cwd
-        bat_path = os.path.join(os.path.dirname(current_dir), 'update_bilibili.bat')
-        
-        batch_content = self._generate_batch_script(current_dir, new_dir, temp_root)
-        
+        bat_path = os.path.join(current_dir, 'update_bilibili.bat')
+
+        pid = os.getpid()
+
+        # 传递 temp_root (即 temp_update/sub_dir ) 的父级 temp_update
+        temp_base = os.path.dirname(temp_root)
+
+        batch_content = self._generate_batch_script(current_dir, new_dir, temp_base, pid)
+
         try:
             with open(bat_path, 'w', encoding='gbk') as f:
                 f.write(batch_content)
-            
+
             subprocess.Popen(['cmd', '/c', bat_path], creationflags=subprocess.CREATE_NEW_CONSOLE)
             return True, "更新准备就绪，程序即将重启..."
         except Exception as e:
             return False, f"生成更新脚本失败: {e}"
 
-    def _generate_batch_script(self, current_dir, new_dir, temp_root):
+    def _generate_batch_script(self, current_dir, new_dir, temp_base, pid):
         """生成更新批处理脚本内容"""
         exe_path = os.path.join(current_dir, 'bilibili_downloader.exe')
+
         return f"""
 @echo off
-chcp 65001
-echo 正在更新 Bilibili Downloader...
+cd /d "%~dp0"
+echo --------------------------------------------------
+echo Bilibili Downloader 自动更新程序
+echo --------------------------------------------------
+echo.
 
-:check_lock
-echo 等待主程序关闭...
-timeout /t 2 /nobreak > nul
-2>nul (
-  >>"{exe_path}" (call )
-) && (
-  echo 主程序已关闭。
-) || (
-  echo 主程序仍在运行，正在重试...
-  goto check_lock
+echo [1/5] 正在等待主程序退出...
+echo 目标PID: {pid}
+:WAIT_LOOP
+tasklist /FI "PID eq {pid}" 2>NUL | find /I /N "{pid}" >NUL
+if "%ERRORLEVEL%"=="0" (
+    echo 主程序仍在运行，等待 1 秒...
+    timeout /t 1 /nobreak > nul
+    goto :WAIT_LOOP
+)
+echo 主程序已退出。
+timeout /t 1 /nobreak > nul
+
+echo.
+echo [2/5] 正在备份数据...
+set "APP_DIR={current_dir}"
+set "NEW_DIR={new_dir}"
+set "TEMP_UPDATE=%APP_DIR%\\temp_update"
+
+if not exist "%TEMP_UPDATE%" mkdir "%TEMP_UPDATE%"
+
+:: 清理之前可能存在的备份
+if exist "%TEMP_UPDATE%\\bangumi" rmdir /s /q "%TEMP_UPDATE%\\bangumi"
+if exist "%TEMP_UPDATE%\\downloads" rmdir /s /q "%TEMP_UPDATE%\\downloads"
+
+if exist "%APP_DIR%\\bilibili_data\\bangumi" (
+    echo 备份 bangumi...
+    move "%APP_DIR%\\bilibili_data\\bangumi" "%TEMP_UPDATE%\\" > nul
+)
+if exist "%APP_DIR%\\bilibili_data\\downloads" (
+    echo 备份 downloads...
+    move "%APP_DIR%\\bilibili_data\\downloads" "%TEMP_UPDATE%\\" > nul
 )
 
-echo 正在复制文件...
-xcopy /E /Y /I "{new_dir}" "{current_dir}"
+echo.
+echo [3/5] 正在删除旧文件...
 
-if %errorlevel% neq 0 (
-    echo 更新失败！
-    pause
-    exit /b %errorlevel%
+if exist "%APP_DIR%\\_internal" (
+    echo 删除 _internal...
+    rmdir /s /q "%APP_DIR%\\_internal"
+)
+if exist "%APP_DIR%\\_internal" (
+    echo 删除失败，尝试重命名...
+    ren "%APP_DIR%\\_internal" "_internal_del_%RANDOM%"
 )
 
-echo 更新完成，正在重启...
+if exist "%APP_DIR%\\internal" (
+    rmdir /s /q "%APP_DIR%\\internal"
+)
+
+if exist "%APP_DIR%\\bilibili_data" (
+    echo 删除 bilibili_data...
+    rmdir /s /q "%APP_DIR%\\bilibili_data"
+)
+if exist "%APP_DIR%\\bilibili_data" (
+    ren "%APP_DIR%\\bilibili_data" "bilibili_data_del_%RANDOM%"
+)
+
+if exist "%APP_DIR%\\ffmpeg" (
+    echo 删除 ffmpeg...
+    rmdir /s /q "%APP_DIR%\\ffmpeg"
+)
+if exist "%APP_DIR%\\ffmpeg" (
+    ren "%APP_DIR%\\ffmpeg" "ffmpeg_del_%RANDOM%"
+)
+
+if exist "%APP_DIR%\\git" (
+    echo 删除 git...
+    rmdir /s /q "%APP_DIR%\\git"
+)
+if exist "%APP_DIR%\\git" (
+    ren "%APP_DIR%\\git" "git_del_%RANDOM%"
+)
+
+if exist "%APP_DIR%\\bilibili_downloader.exe" (
+    echo 删除主程序...
+    del /f /q "%APP_DIR%\\bilibili_downloader.exe"
+)
+if exist "%APP_DIR%\\bilibili_downloader.exe" (
+    ren "%APP_DIR%\\bilibili_downloader.exe" "bilibili_downloader.exe.del"
+)
+
+echo.
+echo [4/5] 正在应用新版本...
+echo 源: "%NEW_DIR%"
+
+if exist "%NEW_DIR%\\internal" (
+    if not exist "%NEW_DIR%\\_internal" (
+        echo 统一重命名 internal 为 _internal...
+        ren "%NEW_DIR%\\internal" "_internal"
+    )
+)
+
+if exist "%NEW_DIR%\\_internal" move "%NEW_DIR%\\_internal" "%APP_DIR%\\" > nul
+if exist "%NEW_DIR%\\bilibili_data" move "%NEW_DIR%\\bilibili_data" "%APP_DIR%\\" > nul
+if exist "%NEW_DIR%\\ffmpeg" move "%NEW_DIR%\\ffmpeg" "%APP_DIR%\\" > nul
+if exist "%NEW_DIR%\\git" move "%NEW_DIR%\\git" "%APP_DIR%\\" > nul
+if exist "%NEW_DIR%\\bilibili_downloader.exe" move "%NEW_DIR%\\bilibili_downloader.exe" "%APP_DIR%\\" > nul
+
+echo.
+echo [5/5] 正在恢复数据...
+if not exist "%APP_DIR%\\bilibili_data" mkdir "%APP_DIR%\\bilibili_data"
+
+:: 清理新版本中可能存在的空数据目录，确保备份能正确覆盖
+if exist "%APP_DIR%\\bilibili_data\\bangumi" rmdir /s /q "%APP_DIR%\\bilibili_data\\bangumi"
+if exist "%APP_DIR%\\bilibili_data\\downloads" rmdir /s /q "%APP_DIR%\\bilibili_data\\downloads"
+
+if exist "%TEMP_UPDATE%\\bangumi" (
+    echo 恢复 bangumi...
+    move "%TEMP_UPDATE%\\bangumi" "%APP_DIR%\\bilibili_data\\" > nul
+)
+if exist "%TEMP_UPDATE%\\downloads" (
+    echo 恢复 downloads...
+    move "%TEMP_UPDATE%\\downloads" "%APP_DIR%\\bilibili_data\\" > nul
+)
+
+echo.
+echo ==================================================
+echo               更新完成!
+echo ==================================================
+echo.
+echo 正在重启程序...
 start "" "{exe_path}"
 
 echo 清理临时文件...
-rd /s /q "{temp_root}"
+:: 等待一下确保程序启动
+timeout /t 2 /nobreak > nul
+:: 强制清理 temp_update
+rmdir /s /q "%TEMP_UPDATE%"
 del "%~f0"
+exit
 """

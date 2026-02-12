@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QPropertyAnimation, QEasingCurve, QRect, QTimer
 from ui.workers import WorkerThread
 from ui.message_box import BilibiliMessageBox
+from ui.utils.action_executor import ActionExecutor
 
 class HistoryDialog(QDialog):
     def __init__(self, history_file, parent=None):
@@ -760,6 +761,15 @@ class BangumiTab(QWidget):
             self.main_window.floating_window.reset()
             
         BilibiliMessageBox.information(self, "完成", "批量下载任务已完成")
+        
+        # 执行完成后操作
+        settings_tab = self.main_window.settings_tab
+        base_dir = settings_tab.data_dir_input.text().strip()
+        series_title = self.current_series_title or "其他番剧"
+        safe_series_title = re.sub(r'[\\/:*?"<>|]', '_', series_title)
+        bangumi_dir = os.path.join(base_dir, 'bangumi', safe_series_title)
+        
+        ActionExecutor.execute_completion_action(self.main_window, download_dir=bangumi_dir)
         
     def stop_download(self):
         if self.is_downloading:

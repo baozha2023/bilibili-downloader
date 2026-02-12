@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QH
                              QGroupBox, QMessageBox, QStackedWidget, QFileDialog, QGridLayout, QFrame)
 from PyQt5.QtGui import QPixmap, QIcon, QImage, QPainter, QColor, QBrush, QPen
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QUrl, QSize, QPropertyAnimation, QEasingCurve, QRect
-from core.network import NetworkManager
+from core.NetworkManager import NetworkManager
 from core.api import BilibiliAPI
 
 # 配置日志

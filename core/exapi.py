@@ -1,8 +1,8 @@
 import requests
 import logging
-import re
 
 logger = logging.getLogger('bilibili_core.exapi')
+
 
 class ExAPI:
     """

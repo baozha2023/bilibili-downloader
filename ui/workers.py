@@ -130,6 +130,12 @@ class WorkerThread(QThread):
              # Clean up
              if hasattr(self, 'timeout_timer'):
                  self.timeout_timer.stop()
+             
+             # Calculate execution time
+             end_time = time.time()
+             execution_time = end_time - start_time
+             if isinstance(result, dict):
+                 result['execution_time'] = execution_time
                  
         self.finished_signal.emit(result)
 

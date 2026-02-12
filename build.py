@@ -172,21 +172,6 @@ def copy_resources():
     else:
         print("警告: 未在项目根目录发现 'git' 文件夹，版本管理功能将无法使用！")
 
-    # 复制集成式 Python (python_embed)
-    # Copy bundled Python (python_embed)
-    local_python_dir = 'python_embed'
-    if os.path.exists(local_python_dir):
-        python_dest_dir = os.path.join(dist_dir, 'python_embed')
-        if os.path.exists(python_dest_dir):
-             shutil.rmtree(python_dest_dir)
-        try:
-            shutil.copytree(local_python_dir, python_dest_dir)
-            print(f"已复制本地 Python 环境到 {python_dest_dir}")
-        except Exception as e:
-            print(f"复制本地 Python 失败: {e}")
-    else:
-        print("警告: 未在项目根目录发现 'python_embed' 文件夹，自动更新编译功能将无法在无Python电脑上使用！")
-
     # 创建初始数据目录 / Create initial data dirs
     data_dir = os.path.join(dist_dir, 'bilibili_data')
     downloads_dir = os.path.join(data_dir, 'downloads')
@@ -205,31 +190,6 @@ def copy_resources():
         with open(history_file, 'w', encoding='utf-8') as f:
             f.write('[]')
         print(f"已创建空历史记录文件: {history_file}")
-
-def create_zip_archive():
-    """创建ZIP压缩包 / Create ZIP archive"""
-    print_step("创建发布压缩包 / Creating ZIP archive")
-    
-    # 确定系统类型和版本信息
-    system = platform.system().lower()
-    architecture = '64bit' if sys.maxsize > 2**32 else '32bit'
-    
-    # 获取当前日期
-    today = datetime.datetime.now().strftime("%Y%m%d")
-    
-    # 创建zip文件名
-    zip_filename = f"bilibili_downloader_{APP_VERSION}_{system}_{architecture}_{today}.zip"
-    
-    # 创建压缩文件
-    with zipfile.ZipFile(zip_filename, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for root, dirs, files in os.walk('dist/bilibili_downloader'):
-            for file in files:
-                file_path = os.path.join(root, file)
-                arcname = os.path.relpath(file_path, 'dist')
-                zipf.write(file_path, arcname)
-    
-    print(f"压缩包已创建: {zip_filename}")
-    return zip_filename
 
 def verify_build():
     """验证构建结果 / Verify build result"""
@@ -283,13 +243,34 @@ def main():
         print("构建验证失败，请检查错误并修复。")
         sys.exit(1)   
     
+    # 5. 重命名输出目录 / Rename output directory
+    print_step("重命名输出目录 / Renaming output directory")
+    old_dist = os.path.join('dist', 'bilibili_downloader')
+    new_folder_name = f'bilibili_downloader-{APP_VERSION}'
+    new_dist = os.path.join('dist', new_folder_name)
+    
+    if os.path.exists(new_dist):
+        try:
+            shutil.rmtree(new_dist)
+            print(f"已清理现有的目标目录: {new_dist}")
+        except Exception as e:
+            print(f"清理目标目录失败: {e}")
+            sys.exit(1)
+            
+    try:
+        os.rename(old_dist, new_dist)
+        print(f"已重命名为: {new_dist}")
+    except Exception as e:
+        print(f"重命名失败: {e}")
+        sys.exit(1)
+
     print("\n" + "=" * 60)
     print("  打包过程完成！")
     print("=" * 60)
-    print(f"可执行文件位于: {os.path.abspath('dist/bilibili_downloader/bilibili_downloader.exe')}")
+    print(f"可执行文件位于: {os.path.abspath(os.path.join(new_dist, 'bilibili_downloader.exe'))}")
     print(f"\n新版本 {APP_VERSION}. 更新内容:")
-    print("- 修复：设置中重试次数和重试间隔不生效的bug")
-    print("- 修复：热门视频中选择不同数量的页数，实际查询只查询20条的bug")
+    print("- 优化：更新流程逻辑优化，更新时保留 downloads 和 bangumi 文件夹")
+    print("- 优化：构建脚本输出文件夹包含版本号")
     print(f"- 更新：版本号更新至 {APP_VERSION}")
 
 if __name__ == "__main__":

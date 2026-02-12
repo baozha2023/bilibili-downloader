@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt
 from ui.workers import WorkerThread
 from ui.message_box import BilibiliMessageBox
 from ui.styles import UIStyles
+from ui.utils.action_executor import ActionExecutor
 
 class CheckCollectionThread(QtCore.QThread):
     finished_signal = QtCore.pyqtSignal(dict)
@@ -430,30 +431,19 @@ class DownloadTab(QWidget):
                 self.main_window.floating_window.reset()
             
             # 完成后操作
-            try:
-                settings_tab = self.main_window.settings_tab
-                complete_action = settings_tab.complete_action.currentIndex()
-                if complete_action == 1:  # 打开文件夹
-                    video_dir = data.get("download_dir")
-                    if video_dir:
-                        self.main_window.open_download_dir(video_dir)
-                    else:
-                        self.main_window.open_download_dir()
-                elif complete_action == 2:  # 播放视频
-                    merged_file = data.get("merged_file")
-                    if merged_file and os.path.exists(merged_file):
-                        os.startfile(merged_file)
-                elif complete_action == 3:  # 关闭程序
-                    self.main_window.close()
-                elif complete_action == 4:  # 关闭电脑
-                    import platform
-                    if platform.system() == "Windows":
-                        os.system("shutdown -s -t 60")
-                        self.main_window.log_to_console("系统将在60秒后关闭，请保存工作！", "warning")
-                    else:
-                        self.main_window.log_to_console("自动关机仅支持Windows系统", "warning")
-            except Exception as e:
-                self.main_window.log_to_console(f"执行完成后操作出错: {str(e)}", "error")
+            video_dir = data.get("download_dir")
+            merged_file = data.get("merged_file")
+            
+            # 如果没有返回目录，使用默认目录
+            if not video_dir:
+                 # 这里可以尝试获取默认下载目录，或者在 ActionExecutor 中处理
+                 pass
+                 
+            ActionExecutor.execute_completion_action(
+                self.main_window, 
+                download_dir=video_dir, 
+                merged_file=merged_file
+            )
                 
         elif result["status"] == "cancelled":
             self.download_status.setText("下载已取消")

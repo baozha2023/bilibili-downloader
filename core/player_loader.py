@@ -9,6 +9,7 @@ import winreg
 
 logger = logging.getLogger('bilibili_player')
 
+
 def check_webview2():
     """Check if WebView2 Runtime is installed via Registry"""
     try:
@@ -19,7 +20,7 @@ def check_webview2():
                 return True
         except:
             pass
-            
+
         # Check per-user installation
         key_path = r"Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}"
         try:
@@ -27,25 +28,26 @@ def check_webview2():
                 return True
         except:
             pass
-            
+
         return False
     except Exception as e:
         logger.error(f"Error checking WebView2: {e}")
-        return False # Assume false if registry check fails
+        return False  # Assume false if registry check fails
+
 
 def show_webview2_error():
-    """Show error message and guide user to download"""
     MB_ICONERROR = 0x10
     MB_YESNO = 0x04
     IDYES = 6
-    
+
     title = "组件缺失"
     message = "实时观看功能需要 Microsoft Edge WebView2 运行时。\n\n当前系统未检测到该组件，是否立即打开下载页面？"
-    
+
     # Use ctypes to show native message box
     result = ctypes.windll.user32.MessageBoxW(0, message, title, MB_ICONERROR | MB_YESNO)
     if result == IDYES:
         webbrowser.open("https://go.microsoft.com/fwlink/p/?LinkId=2124703")
+
 
 def run_player(url, title="Bilibili Player", cookies_json=None):
     # 1. Check WebView2 availability on Windows
@@ -79,17 +81,17 @@ def run_player(url, title="Bilibili Player", cookies_json=None):
                     window.evaluate_js(js)
                 except:
                     pass
-            
+
             # Small delay to ensure cookies are set
             time.sleep(0.5)
-            
+
         # Load the actual video URL
         window.load_url(url)
-        
+
         # Auto Web Fullscreen Logic
         # Wait for page to load and player to initialize
         time.sleep(3)
-        
+
         # JS to find and click web fullscreen button
         js_fullscreen = """
         (function() {
@@ -128,14 +130,16 @@ def run_player(url, title="Bilibili Player", cookies_json=None):
     window = webview.create_window(title, "https://www.bilibili.com/", width=1280, height=720)
     webview.start(init_window, window)
 
+
 def main():
     parser = argparse.ArgumentParser(description="Bilibili Player Loader")
     parser.add_argument("--url", required=True, help="Video URL")
     parser.add_argument("--title", default="Bilibili Player", help="Window Title")
     parser.add_argument("--cookies", help="JSON cookies")
     args = parser.parse_args()
-    
+
     run_player(args.url, args.title, args.cookies)
+
 
 if __name__ == "__main__":
     main()
