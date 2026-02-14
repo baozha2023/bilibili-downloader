@@ -3,7 +3,7 @@ import json
 import logging
 
 logger = logging.getLogger('bilibili_core')
-APP_VERSION = 'v5.7.7'
+APP_VERSION = 'v5.8'
 
 
 class ConfigManager:

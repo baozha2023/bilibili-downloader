@@ -83,37 +83,150 @@ def build_executable():
     """使用PyInstaller构建可执行文件 / Build executable with PyInstaller"""
     print_step("开始构建可执行文件 / Building executable")
     
-    # 构建命令 / Build command
-    cmd = [
-        sys.executable, '-m', 'PyInstaller',
-        '--name=bilibili_downloader',
-        '--windowed',  # 无控制台窗口 / No console window
-        '--noconfirm',  # 不确认覆盖 / Do not confirm overwrite
-        '--clean',      # 清理缓存 / Clean cache
-        '--add-data=README.md;.',  # 添加说明文件 / Add README
-        '--add-data=credits.txt;.',  # 添加致谢文件 / Add credits
-        '--add-data=resource;resource',  # 添加资源文件夹 / Add resource folder
-        '--collect-data=snownlp',  # 收集snownlp数据文件 / Collect snownlp data
-        '--collect-data=fake_useragent', # 收集fake_useragent数据 / Collect fake_useragent data
-        '--collect-all=jieba',     # 收集jieba数据 / Collect jieba data
-        '--collect-all=wordcloud', # 收集wordcloud数据 / Collect wordcloud data
-    ]
+    # 生成 Spec 文件
+    spec_template = r"""# -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_data_files, collect_all, copy_metadata
+
+block_cipher = None
+
+# Base config
+hidden_imports = {hidden_imports}
+excluded_modules = {excluded_modules}
+
+# Base datas
+# credits.txt needs to be in datas because it's read by ui/about_module.py using sys._MEIPASS
+# README.md and docs/mcp_usage.md are for user reference, so we copy them to dist folder via copy_resources(), 
+# no need to pack them into _internal
+datas = [('credits.txt', '.'), ('resource', 'resource')]
+binaries = []
+
+# Collect data for specific packages
+datas += collect_data_files('snownlp')
+datas += collect_data_files('fake_useragent')
+
+# Copy metadata for mcp (just in case)
+try:
+    datas += copy_metadata('mcp')
+except Exception:
+    pass
+
+# Collect all for complex packages
+for pkg in ['jieba', 'wordcloud']:
+    try:
+        d, b, h = collect_all(pkg)
+        datas += d
+        binaries += b
+        hidden_imports += h
+    except Exception:
+        pass
+
+# Analysis for Main Application
+a1 = Analysis(
+    ['main.py'],
+    pathex=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hidden_imports,
+    hookspath=[],
+    hooksconfig={{}},
+    runtime_hooks=[],
+    excludes=excluded_modules,
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+# Analysis for MCP Server
+a2 = Analysis(
+    ['mcp_server.py'],
+    pathex=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hidden_imports,
+    hookspath=[],
+    hooksconfig={{}},
+    runtime_hooks=[],
+    excludes=excluded_modules,
+    win_no_prefer_redirects=False,
+    win_private_assemblies=False,
+    cipher=block_cipher,
+    noarchive=False,
+)
+
+# PYZ Archives
+pyz1 = PYZ(a1.pure, a1.zipped_data, cipher=block_cipher)
+pyz2 = PYZ(a2.pure, a2.zipped_data, cipher=block_cipher)
+
+# Main Executable (Windowed)
+exe1 = EXE(
+    pyz1,
+    a1.scripts,
+    [],
+    exclude_binaries=True,
+    name='bilibili_downloader',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=False,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon='resource/icon.ico'
+)
+
+# MCP Server Executable (Console)
+exe2 = EXE(
+    pyz2,
+    a2.scripts,
+    [],
+    exclude_binaries=True,
+    name='mcp_server',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+    icon='resource/icon.ico'
+)
+
+# Collection (Merge)
+coll = COLLECT(
+    exe1,
+    exe2,
+    a1.binaries,
+    a1.zipfiles,
+    a1.datas,
+    a2.binaries,
+    a2.zipfiles,
+    a2.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='bilibili_downloader',
+)
+"""
+    spec_content = spec_template.format(
+        hidden_imports=HIDDEN_IMPORTS,
+        excluded_modules=EXCLUDED_MODULES
+    )
     
-    # Add hidden imports
-    for imp in HIDDEN_IMPORTS:
-        cmd.append(f'--hidden-import={imp}')
-        
-    # Add excluded modules
-    for exc in EXCLUDED_MODULES:
-        cmd.append(f'--exclude-module={exc}')
-        
-    cmd.append('main.py')
-    
-    # 如果存在图标，添加图标参数 / Add icon if exists
-    if os.path.exists('resource/icon.ico'):
-        cmd.insert(3, '--icon=resource/icon.ico')
-    
+    spec_file = 'bilibili_downloader.spec'
+    with open(spec_file, 'w', encoding='utf-8') as f:
+        f.write(spec_content)
+    print(f"Spec file generated: {spec_file}")
+
     # 执行构建命令 / Execute build command
+    cmd = [sys.executable, '-m', 'PyInstaller', spec_file, '--noconfirm', '--clean']
+    
     print(f"执行命令: {' '.join(cmd)}")
     process = subprocess.run(cmd)
     
@@ -156,6 +269,18 @@ def copy_resources():
             if os.path.exists(src_file):
                 shutil.copy2(src_file, ffmpeg_dest)
                 print(f"已复制 {src_file} 到 {ffmpeg_dest}")  
+
+    # 复制文档目录 / Copy docs directory
+    docs_src = 'docs'
+    if os.path.exists(docs_src):
+        docs_dest = os.path.join(dist_dir, 'docs')
+        if os.path.exists(docs_dest):
+            shutil.rmtree(docs_dest)
+        try:
+            shutil.copytree(docs_src, docs_dest)
+            print(f"已复制文档到 {docs_dest}")
+        except Exception as e:
+            print(f"复制文档失败: {e}")
 
     # 复制集成式 Git (MinGit)
     # Copy bundled Git (MinGit)
@@ -200,10 +325,19 @@ def verify_build():
     if not os.path.exists(exe_path):
         print(f"错误: 可执行文件不存在: {exe_path}")
         return False
+        
+    # 检查MCP服务可执行文件
+    mcp_path = os.path.abspath('dist/bilibili_downloader/mcp_server.exe')
+    if not os.path.exists(mcp_path):
+        print(f"错误: MCP服务可执行文件不存在: {mcp_path}")
+        return False
     
     # 检查文件大小
     size_mb = os.path.getsize(exe_path) / (1024 * 1024)
-    print(f"可执行文件大小: {size_mb:.2f} MB")
+    print(f"主程序大小: {size_mb:.2f} MB")
+    
+    mcp_size_mb = os.path.getsize(mcp_path) / (1024 * 1024)
+    print(f"MCP服务大小: {mcp_size_mb:.2f} MB")
     
     # 检查必要的目录和文件
     required_paths = [
@@ -267,10 +401,12 @@ def main():
     print("\n" + "=" * 60)
     print("  打包过程完成！")
     print("=" * 60)
-    print(f"可执行文件位于: {os.path.abspath(os.path.join(new_dist, 'bilibili_downloader.exe'))}")
+    print(f"主程序位于: {os.path.abspath(os.path.join(new_dist, 'bilibili_downloader.exe'))}")
+    print(f"MCP服务位于: {os.path.abspath(os.path.join(new_dist, 'mcp_server.exe'))}")
     print(f"\n新版本 {APP_VERSION}. 更新内容:")
-    print("- 优化：更新流程逻辑优化，更新时保留 downloads 和 bangumi 文件夹")
-    print("- 优化：构建脚本输出文件夹包含版本号")
+    print("- 新增：支持 Model Context Protocol (MCP)，允许 AI 助手调用核心功能。")
+    print("- 新增：`mcp_server.py` 作为 MCP 服务入口")
+    print("- 文档：新增 MCP 使用文档 `docs/mcp_usage.md`")
     print(f"- 更新：版本号更新至 {APP_VERSION}")
 
 if __name__ == "__main__":

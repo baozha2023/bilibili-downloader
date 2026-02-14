@@ -18,8 +18,18 @@ class BilibiliCrawler:
     核心控制器：协调网络、API、下载和处理
     """
 
-    def __init__(self, use_proxy=False, cookies=None):
-        self.data_dir = 'bilibili_data'
+    def __init__(self, use_proxy=False, cookies=None, data_dir=None):
+        from .config import ConfigManager
+        
+        # 确定数据目录
+        if data_dir:
+             self.data_dir = data_dir
+        else:
+             self.data_dir = 'bilibili_data'
+             
+        # 初始化配置管理器 (确保单例使用正确的数据目录)
+        ConfigManager(self.data_dir)
+             
         self.download_dir = os.path.join(self.data_dir, 'downloads')
         self._init_dirs()
 

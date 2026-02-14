@@ -45,19 +45,28 @@ class MediaProcessor:
 
     def _find_ffmpeg(self):
         """查找ffmpeg路径"""
-        # 1. 项目内 ffmpeg/ffmpeg.exe
+        import sys
+        
+        possible_paths = []
+        
+        # 1. 优先检查 PyInstaller 打包后的可执行文件同级目录
+        if getattr(sys, 'frozen', False):
+            base_path = os.path.dirname(sys.executable)
+            possible_paths.append(os.path.join(base_path, 'ffmpeg', 'ffmpeg.exe'))
+            
+        # 2. 项目内 ffmpeg/ffmpeg.exe
         cwd = os.getcwd()
-        possible_paths = [
-            os.path.join(cwd, 'ffmpeg', 'ffmpeg.exe'),
-            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ffmpeg', 'ffmpeg.exe'),
-        ]
+        possible_paths.append(os.path.join(cwd, 'ffmpeg', 'ffmpeg.exe'))
+        
+        # 3. 开发环境相对路径
+        possible_paths.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'ffmpeg', 'ffmpeg.exe'))
         
         for path in possible_paths:
             if os.path.exists(path):
                 logger.info(f"找到项目内ffmpeg: {path}")
                 return path
                 
-        # 2. 系统PATH
+        # 4. 系统PATH
         system_ffmpeg = shutil.which("ffmpeg")
         if system_ffmpeg:
             logger.info(f"使用系统ffmpeg: {system_ffmpeg}")

@@ -15,7 +15,9 @@
 * **热门视频**：查看并下载B站热门视频。
 * **去水印**：(实验性) 支持去除视频右上角水印。
 * **多平台**：支持Windows、Linux和macOS（需自行配置ffmpeg）。
+* **MCP支持**：支持Model Context Protocol，可与AI助手集成。
 * **双模式**：提供直观的GUI界面和高效的命令行模式。
+
 * **模块化设计**：v2.0 采用全新的模块化架构，运行更稳定，维护更方便。
 
 ## 📦 安装与运行
@@ -54,6 +56,12 @@ python main.py -d BV1xx411c7mD
 python main.py -p --pages 3
 ```
 
+## 🤖 MCP (Model Context Protocol) 支持
+
+本项目支持 MCP 协议，允许 AI 助手（如 Claude Desktop）直接调用本项目的功能进行视频搜索、信息获取和下载。
+
+详细配置和使用说明请参考 [MCP 使用文档](docs/mcp_usage.md)。
+
 ## 🛠️ 开发构建
 
 本项目使用 PyInstaller 进行打包。
@@ -65,6 +73,11 @@ python build.py
 构建完成后，可执行文件将位于 `dist/bilibili_downloader/` 目录。
 
 ## 📝 版本历史
+
+### v5.8
+- **新增**：支持 Model Context Protocol (MCP)，允许 AI 助手调用核心功能。
+- **新增**：`mcp_server.py` 作为 MCP 服务入口。
+- **文档**：新增 MCP 使用文档 `docs/mcp_usage.md`。
 
 ### v5.7.7
 - 修复：视频下载完成后下载用时显示为“未知”的Bug
