@@ -1,5 +1,6 @@
 import logging
 from .NetworkManager import NetworkManager
+from core.constants import VideoQuality, VideoCodec, AudioQuality
 
 logger = logging.getLogger('bilibili_core.api')
 
@@ -54,8 +55,8 @@ class BilibiliAPI:
             return None
         return self.network.make_request(url)
 
-    def get_video_download_url(self, bvid, quality_preference='1080p', codec_preference='H.264/AVC',
-                               audio_quality_preference='高音质 (Hi-Res/Dolby)'):
+    def get_video_download_url(self, bvid, quality_preference=VideoQuality.Q_1080P, codec_preference=VideoCodec.AVC,
+                               audio_quality_preference=AudioQuality.HI_RES):
         """
         获取视频下载链接
         quality_preference: '4k', '1080p', '720p', etc.
@@ -73,15 +74,7 @@ class BilibiliAPI:
             logger.error(f"无法获取视频 {bvid} 的cid")
             return None
         # 映射表
-        quality_map = {
-            '8K 超高清': 127,
-            '4K 超清': 120,
-            '1080P+ 高码率': 112,
-            '1080P 高清': 80,
-            '720P 高清': 64,
-            '480P 清晰': 32,
-            '360P 流畅': 16,
-        }
+        quality_map = VideoQuality.QUALITY_MAP
 
         target_qn = quality_map.get(quality_preference, 80)
 
@@ -131,11 +124,7 @@ class BilibiliAPI:
 
         # 编码映射
         # 7: AVC, 12: HEVC, 13: AV1
-        codec_map = {
-            'H.264/AVC': 7,
-            'H.265/HEVC': 12,
-            'AV1': 13
-        }
+        codec_map = VideoCodec.CODEC_MAP
         target_codec = codec_map.get(codec_preference, 7)
 
         # 筛选逻辑优化：
@@ -225,20 +214,10 @@ class BilibiliAPI:
         }
 
     def _get_codec_desc(self, codecid):
-        mapping = {
-            7: "AVC/H.264",
-            12: "HEVC/H.265",
-            13: "AV1"
-        }
-        return mapping.get(codecid, f"Codec-{codecid}")
+        return VideoCodec.get_desc(codecid)
 
     def _get_quality_desc(self, qn):
-        mapping = {
-            127: "8K", 126: "Dolby Vision", 125: "HDR", 120: "4K",
-            116: "1080p60", 112: "1080p+", 80: "1080p",
-            74: "720p60", 64: "720p", 32: "480p", 16: "360p"
-        }
-        return mapping.get(qn, f"QN-{qn}")
+        return VideoQuality.get_desc(qn)
 
     def get_video_comments(self, aid, page=1):
         """获取视频评论"""

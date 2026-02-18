@@ -19,6 +19,7 @@ from ui.widgets.custom_combobox import NoScrollComboBox
 from ui.about_module import AboutDialog
 from ui.version_dialog import VersionDialog
 from core.version_manager import VersionManager
+from core.constants import VideoQuality, VideoCodec, AudioQuality
 
 class SettingsTab(QWidget):
     def __init__(self, main_window):
@@ -200,8 +201,8 @@ class SettingsTab(QWidget):
         pref_layout.addWidget(codec_label, 0, 0)
         
         self.codec_combo = NoScrollComboBox()
-        self.codec_combo.addItems(["H.264/AVC", "H.265/HEVC", "AV1"])
-        self.codec_combo.setCurrentText("H.264/AVC")
+        self.codec_combo.addItems([VideoCodec.AVC, VideoCodec.HEVC, VideoCodec.AV1])
+        self.codec_combo.setCurrentText(VideoCodec.AVC)
         self.codec_combo.setStyleSheet(combo_style)
         pref_layout.addWidget(self.codec_combo, 0, 1)
         
@@ -212,8 +213,8 @@ class SettingsTab(QWidget):
         
         self.quality_combo = NoScrollComboBox()
         # 默认只显示非登录用户的画质选项，登录后会自动更新
-        self.quality_combo.addItems(["720P 高清", "480P 清晰", "360P 流畅"])
-        self.quality_combo.setCurrentText("720P 高清")
+        self.quality_combo.addItems([VideoQuality.Q_720P, VideoQuality.Q_480P, VideoQuality.Q_360P])
+        self.quality_combo.setCurrentText(VideoQuality.Q_720P)
         self.quality_combo.setStyleSheet(combo_style)
         pref_layout.addWidget(self.quality_combo, 1, 1)
         
@@ -223,8 +224,8 @@ class SettingsTab(QWidget):
         pref_layout.addWidget(audio_label, 2, 0)
         
         self.audio_quality_combo = NoScrollComboBox()
-        self.audio_quality_combo.addItems(["高音质 (Hi-Res/Dolby)", "中等音质", "低音质"])
-        self.audio_quality_combo.setCurrentText("高音质 (Hi-Res/Dolby)")
+        self.audio_quality_combo.addItems(AudioQuality.ALL_QUALITIES)
+        self.audio_quality_combo.setCurrentText(AudioQuality.HI_RES)
         self.audio_quality_combo.setStyleSheet(combo_style)
         pref_layout.addWidget(self.audio_quality_combo, 2, 1)
 

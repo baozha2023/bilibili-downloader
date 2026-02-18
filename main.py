@@ -3,17 +3,9 @@
 """
 bilibiliDownloader主程序入口
 """
-import ctypes
 import sys
-import argparse
-import logging
 import os
-import traceback
-from PyQt5.QtWidgets import QApplication
-from core.cli import CliHandler
-from core.config import APP_VERSION
-from ui.splash_screen import SplashScreen
-from ui.startup_worker import StartupWorker
+import logging
 
 logging.basicConfig(level=logging.INFO,
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -22,6 +14,7 @@ logger = logging.getLogger('bilibili_downloader')
 
 def global_exception_handler(exctype, value, tb):
     logger.error("Uncaught exception", exc_info=(exctype, value, tb))
+    import traceback
     traceback.print_exception(exctype, value, tb)
 
 
@@ -30,6 +23,13 @@ sys.excepthook = global_exception_handler
 
 def start_gui():
     """启动图形用户界面"""
+    # Imports for GUI
+    import ctypes
+    from PyQt5.QtWidgets import QApplication
+    from ui.splash_screen import SplashScreen
+    from ui.startup_worker import StartupWorker
+    from core.config import APP_VERSION
+
     try:
         myappid = f'bilibili.downloader.gui.{APP_VERSION}'
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
@@ -58,6 +58,7 @@ def start_gui():
 
     def on_startup_finished(context):
         try:
+            # Main window module is likely already imported in worker
             from ui.main_window import BilibiliDesktop
             window = BilibiliDesktop(context=context)
             window.show()
@@ -75,13 +76,20 @@ def start_gui():
 
 def start_cli(args):
     """启动命令行界面"""
+    from core.cli import CliHandler
     cli = CliHandler()
     cli.handle_args(args)
 
 
 def main():
     """主函数"""
-    parser = argparse.ArgumentParser(description='bilibiliDownloader {APP_VERSION}')
+    import argparse
+    try:
+        from core.config import APP_VERSION
+    except ImportError:
+        APP_VERSION = "Unknown"
+
+    parser = argparse.ArgumentParser(description=f'bilibiliDownloader {APP_VERSION}')
     parser.add_argument('-g', '--gui', action='store_true',
                         help='启动图形用户界面')
     parser.add_argument('-p', '--popular', action='store_true',

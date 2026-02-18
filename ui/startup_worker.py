@@ -116,11 +116,19 @@ class StartupWorker(QThread):
                 self.progress_signal.emit(80, "版本检测失败: 网络或其他错误")
                 
             context['update_info'] = update_info
-            time.sleep(0.5)  # 稍微停留以便用户看清状态
-
             
-            # 5. 完成 (90-100%)
-            self.progress_signal.emit(90, "准备启动界面...")
+            # 5. 加载 UI 组件 (90-98%)
+            self.progress_signal.emit(90, "正在加载界面组件...")
+            try:
+                # Pre-import heavy UI modules
+                import ui.main_window
+            except Exception as e:
+                logging.warning(f"UI pre-load warning: {e}")
+            
+            time.sleep(0.1)
+            
+            # 6. 完成 (98-100%)
+            self.progress_signal.emit(98, "准备启动界面...")
             time.sleep(0.2)
             self.progress_signal.emit(100, "加载完成")
             

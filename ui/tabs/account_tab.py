@@ -17,6 +17,7 @@ from ui.favorites_window import FavoritesWindow
 from ui.styles import UIStyles
 from ui.utils.image_loader import ImageLoader
 from core.utils import decrypt_data
+from core.constants import VideoQuality
 
 logger = logging.getLogger('bilibili_desktop')
 
@@ -386,7 +387,7 @@ class AccountTab(QWidget):
         settings_tab.quality_combo.clear()
         
         # 基础选项
-        qualities = ["720P 高清", "480P 清晰", "360P 流畅"]
+        qualities = [VideoQuality.Q_720P, VideoQuality.Q_480P, VideoQuality.Q_360P]
         
         # 登录用户 (非会员)
         is_logged_in = False
@@ -403,23 +404,23 @@ class AccountTab(QWidget):
         
         if is_vip:
             # 大会员: 4K, 1080P60, 1080P+
-            qualities.insert(0, "4K 超清")
-            qualities.insert(1, "1080P 60帧")
-            qualities.insert(2, "1080P 高码率")
-            qualities.insert(3, "1080P 高清")
+            qualities.insert(0, VideoQuality.Q_4K)
+            qualities.insert(1, VideoQuality.Q_1080P_60)
+            qualities.insert(2, VideoQuality.Q_1080P_PLUS)
+            qualities.insert(3, VideoQuality.Q_1080P)
             
             # 自动设置为4K
             self.main_window.log_to_console("检测到大会员，自动调整画质为 4K", "info")
             # 查找4K的索引，通常是0
-            target_quality = "4K 超清"
+            target_quality = VideoQuality.Q_4K
         elif is_logged_in:
             # 普通登录用户: 1080P, 720P60
-            qualities.insert(0, "1080P 高清")
-            qualities.insert(1, "720P 60帧")
+            qualities.insert(0, VideoQuality.Q_1080P)
+            qualities.insert(1, VideoQuality.Q_720P_60)
             
             # 自动设置为1080P
             self.main_window.log_to_console("检测到已登录，自动调整画质为 1080P", "info")
-            target_quality = "1080P 高清"
+            target_quality = VideoQuality.Q_1080P
         else:
             target_quality = None
             

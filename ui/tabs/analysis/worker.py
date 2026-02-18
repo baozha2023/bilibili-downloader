@@ -84,11 +84,13 @@ class AnalysisWorker(QThread):
                         logger.error(f"Error fetching comments page {page}: {e}")
                         break
             
-            # 2.5 Get Danmaku (Fixed: Added back)
+            # 2.5 Get Danmaku
             danmaku = []
             if cid:
                 try:
+                    logger.info(f"Start fetching danmaku for cid: {cid}")
                     danmaku = self.crawler.get_video_danmaku(cid)
+                    logger.info(f"Fetched {len(danmaku)} danmaku items")
                 except Exception as e:
                     logger.error(f"Failed to get danmaku: {e}")
 

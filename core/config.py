@@ -1,9 +1,10 @@
 import os
 import json
 import logging
+from core.constants import VideoQuality, VideoCodec, AudioQuality
 
 logger = logging.getLogger('bilibili_core')
-APP_VERSION = 'v5.8'
+APP_VERSION = 'v5.8.1'
 
 
 class ConfigManager:
@@ -16,9 +17,9 @@ class ConfigManager:
         "download_danmaku": False,
         "download_comments": False,
         "complete_action": 1,
-        "video_quality": "1080P 高清",
-        "video_codec": "H.264/AVC",
-        "audio_quality": "高音质 (Hi-Res/Dolby)",
+        "video_quality": VideoQuality.Q_1080P,
+        "video_codec": VideoCodec.AVC,
+        "audio_quality": AudioQuality.HI_RES,
         "always_lock_account": False,
         "hardware_acceleration": True,
         "tab_order": [

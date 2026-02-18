@@ -252,18 +252,16 @@ class BilibiliDesktop(QMainWindow):
         try:
             version = APP_VERSION
             updates = (
-                "1. 新增：支持 Model Context Protocol (MCP)，允许 AI 助手调用核心功能\n"
-                "2. 新增：包含独立的 MCP 服务可执行文件 (mcp_server.exe)\n"
-                "3. 文档：新增 MCP 使用文档 docs/mcp_usage.md\n"
+                "1. 修复：视频分析中无法获取弹幕信息的问题\n"
+                "2. 修复：设置中选择1080P 60帧/高码率时实际下载为1080P 30帧的问题\n"
+                "3. 优化：统一管理视频画质、编码和音质的配置常量，提升代码维护性\n"
             )
             dialog = UpdateDialog(version, updates, self)
             dialog.exec_()
 
-            # 如果预加载了更新信息，直接使用
             update_info = self.context.get('update_info')
 
             if update_info and isinstance(update_info, dict):
-                # 检查是否有错误
                 if update_info.get('error'):
                     logger.warning(f"启动时版本检测报错: {update_info.get('error')}")
                 elif update_info.get('has_update') and update_info.get('version'):
