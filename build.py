@@ -44,13 +44,15 @@ HIDDEN_IMPORTS = [
     'ui.tabs.analysis',
     'ui.tabs.analysis.analysis_tab',
     'ui.tabs.analysis.worker',
-    'ui.tabs.analysis.charts',
-    'simple_lama_inpainting'
+    'ui.tabs.analysis.charts'
 ]
 
 EXCLUDED_MODULES = [
     'paddle',
     'paddlepaddle',
+    'torch',
+    'torchvision',
+    'torchaudio',
     'tensorboard',
     'caffe2',
     'triton',
@@ -402,10 +404,10 @@ def main():
     print(f"主程序位于: {os.path.abspath(os.path.join(new_dist, 'bilibili_downloader.exe'))}")
     print(f"MCP服务位于: {os.path.abspath(os.path.join(new_dist, 'mcp_server.exe'))}")
     print(f"\n新版本 {APP_VERSION}. 更新内容:")
-    print("- 新增：支持 Model Context Protocol (MCP)，允许 AI 助手调用核心功能。")
-    print("- 新增：`mcp_server.py` 作为 MCP 服务入口")
-    print("- 文档：新增 MCP 使用文档 `docs/mcp_usage.md`")
-    print(f"- 更新：版本号更新至 {APP_VERSION}")
+    print("- 新增：视频去水印和逐帧获取页面支持预览图缩放与平移操作，提升交互体验。")
+    print("- 新增：我的账号页面新增“稍后再看”列表，支持右键菜单操作。")
+    print("- 优化：全面重构UI代码，提升代码可读性与维护性。")
+    print("- 优化：统一项目代码格式与规范。")
 
 if __name__ == "__main__":
     main() 

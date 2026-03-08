@@ -126,13 +126,14 @@ class BangumiInfoThread(QThread):
     finished_signal = pyqtSignal(dict)
     error_signal = pyqtSignal(str)
     
-    def __init__(self, crawler, ep_id=None, season_id=None, bvid=None, bvid_list=None):
+    def __init__(self, crawler, ep_id=None, season_id=None, bvid=None, bvid_list=None, fetch_details=True):
         super().__init__()
         self.crawler = crawler
         self.ep_id = ep_id
         self.season_id = season_id
         self.bvid = bvid
         self.bvid_list = bvid_list
+        self.fetch_details = fetch_details
         
     def run(self):
         try:
@@ -144,27 +145,45 @@ class BangumiInfoThread(QThread):
                     'episodes': []
                 }
                 
-                for index, bvid in enumerate(self.bvid_list):
-                    resp = self.crawler.api.get_video_info(bvid)
-                    if resp and resp.get('code') == 0:
-                        data = resp.get('data', {})
-                        episode = {
-                            'title': data.get('title', ''),
-                            'long_title': '',
-                            'bvid': data.get('bvid'),
-                            'cid': data.get('cid'),
-                            'aid': data.get('aid')
-                        }
-                        result['episodes'].append(episode)
-                    else:
-                        # Add a placeholder for failed video
+                if not self.fetch_details:
+                    for index, bvid in enumerate(self.bvid_list):
                         result['episodes'].append({
-                            'title': f'获取失败 ({bvid})',
+                            'title': str(bvid),
                             'long_title': '',
                             'bvid': bvid,
                             'cid': 0,
                             'aid': 0
                         })
+                else:
+                    for index, bvid in enumerate(self.bvid_list):
+                        try:
+                            resp = self.crawler.api.get_video_info(bvid)
+                            if resp and resp.get('code') == 0:
+                                data = resp.get('data', {})
+                                episode = {
+                                    'title': data.get('title', ''),
+                                    'long_title': '',
+                                    'bvid': data.get('bvid'),
+                                    'cid': data.get('cid'),
+                                    'aid': data.get('aid')
+                                }
+                                result['episodes'].append(episode)
+                            else:
+                                result['episodes'].append({
+                                    'title': f'获取失败 ({bvid})',
+                                    'long_title': '',
+                                    'bvid': bvid,
+                                    'cid': 0,
+                                    'aid': 0
+                                })
+                        except Exception:
+                            result['episodes'].append({
+                                'title': f'获取失败 ({bvid})',
+                                'long_title': '',
+                                'bvid': bvid,
+                                'cid': 0,
+                                'aid': 0
+                            })
                     
                 self.finished_signal.emit(result)
 
@@ -444,6 +463,19 @@ class BangumiTab(QWidget):
         self.info_thread.error_signal.connect(self.on_info_error)
         self.info_thread.start()
 
+    def start_batch_from_bvid_list(self, bvid_list):
+        if not bvid_list:
+            BilibiliMessageBox.warning(self, "提示", "未找到有效BV号")
+            return
+            
+        self.info_label.setText(f"正在获取 {len(bvid_list)} 个视频的信息...")
+        self.parse_btn.setEnabled(False)
+        
+        self.info_thread = BangumiInfoThread(self.crawler, bvid_list=bvid_list, fetch_details=False)
+        self.info_thread.finished_signal.connect(self.on_info_fetched)
+        self.info_thread.error_signal.connect(self.on_info_error)
+        self.info_thread.start()
+
     def on_info_fetched(self, result):
         self.parse_btn.setEnabled(True)
         
@@ -469,6 +501,9 @@ class BangumiTab(QWidget):
         
         self.episodes_data = result.get('episodes', [])
         self.episode_list.clear()
+        
+        if hasattr(self, '_anim_timer') and self._anim_timer:
+            self._anim_timer.stop()
         
         # Animation: add items with slight delay
         self._anim_index = 0

@@ -342,13 +342,9 @@ class SettingsTab(QWidget):
         process_layout.addWidget(watermark_label, 0, 0)
 
         self.watermark_method_combo = NoScrollComboBox()
-        self.watermark_method_combo.addItems(["FFmpeg (Delogo)", "Simple Lama (AI)"])
+        self.watermark_method_combo.addItems(["FFmpeg (Delogo)"])
         self.watermark_method_combo.setStyleSheet(combo_style)
         process_layout.addWidget(self.watermark_method_combo, 0, 1)
-        
-        tips_lama = QLabel("💡 提示：Simple Lama (AI) 效果更好，需NVIDIA显卡")
-        tips_lama.setStyleSheet("color: #999; font-size: 16px; margin-top: 5px;")
-        process_layout.addWidget(tips_lama, 1, 0, 1, 2)
 
         process_card.add_layout(process_layout)
         self.content_layout.addWidget(process_card)
@@ -560,7 +556,10 @@ class SettingsTab(QWidget):
             if 'audio_quality' in config:
                 self.audio_quality_combo.setCurrentText(config['audio_quality'])
             if 'watermark_method' in config:
-                self.watermark_method_combo.setCurrentText(config['watermark_method'])
+                if self.watermark_method_combo.findText(config['watermark_method']) >= 0:
+                    self.watermark_method_combo.setCurrentText(config['watermark_method'])
+                else:
+                    self.watermark_method_combo.setCurrentIndex(0)
             if 'always_lock_account' in config:
                 self.always_lock_check.setChecked(config['always_lock_account'])
             if 'hardware_acceleration' in config:

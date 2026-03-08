@@ -26,26 +26,6 @@ class StartupWorker(QThread):
             from core.config import ConfigManager
             import os
             import json
-            try:
-                self.progress_signal.emit(15, "加载 AI 去水印组件...")
-                import torch
-                if not torch.cuda.is_available():
-                    raise RuntimeError("Torch CUDA 不可用")
-
-                import simple_lama_inpainting
-                context['simple_lama_available'] = True
-                logging.info(
-                    f"✅ simple-lama-inpainting 加载成功 (Torch {torch.__version__}, GPU: {torch.cuda.get_device_name(0)})")
-
-            except ImportError as e:
-                context['simple_lama_available'] = False
-                logging.warning(f"simple-lama-inpainting 或 Torch 未安装: {e}")
-            except Exception as e:
-                context['simple_lama_available'] = False
-                logging.error(f"❌ 加载 simple-lama-inpainting 失败: {e}")
-                logging.error("解决方案：1. 安装 VC++ Redistributable  2. 把 import torch 放到软件最开头")
-
-            time.sleep(0.1)
 
             # 2. 初始化配置和爬虫 (30-50%)
             self.progress_signal.emit(30, "初始化配置...")

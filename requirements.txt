@@ -14,4 +14,3 @@ opencv-python==4.9.0.80
 mcp>=1.0.0
 pytest
 pytest-mock
-simple_lama_inpainting

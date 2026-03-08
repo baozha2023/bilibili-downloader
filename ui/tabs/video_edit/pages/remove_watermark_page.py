@@ -33,18 +33,11 @@ class WatermarkWorker(QThread):
 
     def run(self):
         try:
-            if self.method == 'lama':
-                success, result = self.remover.remove_watermark_lama(
-                    self.input_path, 
-                    rect=self.rect,
-                    progress_callback=self.update_progress
-                )
-            else:
-                success, result = self.remover.remove_watermark_delogo(
-                    self.input_path, 
-                    rect=self.rect,
-                    progress_callback=self.update_progress
-                )
+            success, result = self.remover.remove_watermark_delogo(
+                self.input_path, 
+                rect=self.rect,
+                progress_callback=self.update_progress
+            )
             self.finished_signal.emit(success, result)
         except Exception as e:
             self.finished_signal.emit(False, str(e))
@@ -189,12 +182,7 @@ class RemoveWatermarkPage(BaseEditPage):
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         
-        method = "delogo"
-        if hasattr(self.main_window, 'config_manager'):
-             if self.main_window.config_manager.config.get('watermark_method') == 'Simple Lama (AI)':
-                 method = 'lama'
-        
-        self.worker = WatermarkWorker(self.processor, self.input_path, self.final_rect, method)
+        self.worker = WatermarkWorker(self.processor, self.input_path, self.final_rect)
         self.worker.progress_signal.connect(self.progress_bar.setValue)
         self.worker.finished_signal.connect(self.on_finished)
         self.worker.start()

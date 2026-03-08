@@ -4,7 +4,7 @@ from PyQt5.QtGui import QPixmap, QColor, QFont
 import os
 
 class SplashScreen(QSplashScreen):
-    def __init__(self, pixmap_path, version):
+    def __init__(self, pixmap_path, version=None):
         # 如果图片存在则使用图片，否则使用白色背景
         if os.path.exists(pixmap_path):
             pixmap = QPixmap(pixmap_path)
@@ -22,7 +22,8 @@ class SplashScreen(QSplashScreen):
         self.layout.addStretch()
         
         # 版本号
-        self.version_label = QLabel(f"Version: {version}")
+        version_text = f"Version: {version}" if version else "Version: --"
+        self.version_label = QLabel(version_text)
         self.version_label.setStyleSheet("color: white; font-weight: bold; font-size: 14px; background-color: rgba(0,0,0,0.5); padding: 4px; border-radius: 4px;")
         self.version_label.setAlignment(Qt.AlignRight)
         self.layout.addWidget(self.version_label)
@@ -59,3 +60,7 @@ class SplashScreen(QSplashScreen):
             display_text = f"{value}%"
         self.status_label.setText(display_text)
         QTimer.singleShot(0, lambda: self.repaint())
+
+    def set_version(self, version):
+        version_text = f"Version: {version}" if version else "Version: --"
+        self.version_label.setText(version_text)

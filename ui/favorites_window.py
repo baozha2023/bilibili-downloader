@@ -378,17 +378,19 @@ class FavoritesWindow(QDialog):
             self.status_label.setText("未找到视频")
             return
             
+        bvids = [b for b in bvids if isinstance(b, str) and b.strip()]
+        if not bvids:
+            BilibiliMessageBox.warning(self, "提示", "未找到有效BV号")
+            self.status_label.setText("未找到有效BV号")
+            return
+            
         self.status_label.setText(f"成功获取 {len(bvids)} 个视频")
         
         # Jump to Collection Download Tab
         bangumi_tab = self.main_window.bangumi_tab
         self.main_window.tabs.setCurrentWidget(bangumi_tab)
         
-        # Set input
-        bangumi_tab.url_input.setText(','.join(bvids))
-        
-        # Trigger parse
-        bangumi_tab.parse_bangumi()
+        bangumi_tab.start_batch_from_bvid_list(bvids)
         
         # Close this window? No, user might want to keep it open.
         # But maybe minimize? No.

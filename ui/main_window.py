@@ -253,10 +253,9 @@ class BilibiliDesktop(QMainWindow):
             version = APP_VERSION
             updates = (
                 "1. 新增：视频去水印和逐帧获取页面支持预览图缩放与平移操作，提升交互体验。\n"
-                "2. 新增：视频去水印功能新增 \"Simple Lama (AI)\" 模式，提供更智能的去水印效果。\n"
-                "3. 新增：我的账号页面新增“稍后再看”列表，支持右键菜单操作。\n"
-                "4. 优化：全面重构UI代码，提升代码可读性与维护性。\n"
-                "5. 优化：统一项目代码格式与规范。\n"
+                "2. 新增：我的账号页面新增“稍后再看”列表，支持右键菜单操作。\n"
+                "3. 优化：全面重构UI代码，提升代码可读性与维护性。\n"
+                "4. 优化：统一项目代码格式与规范。\n"
             )
             dialog = UpdateDialog(version, updates, self)
             dialog.exec_()
