@@ -2,6 +2,7 @@ from PyQt5.QtCore import QThread, pyqtSignal
 import time
 import logging
 
+
 # 延迟导入，避免在主线程加载过重
 # from core.crawler import BilibiliCrawler
 # from core.version_manager import VersionManager
@@ -10,13 +11,13 @@ import logging
 class StartupWorker(QThread):
     progress_signal = pyqtSignal(int, str)
     finished_signal = pyqtSignal(dict)
-    
+
     def __init__(self):
         super().__init__()
-        
+
     def run(self):
         context = {}
-        
+
         try:
             # 1. 加载核心模块 (10-30%)
             self.progress_signal.emit(10, "正在加载核心模块...")
@@ -25,35 +26,53 @@ class StartupWorker(QThread):
             from core.config import ConfigManager
             import os
             import json
-            
+            try:
+                self.progress_signal.emit(15, "加载 AI 去水印组件...")
+                import torch
+                if not torch.cuda.is_available():
+                    raise RuntimeError("Torch CUDA 不可用")
+
+                import simple_lama_inpainting
+                context['simple_lama_available'] = True
+                logging.info(
+                    f"✅ simple-lama-inpainting 加载成功 (Torch {torch.__version__}, GPU: {torch.cuda.get_device_name(0)})")
+
+            except ImportError as e:
+                context['simple_lama_available'] = False
+                logging.warning(f"simple-lama-inpainting 或 Torch 未安装: {e}")
+            except Exception as e:
+                context['simple_lama_available'] = False
+                logging.error(f"❌ 加载 simple-lama-inpainting 失败: {e}")
+                logging.error("解决方案：1. 安装 VC++ Redistributable  2. 把 import torch 放到软件最开头")
+
             time.sleep(0.1)
-            
+
             # 2. 初始化配置和爬虫 (30-50%)
             self.progress_signal.emit(30, "初始化配置...")
             config_manager = ConfigManager()
             crawler = BilibiliCrawler()
             context['crawler'] = crawler
             context['config_manager'] = config_manager
-            
+
             # 3. 检查登录状态 (50-70%)
             self.progress_signal.emit(50, "检查登录状态...")
-            
+
             # 尝试读取本地 cookies
             login_info = {"is_login": False, "data": None}
             try:
                 config_file = os.path.join(crawler.data_dir, "config", "login_config.json")
                 if os.path.exists(config_file):
                     from core.utils import decrypt_data
-                    
+
                     with open(config_file, 'r', encoding='utf-8') as f:
                         saved_data = json.load(f)
-                    
+
                     config = None
                     if isinstance(saved_data, dict) and "data" in saved_data:
                         decrypted_str = decrypt_data(saved_data["data"])
                         if decrypted_str:
                             config = json.loads(decrypted_str)
-                    
+
                     if config:
                         cookies = config.get("cookies", {})
                         if cookies and "SESSDATA" in cookies:
@@ -66,27 +85,34 @@ class StartupWorker(QThread):
                                 # 简单获取收藏夹和历史记录 (为了完整性)
                                 try:
                                     fav_resp = crawler.api.get_fav_folder_list(user_data.get('mid'))
-                                    user_data['favorites'] = fav_resp.get('data', {}).get('list', []) if fav_resp else []
+                                    user_data['favorites'] = fav_resp.get('data', {}).get('list',
+                                                                                          []) if fav_resp else []
                                 except:
                                     user_data['favorites'] = []
-                                
+
                                 try:
                                     history_resp = crawler.api.get_history()
                                     user_data['history'] = history_resp if history_resp else []
                                 except:
                                     user_data['history'] = []
-                                
+
+                                try:
+                                    to_view_resp = crawler.get_to_view()
+                                    user_data['to_view'] = to_view_resp if to_view_resp else []
+                                except:
+                                    user_data['to_view'] = []
+
                                 login_info = {
-                                    "is_login": True, 
+                                    "is_login": True,
                                     "data": user_data,
                                     "cookies": cookies
                                 }
             except Exception as e:
                 logging.warning(f"Startup login check failed: {e}")
-            
+
             context['login_info'] = login_info
             time.sleep(0.2)
-            
+
             # 4. 检查版本更新 (70-90%)
             self.progress_signal.emit(70, "正在检查 Gitee 版本更新...")
             update_info = {"has_update": False, "version": None, "checked": False, "error": None}
@@ -114,9 +140,9 @@ class StartupWorker(QThread):
                 update_info["error"] = str(e)
                 logging.warning(f"Startup update check failed: {e}")
                 self.progress_signal.emit(80, "版本检测失败: 网络或其他错误")
-                
+
             context['update_info'] = update_info
-            
+
             # 5. 加载 UI 组件 (90-98%)
             self.progress_signal.emit(90, "正在加载界面组件...")
             try:
@@ -124,16 +150,16 @@ class StartupWorker(QThread):
                 import ui.main_window
             except Exception as e:
                 logging.warning(f"UI pre-load warning: {e}")
-            
+
             time.sleep(0.1)
-            
+
             # 6. 完成 (98-100%)
             self.progress_signal.emit(98, "准备启动界面...")
             time.sleep(0.2)
             self.progress_signal.emit(100, "加载完成")
-            
+
         except Exception as e:
             logging.error(f"Startup error: {e}")
             context['error'] = str(e)
-            
+
         self.finished_signal.emit(context)

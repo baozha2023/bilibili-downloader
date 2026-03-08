@@ -238,11 +238,15 @@ class BilibiliAPI:
 
     def get_history(self, page=1):
         """获取历史记录"""
+        url = f'{self.API_BASE}/x/web-interface/history/cursor?ps=20&pn={page}'
+        response = self.network.make_request(url)
+        if isinstance(response, dict):
+            return response.get('data', {}).get('list', [])
+        return []
 
-        # 尝试使用cursor接口
-        url = f'{self.API_BASE}/x/web-interface/history/cursor?ps=20&type=archive'
-        # 如果需要翻页，通常需要传入 view_at (上一页最后一条的时间戳)
-        # 暂时简单实现
+    def get_to_view(self):
+        """获取稍后再看列表"""
+        url = f'{self.API_BASE}/x/v2/history/toview'
         response = self.network.make_request(url)
         if isinstance(response, dict):
             return response.get('data', {}).get('list', [])

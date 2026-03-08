@@ -48,10 +48,13 @@
 16. openpyxl (https://openpyxl.readthedocs.io/)
     - 用于读写Excel 2010 xlsx/xlsm文件的Python库
 
+17. simple-lama-inpainting (https://github.com/advimman/lama)
+    - 基于 LaMa (Resolution-robust Large Mask Inpainting) 的 AI 图像修复库，用于智能去水印
+
 本软件作者：认真想的名字
 作者gitee首页：https://gitee.com/bzJAVA/bilibili-downloader
 作者github首页：https://github.com/baozha2023/bilibili-downloader
-版本：v5.7.6
+版本：v5.8.2
 
 免责声明：
 本软件仅供学习和交流使用，不得用于任何商业用途。

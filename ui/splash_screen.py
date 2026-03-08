@@ -54,5 +54,8 @@ class SplashScreen(QSplashScreen):
     def set_progress(self, value, text=None):
         self.progress.setValue(value)
         if text:
-            self.status_label.setText(text)
+            display_text = f"{text} {value}%"
+        else:
+            display_text = f"{value}%"
+        self.status_label.setText(display_text)
         QTimer.singleShot(0, lambda: self.repaint())

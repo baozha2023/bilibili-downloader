@@ -1,15 +1,21 @@
 import logging
 from PyQt5.QtCore import QObject, pyqtSignal
 
-class QtLogHandler(logging.Handler, QObject):
+class LogSignalWrapper(QObject):
+    """
+    Wrapper for signal to separate QObject from logging.Handler
+    to prevent 'wrapped C/C++ object has been deleted' RuntimeError.
+    """
+    signal = pyqtSignal(str, str)
+
+class QtLogHandler(logging.Handler):
     """
     自定义日志处理器，将日志信号发送到UI
     """
-    log_signal = pyqtSignal(str, str)  # message, level
-
     def __init__(self):
-        logging.Handler.__init__(self)
-        QObject.__init__(self)
+        super().__init__()
+        self._signal_wrapper = LogSignalWrapper()
+        self.log_signal = self._signal_wrapper.signal
 
     def emit(self, record):
         try:

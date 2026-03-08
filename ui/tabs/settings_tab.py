@@ -301,6 +301,7 @@ class SettingsTab(QWidget):
         self.hardware_acceleration_check.setStyleSheet(checkbox_style)
         self.hardware_acceleration_check.setCursor(Qt.PointingHandCursor)
         self.hardware_acceleration_check.setToolTip("需要 NVIDIA 显卡支持，可加速视频处理")
+        self.hardware_acceleration_check.setChecked(True)
         checkbox_layout.addWidget(self.hardware_acceleration_check, 2, 1)
         
         download_card.add_layout(checkbox_layout)
@@ -328,8 +329,31 @@ class SettingsTab(QWidget):
         
         download_card.add_layout(action_layout)
         self.content_layout.addWidget(download_card)
+
+        # --- 4. 视频处理卡片 ---
+        process_card = CardWidget("视频处理")
+        process_layout = QGridLayout()
+        process_layout.setVerticalSpacing(20)
+        process_layout.setHorizontalSpacing(15)
+
+        # 去水印方式
+        watermark_label = QLabel("去水印方式:")
+        watermark_label.setStyleSheet("font-size: 20px; color: #555;")
+        process_layout.addWidget(watermark_label, 0, 0)
+
+        self.watermark_method_combo = NoScrollComboBox()
+        self.watermark_method_combo.addItems(["FFmpeg (Delogo)", "Simple Lama (AI)"])
+        self.watermark_method_combo.setStyleSheet(combo_style)
+        process_layout.addWidget(self.watermark_method_combo, 0, 1)
         
-        # --- 4. 隐私与安全卡片 ---
+        tips_lama = QLabel("💡 提示：Simple Lama (AI) 效果更好，需NVIDIA显卡")
+        tips_lama.setStyleSheet("color: #999; font-size: 16px; margin-top: 5px;")
+        process_layout.addWidget(tips_lama, 1, 0, 1, 2)
+
+        process_card.add_layout(process_layout)
+        self.content_layout.addWidget(process_card)
+        
+        # --- 5. 隐私与安全卡片 ---
         privacy_card = CardWidget("隐私与安全")
         privacy_layout = QGridLayout()
         privacy_layout.setVerticalSpacing(20)
@@ -481,6 +505,7 @@ class SettingsTab(QWidget):
             'video_quality': self.quality_combo.currentText(),
             'video_codec': self.codec_combo.currentText(),
             'audio_quality': self.audio_quality_combo.currentText(),
+            'watermark_method': self.watermark_method_combo.currentText(),
             'always_lock_account': self.always_lock_check.isChecked(),
             'hardware_acceleration': self.hardware_acceleration_check.isChecked()
         }
@@ -534,6 +559,8 @@ class SettingsTab(QWidget):
                 self.codec_combo.setCurrentText(config['video_codec'])
             if 'audio_quality' in config:
                 self.audio_quality_combo.setCurrentText(config['audio_quality'])
+            if 'watermark_method' in config:
+                self.watermark_method_combo.setCurrentText(config['watermark_method'])
             if 'always_lock_account' in config:
                 self.always_lock_check.setChecked(config['always_lock_account'])
             if 'hardware_acceleration' in config:

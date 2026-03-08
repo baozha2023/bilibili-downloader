@@ -6,6 +6,7 @@ from PyQt5.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QGroupBox,
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QImage, QPixmap
 from ui.widgets.edit_widgets import DragDropListWidget
+from ui.widgets.zoomable_image_view import ZoomableImageWidget
 from .base_page import BaseEditPage
 
 class FramePage(BaseEditPage):
@@ -48,12 +49,16 @@ class FramePage(BaseEditPage):
         preview_layout = QVBoxLayout(preview_container)
         preview_layout.setContentsMargins(0, 10, 0, 10)
         
-        self.preview_label = QLabel()
-        self.preview_label.setAlignment(Qt.AlignCenter)
-        self.preview_label.setStyleSheet("background-color: #1a1a1a; border-radius: 8px; border: 1px solid #333;")
-        self.preview_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.preview_label.setMinimumHeight(300)
-        preview_layout.addWidget(self.preview_label)
+        self.preview_widget = ZoomableImageWidget()
+        self.preview_widget.set_selection_enabled(False) # No selection needed for frame view
+        self.preview_widget.setMinimumHeight(300)
+        preview_layout.addWidget(self.preview_widget)
+        
+        # Tips
+        # tips = QLabel("提示: 滚轮缩放 | 右键拖拽移动")
+        # tips.setAlignment(Qt.AlignCenter)
+        # tips.setStyleSheet("color: #888; font-size: 12px;")
+        # preview_layout.addWidget(tips)
         
         splitter.addWidget(preview_container)
         
@@ -280,12 +285,8 @@ class FramePage(BaseEditPage):
                 bytes_per_line = ch * w
                 qt_img = QImage(frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
                 
-                # Scale to fit label
-                pixmap = QPixmap.fromImage(qt_img)
-                
-                # Maintain aspect ratio and fit within the label area
-                scaled_pixmap = pixmap.scaled(self.preview_label.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                self.preview_label.setPixmap(scaled_pixmap)
+                # Use ZoomableImageWidget to set image
+                self.preview_widget.set_image(qt_img)
                 
                 # Update Info
                 self.frame_info_label.setText(f"{frame_idx} / {self.total_frames}")

@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
 from PyQt5.QtCore import Qt, QRect, QSize, pyqtSignal, QThread
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QPen, QColor
 from .base_page import BaseEditPage
+from ui.widgets.zoomable_image_view import ZoomableImageWidget
 from ui.widgets.edit_widgets import DragDropListWidget
 from core.watermark import WatermarkRemover
 
@@ -12,11 +13,12 @@ class WatermarkWorker(QThread):
     progress_signal = pyqtSignal(int)
     finished_signal = pyqtSignal(bool, str)
 
-    def __init__(self, processor, input_path, rect):
+    def __init__(self, processor, input_path, rect, method="delogo"):
         super().__init__()
         self.processor = processor
         self.input_path = input_path
         self.rect = rect
+        self.method = method
         # Use the processor's watermark_remover which is correctly configured with a runner
         if hasattr(processor, 'watermark_remover') and processor.watermark_remover:
             self.remover = processor.watermark_remover
@@ -31,124 +33,27 @@ class WatermarkWorker(QThread):
 
     def run(self):
         try:
-            success, result = self.remover.remove_watermark_delogo(
-                self.input_path, 
-                rect=self.rect,
-                progress_callback=self.update_progress
-            )
+            if self.method == 'lama':
+                success, result = self.remover.remove_watermark_lama(
+                    self.input_path, 
+                    rect=self.rect,
+                    progress_callback=self.update_progress
+                )
+            else:
+                success, result = self.remover.remove_watermark_delogo(
+                    self.input_path, 
+                    rect=self.rect,
+                    progress_callback=self.update_progress
+                )
             self.finished_signal.emit(success, result)
         except Exception as e:
             self.finished_signal.emit(False, str(e))
-
-class VideoPreviewLabel(QWidget):
-    rect_selected = pyqtSignal(QRect)
-
-    def __init__(self):
-        super().__init__()
-        self.setStyleSheet("background-color: #000;")
-        self.setMinimumHeight(400)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.selection_rect = QRect()
-        self.is_selecting = False
-        self.origin = None
-        self.image = None
-        self.image_offset = (0, 0)
-        self.scale_factor = 1.0
-
-    def set_image(self, image):
-        self.image = image
-        self.selection_rect = QRect()
-        self.update()
-
-    def mousePressEvent(self, event):
-        if self.image and not self.image.isNull():
-            self.is_selecting = True
-            self.origin = event.pos()
-            self.selection_rect = QRect(self.origin, self.origin)
-            self.update()
-
-    def mouseMoveEvent(self, event):
-        if self.is_selecting and self.image:
-            self.selection_rect = QRect(self.origin, event.pos()).normalized()
-            self.update()
-
-    def mouseReleaseEvent(self, event):
-        if self.is_selecting and self.image:
-            self.is_selecting = False
-            self.rect_selected.emit(self.selection_rect)
-            self.update()
-
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        # Fill background
-        painter.fillRect(self.rect(), QColor(0, 0, 0))
-        
-        if self.image and not self.image.isNull():
-            # Calculate scaling to fit widget while keeping aspect ratio
-            widget_w = self.width()
-            widget_h = self.height()
-            img_w = self.image.width()
-            img_h = self.image.height()
-            
-            if img_w > 0 and img_h > 0:
-                # Scale to fit (KeepAspectRatio)
-                self.scale_factor = min(widget_w / img_w, widget_h / img_h)
-                
-                # Use scale factor to determine drawn size
-                drawn_w = int(img_w * self.scale_factor)
-                drawn_h = int(img_h * self.scale_factor)
-                
-                # Center image
-                x = (widget_w - drawn_w) // 2
-                y = (widget_h - drawn_h) // 2
-                self.image_offset = (x, y)
-                
-                target_rect = QRect(x, y, drawn_w, drawn_h)
-                painter.drawImage(target_rect, self.image)
-                
-                # Draw selection rect
-                if not self.selection_rect.isNull():
-                    painter.setPen(QPen(QColor(255, 0, 0), 2, Qt.SolidLine))
-                    painter.drawRect(self.selection_rect)
-                    painter.setBrush(QColor(255, 0, 0, 50))
-                    painter.drawRect(self.selection_rect)
-
-    def get_video_rect(self, selection_rect):
-        """Map widget selection coordinates to video coordinates"""
-        if not self.image or self.scale_factor <= 0:
-            return None
-            
-        # Adjust for offset
-        x = selection_rect.x() - self.image_offset[0]
-        y = selection_rect.y() - self.image_offset[1]
-        w = selection_rect.width()
-        h = selection_rect.height()
-        
-        # Scale back to original image size
-        vid_x = int(x / self.scale_factor)
-        vid_y = int(y / self.scale_factor)
-        vid_w = int(w / self.scale_factor)
-        vid_h = int(h / self.scale_factor)
-        
-        # Clamp to image bounds
-        img_w = self.image.width()
-        img_h = self.image.height()
-        
-        vid_x = max(0, vid_x)
-        vid_y = max(0, vid_y)
-        vid_w = min(vid_w, img_w - vid_x)
-        vid_h = min(vid_h, img_h - vid_y)
-        
-        if vid_w <= 0 or vid_h <= 0:
-            return None
-            
-        return (vid_x, vid_y, vid_w, vid_h)
 
 class RemoveWatermarkPage(BaseEditPage):
     def __init__(self, main_window, processor):
         super().__init__(main_window, processor)
         self.input_path = ""
-        self.selection_rect = None # QRect in label coordinates
+        self.selection_rect = None # QRect in video coordinates
         self.init_ui()
 
     def init_ui(self):
@@ -195,12 +100,18 @@ class RemoveWatermarkPage(BaseEditPage):
         container_layout.setContentsMargins(0, 0, 0, 0) # Remove margins
         container_layout.setAlignment(Qt.AlignCenter)
         
-        self.preview_widget = VideoPreviewLabel()
+        self.preview_widget = ZoomableImageWidget()
         self.preview_widget.setMinimumHeight(300)
         self.preview_widget.rect_selected.connect(self.on_rect_selected)
         container_layout.addWidget(self.preview_widget)
         
         layout.addWidget(preview_container, 1) # Give stretch to preview
+        
+        # Tips for controls
+        # controls_tip = QLabel("操作提示: 滚轮缩放 | 右键拖拽移动 | 左键框选区域")
+        # controls_tip.setAlignment(Qt.AlignCenter)
+        # controls_tip.setStyleSheet("color: #888; font-size: 12px; margin-top: 5px;")
+        # layout.addWidget(controls_tip)
         
         # Progress
         self.progress_bar = self.create_progress_bar()
@@ -262,18 +173,11 @@ class RemoveWatermarkPage(BaseEditPage):
         if not self.input_path:
             return
             
+        # rect is already in image coordinates from ZoomableImageWidget
         self.selection_rect = rect
+        self.final_rect = (rect.x(), rect.y(), rect.width(), rect.height())
         
-        # Get actual video coordinates from the widget
-        video_rect = self.preview_widget.get_video_rect(rect)
-        
-        if not video_rect:
-            self.start_btn.setEnabled(False)
-            self.status_label.setText("选区无效")
-            return
-            
-        self.final_rect = video_rect
-        vid_x, vid_y, vid_w, vid_h = video_rect
+        vid_x, vid_y, vid_w, vid_h = self.final_rect
         self.status_label.setText(f"选区坐标: ({vid_x}, {vid_y}), 大小: {vid_w}x{vid_h}")
         self.start_btn.setEnabled(True)
 
@@ -285,7 +189,12 @@ class RemoveWatermarkPage(BaseEditPage):
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         
-        self.worker = WatermarkWorker(self.processor, self.input_path, self.final_rect)
+        method = "delogo"
+        if hasattr(self.main_window, 'config_manager'):
+             if self.main_window.config_manager.config.get('watermark_method') == 'Simple Lama (AI)':
+                 method = 'lama'
+        
+        self.worker = WatermarkWorker(self.processor, self.input_path, self.final_rect, method)
         self.worker.progress_signal.connect(self.progress_bar.setValue)
         self.worker.finished_signal.connect(self.on_finished)
         self.worker.start()

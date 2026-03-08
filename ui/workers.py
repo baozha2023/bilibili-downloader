@@ -262,9 +262,19 @@ class AccountInfoThread(QThread):
             except Exception as e:
                  logger.warning(f"获取历史记录失败: {e}")
 
+            # 4. Get Watch Later
+            to_view = []
+            try:
+                to_view_resp = self.crawler.get_to_view()
+                if to_view_resp:
+                     to_view = to_view_resp
+            except Exception as e:
+                 logger.warning(f"获取稍后再看失败: {e}")
+
             # Merge into user_data
             user_data['favorites'] = favorites
             user_data['history'] = history
+            user_data['to_view'] = to_view
             
             self.finished_signal.emit({"status": "success", "data": user_data})
             

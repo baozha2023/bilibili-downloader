@@ -4,7 +4,7 @@ import logging
 from core.constants import VideoQuality, VideoCodec, AudioQuality
 
 logger = logging.getLogger('bilibili_core')
-APP_VERSION = 'v5.8.1'
+APP_VERSION = 'v5.8.2'
 
 
 class ConfigManager:
@@ -20,6 +20,7 @@ class ConfigManager:
         "video_quality": VideoQuality.Q_1080P,
         "video_codec": VideoCodec.AVC,
         "audio_quality": AudioQuality.HI_RES,
+        "watermark_method": "FFmpeg (Delogo)",
         "always_lock_account": False,
         "hardware_acceleration": True,
         "tab_order": [

@@ -204,6 +204,21 @@ class AccountTab(QWidget):
         """)
         self.content_tabs.addTab(self.history_list, "历史记录")
         
+        # 稍后再看列表
+        self.to_view_list = QTableWidget(0, 4)
+        self.to_view_list.setHorizontalHeaderLabels(["标题", "UP主", "添加时间", "BV号"])
+        self.to_view_list.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
+        self.to_view_list.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.to_view_list.setFrameShape(QTableWidget.NoFrame)
+        self.to_view_list.cellDoubleClicked.connect(lambda r, c: self.on_video_double_clicked(self.to_view_list, r))
+        self.to_view_list.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.to_view_list.customContextMenuRequested.connect(lambda pos: self.show_video_context_menu(pos, self.to_view_list))
+        self.to_view_list.setMouseTracking(True)
+        self.to_view_list.cellEntered.connect(lambda r, c: self.on_cell_entered(r, c, self.to_view_list))
+        self.to_view_list.installEventFilter(self)
+        self.to_view_list.setStyleSheet(self.history_list.styleSheet())
+        self.content_tabs.addTab(self.to_view_list, "稍后再看")
+        
         # 封面预览Label
         self.cover_label = QLabel(self)
         self.cover_label.setWindowFlags(Qt.ToolTip)
@@ -373,6 +388,10 @@ class AccountTab(QWidget):
             history = user_info.get("history", [])
             self.update_history_list(history)
             
+            # 更新稍后再看列表
+            to_view = user_info.get("to_view", [])
+            self.update_to_view_list(to_view)
+            
             # 更新画质选择选项
             self.update_quality_options(vip_type, vip_status)
             
@@ -443,14 +462,17 @@ class AccountTab(QWidget):
             else:
                 settings_tab.quality_combo.setCurrentIndex(0)
 
-    def on_cell_entered(self, row, column):
+    def on_cell_entered(self, row, column, table_widget=None):
         """鼠标移入单元格显示封面"""
         if row < 0:
             self.cover_label.hide()
             return
             
+        if not table_widget:
+            table_widget = self.history_list
+
         # 获取BV号item，从中获取封面URL
-        bvid_item = self.history_list.item(row, 3)
+        bvid_item = table_widget.item(row, 3)
         if bvid_item:
             cover_url = bvid_item.data(Qt.UserRole)
             if cover_url:
@@ -515,9 +537,34 @@ class AccountTab(QWidget):
         self.cover_label.show()
         
     def eventFilter(self, source, event):
-        if source == self.history_list and event.type() == QEvent.Leave:
+        if (source == self.history_list or source == self.to_view_list) and event.type() == QEvent.Leave:
             self.cover_label.hide()
         return super().eventFilter(source, event)
+
+    def update_to_view_list(self, to_view):
+        """更新稍后再看列表显示"""
+        self.to_view_list.setRowCount(len(to_view))
+        for i, item in enumerate(to_view):
+            title = item.get("title", "")
+            owner_name = item.get("owner", {}).get("name", "")
+            
+            add_at = item.get("add_at", 0)
+            if add_at:
+                add_time = time.strftime("%Y-%m-%d %H:%M", time.localtime(add_at))
+            else:
+                add_time = "--"
+                
+            bvid = item.get("bvid", "")
+            cover = item.get("pic", "")
+            
+            self.to_view_list.setItem(i, 0, QTableWidgetItem(title))
+            self.to_view_list.setItem(i, 1, QTableWidgetItem(owner_name))
+            self.to_view_list.setItem(i, 2, QTableWidgetItem(add_time))
+            
+            bvid_item = QTableWidgetItem(bvid)
+            if cover:
+                bvid_item.setData(Qt.UserRole, cover)
+            self.to_view_list.setItem(i, 3, bvid_item)
 
     def update_favorites_list(self, favorites):
         """更新收藏夹列表显示"""
@@ -665,8 +712,11 @@ class AccountTab(QWidget):
 
     def on_history_video_clicked(self, row, column):
         """历史记录视频双击处理"""
-        item_bvid = self.history_list.item(row, 3)
-        item_title = self.history_list.item(row, 0)
+        self.on_video_double_clicked(self.history_list, row)
+
+    def on_video_double_clicked(self, table_widget, row):
+        item_bvid = table_widget.item(row, 3)
+        item_title = table_widget.item(row, 0)
         if item_bvid:
             bvid = item_bvid.text()
             title = item_title.text() if item_title else ""
@@ -691,13 +741,16 @@ class AccountTab(QWidget):
             self.fav_window.show()
 
     def show_history_context_menu(self, pos):
-        item = self.history_list.itemAt(pos)
+        self.show_video_context_menu(pos, self.history_list)
+
+    def show_video_context_menu(self, pos, table_widget):
+        item = table_widget.itemAt(pos)
         if not item:
             return
             
         row = item.row()
-        bvid_item = self.history_list.item(row, 3)
-        title_item = self.history_list.item(row, 0)
+        bvid_item = table_widget.item(row, 3)
+        title_item = table_widget.item(row, 0)
         
         if not bvid_item:
             return
@@ -725,7 +778,7 @@ class AccountTab(QWidget):
         """)
         
         download_action = QAction("📥 下载视频", self)
-        download_action.triggered.connect(lambda: self.on_history_video_clicked(row, 0))
+        download_action.triggered.connect(lambda: self.on_video_double_clicked(table_widget, row))
         menu.addAction(download_action)
         
         watch_action = QAction("📺 实时观看", self)
@@ -740,7 +793,7 @@ class AccountTab(QWidget):
         analyze_action.triggered.connect(lambda: self.analyze_video(bvid))
         menu.addAction(analyze_action)
         
-        menu.exec_(self.history_list.viewport().mapToGlobal(pos))
+        menu.exec_(table_widget.viewport().mapToGlobal(pos))
         
     def analyze_video(self, bvid):
         self.main_window.tabs.setCurrentIndex(3)

@@ -2,6 +2,8 @@ import os
 import logging
 import re
 import subprocess
+import shutil
+import sys
 
 logger = logging.getLogger('bilibili_core.watermark')
 
@@ -12,6 +14,7 @@ class WatermarkRemover:
         self.runner = runner
         self.strategies = {
             'delogo': self.remove_watermark_delogo,
+            'lama': self.remove_watermark_lama,
             'external': self.remove_watermark_external
         }
 
@@ -132,6 +135,127 @@ class WatermarkRemover:
             return False, "Output file not found"
         except Exception as e:
             return False, f"External tool failed: {e}"
+
+    def remove_watermark_lama(self, input_path, output_path=None, rect=None, progress_callback=None):
+        """
+        Use simple-lama-inpainting (AI) to remove watermark.
+        Running in a separate process to prevent GUI crash.
+        """
+        if not output_path:
+            input_dir = os.path.dirname(input_path)
+            input_name = os.path.splitext(os.path.basename(input_path))[0]
+            ext = os.path.splitext(input_path)[1]
+            output_path = os.path.join(input_dir, f"{input_name}_lama{ext}")
+            
+        # Temp video path (no audio)
+        temp_video_path = output_path.replace(ext, f"_temp{ext}")
+
+        if not rect:
+             w, h = self._get_resolution(input_path)
+             if w and h:
+                 rect = self.calculate_watermark_rect(w, h)
+             else:
+                 return False, "Could not determine video resolution"
+
+        x, y, w, h = rect
+        rect_str = f"{x},{y},{w},{h}"
+        
+        try:
+            # Construct command for external processor
+            # Check if running in frozen mode (packaged executable)
+            if getattr(sys, 'frozen', False):
+                # Call executable with special flag
+                cmd = [sys.executable, "--lama-processor", "--input", input_path, "--output", temp_video_path, "--rect", rect_str]
+            else:
+                # Call python script directly
+                script_path = os.path.join(os.path.dirname(__file__), "lama_processor.py")
+                cmd = [sys.executable, script_path, "--input", input_path, "--output", temp_video_path, "--rect", rect_str]
+            
+            logger.info(f"Starting Lama processor: {cmd}")
+            
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                encoding='utf-8',
+                errors='replace',
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            )
+            
+            all_output = []
+            
+            while True:
+                line = process.stdout.readline()
+                if not line and process.poll() is not None:
+                    break
+                
+                if line:
+                    line = line.strip()
+                    all_output.append(line)
+                    if line.startswith("PROGRESS:"):
+                        try:
+                            p = int(line.split(":")[1])
+                            # Map 0-100 to 0-90 (leave 10% for audio merge)
+                            mapped_p = int(p * 0.9)
+                            if progress_callback:
+                                progress_callback(mapped_p, 100)
+                        except:
+                            pass
+                    elif "Error" in line or "Traceback" in line:
+                        logger.error(f"Lama processor error: {line}")
+            
+            stdout, stderr = process.communicate()
+            if process.returncode != 0:
+                logger.error(f"Lama processor failed with code {process.returncode}")
+                # Combine accumulated stdout lines if stderr is empty
+                if not stderr and all_output:
+                     logger.error(f"Last output lines:\n" + "\n".join(all_output[-10:]))
+                
+                logger.error(f"Stderr: {stderr}")
+                return False, f"Processor failed. See logs for details."
+                
+            if not os.path.exists(temp_video_path):
+                return False, "Temp video file not created"
+                
+            # Merge audio
+            if progress_callback:
+                progress_callback(95, 100)
+                
+            cmd = [
+                self.ffmpeg_path,
+                '-i', temp_video_path,
+                '-i', input_path,
+                '-c:v', 'copy',
+                '-c:a', 'copy',
+                '-map', '0:v:0',
+                '-map', '1:a:0',
+                '-y', output_path
+            ]
+            
+            # Run ffmpeg
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+            
+            # Cleanup temp
+            if os.path.exists(temp_video_path):
+                try: os.remove(temp_video_path)
+                except: pass
+                
+            if os.path.exists(output_path):
+                return True, output_path
+            else:
+                # Maybe no audio?
+                if os.path.exists(temp_video_path):
+                    shutil.move(temp_video_path, output_path)
+                    return True, output_path
+                return False, "Output file creation failed"
+                
+        except Exception as e:
+            if os.path.exists(temp_video_path):
+                try: os.remove(temp_video_path)
+                except: pass
+            logger.error(f"Lama inpainting failed: {e}")
+            return False, str(e)
 
     def _get_resolution(self, video_path):
         # Helper to get resolution using ffprobe/ffmpeg

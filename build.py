@@ -44,15 +44,13 @@ HIDDEN_IMPORTS = [
     'ui.tabs.analysis',
     'ui.tabs.analysis.analysis_tab',
     'ui.tabs.analysis.worker',
-    'ui.tabs.analysis.charts'
+    'ui.tabs.analysis.charts',
+    'simple_lama_inpainting'
 ]
 
 EXCLUDED_MODULES = [
     'paddle',
     'paddlepaddle',
-    'torch',
-    'torchvision',
-    'torchaudio',
     'tensorboard',
     'caffe2',
     'triton',

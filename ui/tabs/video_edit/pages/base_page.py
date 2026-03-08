@@ -12,6 +12,8 @@ class BaseEditPage(QWidget):
         self.main_window = main_window
         self.processor = processor
         self.worker = None
+        # Disable context menu
+        self.setContextMenuPolicy(Qt.NoContextMenu)
 
     def setup_header(self, layout, title, subtitle):
         title_label = QLabel(title)
